@@ -11,9 +11,10 @@ Project Ruthless currently provides:
 - a standalone addon identity;
 - account-wide and per-character saved settings;
 - a small module lifecycle;
-- `/pr` status commands;
+- `/pr` command namespace;
 - an ElvUI compatibility module that applies the safe-tooltip workaround consistently.
 - a persistent, copyable Lua error log for addon development.
+- a central `/pr` menu with Status and Errors tabs.
 
 ## Development loop
 
@@ -21,7 +22,7 @@ The live WoW AddOns directory uses a junction to this repository. Edit the sourc
 
 ## Commands
 
-- `/pr`
+- `/pr` — open the Project Ruthless menu
 - `/pr status`
 - `/pr errors`
 - `/pr errors clear`

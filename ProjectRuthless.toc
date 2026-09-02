@@ -2,11 +2,12 @@
 ## Title: Project Ruthless
 ## Notes: Andrew's personal, modular World of Warcraft interface.
 ## Author: Andrew
-## Version: 0.2.0
+## Version: 0.3.0
 ## OptionalDeps: ElvUI, ElvUI_Options
 ## SavedVariables: ProjectRuthlessDB
 ## SavedVariablesPerCharacter: ProjectRuthlessCharDB
 
 Core.lua
 Modules\ErrorLog.lua
+Modules\Menu.lua
 Modules\ElvUICompat.lua

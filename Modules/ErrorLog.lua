@@ -109,7 +109,7 @@ function ErrorLog:CreateViewer()
     return frame
 end
 
-function ErrorLog:Show()
+function ErrorLog:GetFormattedText()
     local store = GetStore()
     local entries = store and store.entries or {}
     local output = {}
@@ -122,8 +122,18 @@ function ErrorLog:Show()
         end
     end
 
+    return table.concat(output, "\n\n----------------------------------------\n\n"), #entries
+end
+
+function ErrorLog:Show()
+    if AUI.modules.Menu then
+        AUI.modules.Menu:Show("errors")
+        return
+    end
+
+    local text = self:GetFormattedText()
     local viewer = self:CreateViewer()
-    viewer.editBox:SetText(table.concat(output, "\n\n----------------------------------------\n\n"))
+    viewer.editBox:SetText(text)
     viewer.editBox:SetCursorPosition(0)
     viewer:Show()
 end
@@ -135,7 +145,9 @@ function ErrorLog:HandleCommand(command)
     if command == "clear" then
         wipe(store.entries)
         AUI:Print("Lua error log cleared.")
-        if self.viewer and self.viewer:IsShown() then
+        if AUI.modules.Menu and AUI.modules.Menu.frame and AUI.modules.Menu.frame:IsShown() then
+            AUI.modules.Menu:Refresh()
+        elseif self.viewer and self.viewer:IsShown() then
             self:Show()
         end
         return
@@ -159,8 +171,9 @@ function ErrorLog:HandleCommand(command)
     end
 
     if command == "" or command == "show" then
+        local _, count = self:GetFormattedText()
         self:Show()
-        AUI:Print(("Showing %d captured Lua error(s)."):format(#store.entries))
+        AUI:Print(("Showing %d captured Lua error(s)."):format(count))
         return
     end
 

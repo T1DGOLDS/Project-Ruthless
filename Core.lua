@@ -61,7 +61,16 @@ end
 local function HandleSlashCommand(input)
     local command = strtrim(input or ""):lower()
 
-    if command == "" or command == "status" then
+    if command == "" then
+        if AUI.modules.Menu then
+            AUI.modules.Menu:Show("status")
+        else
+            AUI:ShowStatus()
+        end
+        return
+    end
+
+    if command == "status" then
         AUI:ShowStatus()
         return
     end
@@ -113,7 +122,7 @@ eventFrame:SetScript("OnEvent", function(_, event, loadedAddon)
         end
 
         if not ProjectRuthlessCharDB.welcomed then
-            AUI:Print(("v%s loaded. Type /pr for status."):format(AUI.version))
+            AUI:Print(("v%s loaded. Type /pr to open the menu."):format(AUI.version))
             ProjectRuthlessCharDB.welcomed = true
         end
     end

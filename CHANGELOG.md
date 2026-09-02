@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 - 2026-09-02
+
+- Added the main Project Ruthless menu, opened with `/pr`.
+- Added Status and Errors tabs.
+- Embedded the persistent, copyable Lua error viewer in the menu.
+
 ## 0.2.0 - 2026-09-02
 
 - Added a persistent Lua error recorder retaining the latest 50 errors across UI reloads.
