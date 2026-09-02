@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 - 2026-09-02
+
+- Added a persistent Lua error recorder retaining the latest 50 errors across UI reloads.
+- Added a copyable in-game error viewer through `/pr errors`.
+- Added commands to clear, enable, and disable Project Ruthless error logging.
+- Added `/pr errors test` for verifying the recorder on demand.
+
 ## 0.1.1 - 2026-09-02
 
 - Renamed AndrewUI to Project Ruthless.

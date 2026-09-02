@@ -6,13 +6,14 @@ The project begins as a hybrid ElvUI companion so Andrew's long-developed layout
 
 ## Current milestone
 
-Version `0.1.0` establishes:
+Project Ruthless currently provides:
 
 - a standalone addon identity;
 - account-wide and per-character saved settings;
 - a small module lifecycle;
 - `/pr` status commands;
 - an ElvUI compatibility module that applies the safe-tooltip workaround consistently.
+- a persistent, copyable Lua error log for addon development.
 
 ## Development loop
 
@@ -22,6 +23,11 @@ The live WoW AddOns directory uses a junction to this repository. Edit the sourc
 
 - `/pr`
 - `/pr status`
+- `/pr errors`
+- `/pr errors clear`
+- `/pr errors test`
+- `/pr errors on`
+- `/pr errors off`
 - `/pr tooltip on`
 - `/pr tooltip off`
 

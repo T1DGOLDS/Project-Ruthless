@@ -7,6 +7,11 @@ AUI.modules = {}
 
 local defaults = {
     enabled = true,
+    errorLog = {
+        enabled = true,
+        entries = {},
+        maxEntries = 50,
+    },
     elvui = {
         safeTooltip = true,
     },
@@ -74,7 +79,13 @@ local function HandleSlashCommand(input)
         return
     end
 
-    AUI:Print("Commands: /pr, /pr status, /pr tooltip on, /pr tooltip off")
+    local errorCommand = command:match("^errors%s*(.*)$")
+    if errorCommand ~= nil and AUI.modules.ErrorLog then
+        AUI.modules.ErrorLog:HandleCommand(errorCommand)
+        return
+    end
+
+    AUI:Print("Commands: /pr, /pr status, /pr errors, /pr errors clear, /pr tooltip on, /pr tooltip off")
 end
 
 local eventFrame = CreateFrame("Frame")
