@@ -1,0 +1,11 @@
+## Interface: 120100
+## Title: AndrewUI
+## Notes: Andrew's personal, modular World of Warcraft interface.
+## Author: Andrew
+## Version: 0.1.0
+## OptionalDeps: ElvUI, ElvUI_Options
+## SavedVariables: AndrewUIDB
+## SavedVariablesPerCharacter: AndrewUICharDB
+
+Core.lua
+Modules\ElvUICompat.lua
