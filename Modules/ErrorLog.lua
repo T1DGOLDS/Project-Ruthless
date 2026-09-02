@@ -2,11 +2,28 @@ local _, AUI = ...
 
 local ErrorLog = {
     handlingError = false,
+    pendingNotices = {},
+    noticeScheduled = false,
+    noticeCooldown = {},
 }
 AUI:RegisterModule("ErrorLog", ErrorLog)
 
 local function GetStore()
     return ProjectRuthlessDB and ProjectRuthlessDB.errorLog
+end
+
+local function GetSource(message, stack)
+    local text = tostring(message or "") .. "\n" .. tostring(stack or "")
+    local addon = text:match("[/\\]AddOns[/\\]([^/\\]+)")
+    if addon then
+        return addon
+    end
+
+    if text:match("Interface[/\\]FrameXML") or text:match("Interface[/\\]AddOns[/\\]Blizzard_") then
+        return "Blizzard UI"
+    end
+
+    return "Unknown addon"
 end
 
 local function FormatEntry(entry, index)
@@ -45,6 +62,8 @@ function ErrorLog:Record(message)
             }
         end
 
+        self:QueueNotice(GetSource(text, stack), 1)
+
         while #entries > store.maxEntries do
             table.remove(entries, 1)
         end
@@ -54,19 +73,63 @@ function ErrorLog:Record(message)
     return ok
 end
 
+function ErrorLog:QueueNotice(source, count)
+    self.pendingNotices[source] = (self.pendingNotices[source] or 0) + (count or 1)
+    if self.noticeScheduled then
+        return
+    end
+
+    self.noticeScheduled = true
+    C_Timer.After(1.5, function()
+        ErrorLog:FlushNotices()
+    end)
+end
+
+function ErrorLog:FlushNotices()
+    self.noticeScheduled = false
+    local now = GetTime()
+
+    for source, count in pairs(self.pendingNotices) do
+        self.pendingNotices[source] = nil
+        local lastNotice = self.noticeCooldown[source]
+        if not lastNotice or now - lastNotice >= 30 then
+            if count >= 3 then
+                AUI:Print(("%s is causing lots of Lua errors. See /pr errors."):format(source))
+            else
+                AUI:Print(("%s caused a Lua error. See /pr errors."):format(source))
+            end
+            self.noticeCooldown[source] = now
+        end
+    end
+end
+
 function ErrorLog:Install()
     if self.installed then
         return
     end
 
-    local previousHandler = geterrorhandler()
-    self.previousHandler = previousHandler
+    local earlyCapture = _G.ProjectRuthlessEarlyCapture
+    if earlyCapture and earlyCapture.entries then
+        local store = GetStore()
+        local importedBySource = {}
+        for _, entry in ipairs(earlyCapture.entries) do
+            store.entries[#store.entries + 1] = entry
+            local source = GetSource(entry.message, entry.stack)
+            importedBySource[source] = (importedBySource[source] or 0) + (entry.count or 1)
+        end
+        while #store.entries > store.maxEntries do
+            table.remove(store.entries, 1)
+        end
+        wipe(earlyCapture.entries)
+        earlyCapture.forwardOnly = true
+
+        for source, count in pairs(importedBySource) do
+            self:QueueNotice(source, count)
+        end
+    end
 
     seterrorhandler(function(message)
         ErrorLog:Record(message)
-        if previousHandler then
-            return previousHandler(message)
-        end
     end)
 
     self.installed = true

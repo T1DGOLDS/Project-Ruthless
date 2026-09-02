@@ -12,6 +12,19 @@ local defaults = {
         entries = {},
         maxEntries = 50,
     },
+    lowHealthGlow = {
+        enabled = true,
+        threshold = 0.35,
+        maxAlpha = 0.40,
+    },
+    titles = {
+        favorites = {},
+        firstSeen = {},
+        knownAtInstall = {},
+        initialized = false,
+        sort = "alphabetical",
+        favoritesOnly = false,
+    },
     elvui = {
         safeTooltip = true,
     },
@@ -94,7 +107,13 @@ local function HandleSlashCommand(input)
         return
     end
 
-    AUI:Print("Commands: /pr, /pr status, /pr errors, /pr errors clear, /pr tooltip on, /pr tooltip off")
+    local healthGlowCommand = command:match("^healthglow%s*(.*)$")
+    if healthGlowCommand ~= nil and AUI.modules.LowHealthGlow then
+        AUI.modules.LowHealthGlow:HandleCommand(healthGlowCommand)
+        return
+    end
+
+    AUI:Print("Commands: /pr, /pr status, /pr errors, /pr healthglow test, /pr tooltip on, /pr tooltip off")
 end
 
 local eventFrame = CreateFrame("Frame")
@@ -108,6 +127,10 @@ eventFrame:SetScript("OnEvent", function(_, event, loadedAddon)
 
         SLASH_PROJECTRUTHLESS1 = "/pr"
         SlashCmdList.PROJECTRUTHLESS = HandleSlashCommand
+
+        if AUI.modules.ErrorLog then
+            AUI.modules.ErrorLog:Install()
+        end
 
         for _, module in pairs(AUI.modules) do
             if module.OnAddonLoaded then

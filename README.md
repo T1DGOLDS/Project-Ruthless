@@ -14,7 +14,8 @@ Project Ruthless currently provides:
 - `/pr` command namespace;
 - an ElvUI compatibility module that applies the safe-tooltip workaround consistently.
 - a persistent, copyable Lua error log for addon development.
-- a central `/pr` menu with Status and Errors tabs.
+- a sleek dark `/pr` control centre with automatic character class-colour accents.
+- a progressive red border glow that warns when player health falls below 35%.
 
 ## Development loop
 
@@ -29,6 +30,9 @@ The live WoW AddOns directory uses a junction to this repository. Edit the sourc
 - `/pr errors test`
 - `/pr errors on`
 - `/pr errors off`
+- `/pr healthglow test`
+- `/pr healthglow on`
+- `/pr healthglow off`
 - `/pr tooltip on`
 - `/pr tooltip off`
 
