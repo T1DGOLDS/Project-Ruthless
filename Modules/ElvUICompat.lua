@@ -4,7 +4,7 @@ local Compat = {}
 AUI:RegisterModule("ElvUICompat", Compat)
 
 function Compat:ApplySafeTooltip()
-    if not AndrewUIDB.elvui.safeTooltip then
+    if not ProjectRuthlessDB.elvui.safeTooltip then
         return false
     end
 
@@ -19,7 +19,7 @@ function Compat:ApplySafeTooltip()
 
     E.private.tooltip.enable = false
     E.private.skins.blizzard.tooltip = false
-    AndrewUICharDB.safeTooltipApplied = true
+    ProjectRuthlessCharDB.safeTooltipApplied = true
 
     return true
 end

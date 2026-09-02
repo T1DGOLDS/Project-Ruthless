@@ -1,6 +1,6 @@
-# AndrewUI
+# Project Ruthless
 
-AndrewUI is Andrew's personal, modular World of Warcraft interface.
+Project Ruthless is Andrew's personal, modular World of Warcraft interface.
 
 The project begins as a hybrid ElvUI companion so Andrew's long-developed layouts remain intact. Modules will gradually move suitable components onto Blizzard's native UI without forcing a visual reset.
 
@@ -11,7 +11,7 @@ Version `0.1.0` establishes:
 - a standalone addon identity;
 - account-wide and per-character saved settings;
 - a small module lifecycle;
-- `/aui` status commands;
+- `/pr` status commands;
 - an ElvUI compatibility module that applies the safe-tooltip workaround consistently.
 
 ## Development loop
@@ -20,10 +20,10 @@ The live WoW AddOns directory uses a junction to this repository. Edit the sourc
 
 ## Commands
 
-- `/aui`
-- `/aui status`
-- `/aui tooltip on`
-- `/aui tooltip off`
+- `/pr`
+- `/pr status`
+- `/pr tooltip on`
+- `/pr tooltip off`
 
 ## Principles
 

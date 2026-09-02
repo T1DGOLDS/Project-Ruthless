@@ -1,6 +1,6 @@
 local addonName, AUI = ...
 
-AndrewUI = AUI
+ProjectRuthless = AUI
 AUI.name = addonName
 AUI.version = C_AddOns.GetAddOnMetadata(addonName, "Version") or "dev"
 AUI.modules = {}
@@ -30,7 +30,7 @@ function AUI:RegisterModule(name, module)
 end
 
 function AUI:Print(message)
-    print(("|cff7f5af0AndrewUI|r: %s"):format(message))
+    print(("|cff7f5af0Project Ruthless|r: %s"):format(message))
 end
 
 function AUI:GetElvUI()
@@ -44,7 +44,7 @@ end
 function AUI:ShowStatus()
     local E = self:GetElvUI()
     local elvVersion = E and E.version or "not loaded"
-    local tooltipState = AndrewUIDB.elvui.safeTooltip and "enabled" or "disabled"
+    local tooltipState = ProjectRuthlessDB.elvui.safeTooltip and "enabled" or "disabled"
 
     self:Print(("v%s | ElvUI: %s | safe tooltip: %s"):format(
         self.version,
@@ -62,19 +62,19 @@ local function HandleSlashCommand(input)
     end
 
     if command == "tooltip on" then
-        AndrewUIDB.elvui.safeTooltip = true
+        ProjectRuthlessDB.elvui.safeTooltip = true
         AUI:Print("Safe tooltip compatibility enabled. Reloading the UI.")
         ReloadUI()
         return
     end
 
     if command == "tooltip off" then
-        AndrewUIDB.elvui.safeTooltip = false
+        ProjectRuthlessDB.elvui.safeTooltip = false
         AUI:Print("Safe tooltip compatibility disabled. This does not re-enable ElvUI tooltips automatically.")
         return
     end
 
-    AUI:Print("Commands: /aui, /aui status, /aui tooltip on, /aui tooltip off")
+    AUI:Print("Commands: /pr, /pr status, /pr tooltip on, /pr tooltip off")
 end
 
 local eventFrame = CreateFrame("Frame")
@@ -82,12 +82,12 @@ eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:SetScript("OnEvent", function(_, event, loadedAddon)
     if event == "ADDON_LOADED" and loadedAddon == addonName then
-        AndrewUIDB = AndrewUIDB or {}
-        AndrewUICharDB = AndrewUICharDB or {}
-        ApplyDefaults(AndrewUIDB, defaults)
+        ProjectRuthlessDB = ProjectRuthlessDB or {}
+        ProjectRuthlessCharDB = ProjectRuthlessCharDB or {}
+        ApplyDefaults(ProjectRuthlessDB, defaults)
 
-        SLASH_ANDREWUI1 = "/aui"
-        SlashCmdList.ANDREWUI = HandleSlashCommand
+        SLASH_PROJECTRUTHLESS1 = "/pr"
+        SlashCmdList.PROJECTRUTHLESS = HandleSlashCommand
 
         for _, module in pairs(AUI.modules) do
             if module.OnAddonLoaded then
@@ -101,9 +101,9 @@ eventFrame:SetScript("OnEvent", function(_, event, loadedAddon)
             end
         end
 
-        if not AndrewUICharDB.welcomed then
-            AUI:Print(("v%s loaded. Type /aui for status."):format(AUI.version))
-            AndrewUICharDB.welcomed = true
+        if not ProjectRuthlessCharDB.welcomed then
+            AUI:Print(("v%s loaded. Type /pr for status."):format(AUI.version))
+            ProjectRuthlessCharDB.welcomed = true
         end
     end
 end)

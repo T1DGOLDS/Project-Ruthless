@@ -1,11 +1,11 @@
 ## Interface: 120100
-## Title: AndrewUI
+## Title: Project Ruthless
 ## Notes: Andrew's personal, modular World of Warcraft interface.
 ## Author: Andrew
-## Version: 0.1.0
+## Version: 0.1.1
 ## OptionalDeps: ElvUI, ElvUI_Options
-## SavedVariables: AndrewUIDB
-## SavedVariablesPerCharacter: AndrewUICharDB
+## SavedVariables: ProjectRuthlessDB
+## SavedVariablesPerCharacter: ProjectRuthlessCharDB
 
 Core.lua
 Modules\ElvUICompat.lua
