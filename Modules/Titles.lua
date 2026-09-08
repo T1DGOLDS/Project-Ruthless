@@ -17,6 +17,30 @@ local function Clean(text)
     return strtrim((text or ""):gsub("%%s", ""):gsub("[%p%c]", " "):gsub("%s+", " ")):lower()
 end
 
+local FACTION_EQUIVALENTS = {
+    ["flame warden"]="flame keeper", ["flame keeper"]="flame warden",
+    ["the justicar"]="conqueror", ["justicar"]="conqueror",
+    ["the conqueror"]="justicar", ["conqueror"]="justicar",
+    ["of the alliance"]="of the horde", ["of the horde"]="of the alliance",
+    ["hero of the alliance"]="hero of the horde", ["hero of the horde"]="hero of the alliance",
+    ["veteran of the alliance"]="veteran of the horde", ["veteran of the horde"]="veteran of the alliance",
+    ["defender of the alliance"]="defender of the horde", ["defender of the horde"]="defender of the alliance",
+    ["guardian of the alliance"]="guardian of the horde", ["guardian of the horde"]="guardian of the alliance",
+    ["soldier of the alliance"]="soldier of the horde", ["soldier of the horde"]="soldier of the alliance",
+    ["the alliance slayer"]="the horde slayer", ["the horde slayer"]="the alliance slayer",
+    ["private"]="scout", ["scout"]="private", ["corporal"]="grunt", ["grunt"]="corporal",
+    ["master sergeant"]="senior sergeant", ["senior sergeant"]="master sergeant",
+    ["sergeant major"]="first sergeant", ["first sergeant"]="sergeant major",
+    ["knight"]="stone guard", ["stone guard"]="knight",
+    ["knight lieutenant"]="blood guard", ["blood guard"]="knight lieutenant",
+    ["knight captain"]="legionnaire", ["legionnaire"]="knight captain",
+    ["knight champion"]="centurion", ["centurion"]="knight champion",
+    ["lieutenant commander"]="champion", ["champion"]="lieutenant commander",
+    ["commander"]="lieutenant general", ["lieutenant general"]="commander",
+    ["marshal"]="general", ["general"]="marshal", ["field marshal"]="warlord", ["warlord"]="field marshal",
+    ["grand marshal"]="high warlord", ["high warlord"]="grand marshal",
+}
+
 local function DisplayTitle(titleID)
     local raw = GetTitleName(titleID)
     if not raw then return "Unknown title" end
@@ -24,7 +48,148 @@ local function DisplayTitle(titleID)
     return ok and result or raw:gsub("%%s", UnitName("player") or "")
 end
 
-local function DateValue(match, firstSeen)
+function Titles:GetDisplayTitle(titleID)
+    if not titleID or titleID == 0 then return "No Title" end
+    return DisplayTitle(titleID)
+end
+
+local DateValue
+
+function Titles:GetEarnedTitles(query)
+    local results = {}
+    local cleanedQuery = Clean(query)
+    if cleanedQuery == "" or Clean("No Title"):find(cleanedQuery, 1, true) then
+        results[#results + 1] = { id=0, name="No Title" }
+    end
+    for titleID = 1, GetNumTitles() do
+        if IsTitleKnown(titleID) then
+            local name = DisplayTitle(titleID)
+            if cleanedQuery == "" or Clean(name):find(cleanedQuery, 1, true) then
+                results[#results + 1] = { id=titleID, name=name }
+            end
+        end
+    end
+    self:BuildAchievementMatches()
+    local db = Settings()
+    table.sort(results, function(a, b)
+        local af, bf = db.favorites[a.id] == true, db.favorites[b.id] == true
+        if af ~= bf then return af end
+        if a.id == 0 then return true end
+        if b.id == 0 then return false end
+        if db.sort == "recent" then
+            local av = DateValue(self.achievementMatches[a.id], db.firstSeen[a.id])
+            local bv = DateValue(self.achievementMatches[b.id], db.firstSeen[b.id])
+            if av ~= bv then return av > bv end
+        end
+        return a.name:lower() < b.name:lower()
+    end)
+    return results
+end
+
+function Titles:IsFavorite(titleID)
+    return titleID and titleID > 0 and Settings().favorites[titleID] == true
+end
+
+function Titles:GetSortMode()
+    return Settings().sort == "recent" and "recent" or "alphabetical"
+end
+
+function Titles:ToggleSortMode()
+    local db = Settings()
+    db.sort = db.sort == "recent" and "alphabetical" or "recent"
+end
+
+function Titles:GetVariantLines(titleID)
+    local lines = {}
+    if not titleID or titleID == 0 then return lines end
+    local data = _G.EpithetData and _G.EpithetData.titlesByID
+    local record = data and data[titleID]
+    if not record then return lines end
+    if record.faction then
+        local foundEquivalent = false
+        for otherID, other in pairs(data) do
+            if otherID ~= titleID and other.faction and other.faction ~= record.faction
+                and record.achievement_id and other.achievement_id == record.achievement_id then
+                local label = other.faction == "Horde" and "Horde equivalent" or "Alliance equivalent"
+                lines[#lines + 1] = { label=label, value=DisplayTitle(otherID) }
+                foundEquivalent = true
+                break
+            end
+        end
+        if not foundEquivalent then
+            local wanted = FACTION_EQUIVALENTS[Clean(record.text)]
+            if wanted then
+                for otherID, other in pairs(data) do
+                    if Clean(other.text) == wanted then
+                        local label = other.faction == "Horde" and "Horde equivalent" or "Alliance equivalent"
+                        lines[#lines + 1] = { label=label, value=DisplayTitle(otherID) }
+                        foundEquivalent = true
+                        break
+                    end
+                end
+            end
+        end
+        if not foundEquivalent then
+            local otherFaction = record.faction == "Horde" and "Alliance" or "Horde"
+            lines[#lines + 1] = { label=otherFaction .. " equivalent", value="Equivalent name unavailable" }
+        end
+    end
+    if record.achievement_id then
+        for otherID, other in pairs(data) do
+            if otherID ~= titleID and other.achievement_id == record.achievement_id
+                and other.faction == record.faction and other.text ~= record.text then
+                local label = UnitSex("player") == 3 and "Male form" or "Female form"
+                lines[#lines + 1] = { label=label, value=DisplayTitle(otherID) }
+                break
+            end
+        end
+    end
+    return lines
+end
+
+
+function Titles:ShowTitleTooltip(owner, titleID)
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(self:GetDisplayTitle(titleID), 1, 0.82, 0)
+    if titleID == 0 then
+        GameTooltip:AddLine("Removes the currently equipped title.", 0.8, 0.82, 0.88, true)
+        GameTooltip:AddLine("Left-click to select", 0.45, 0.65, 0.95)
+        GameTooltip:Show()
+        return
+    end
+
+    self:BuildAchievementMatches()
+    local record = _G.EpithetData and _G.EpithetData.titlesByID and _G.EpithetData.titlesByID[titleID]
+    local match = self.achievementMatches[titleID]
+    local dateText, source = self:GetDateInfo(titleID)
+    if record then
+        local context = record.exp and tostring(record.exp):upper() or nil
+        if record.cat then context = context and (context .. "  •  " .. record.cat) or record.cat end
+        if context then GameTooltip:AddLine(context, 0.62, 0.65, 0.72) end
+        if record.kind then GameTooltip:AddDoubleLine("Source", record.kind, 0.62,0.65,0.72, 0.9,0.9,0.95) end
+    end
+    GameTooltip:AddDoubleLine("Earned", dateText, 0.62,0.65,0.72, 0.9,0.9,0.95)
+    GameTooltip:AddLine(source, 0.48, 0.51, 0.58, true)
+    if match and match.id then
+        local link = GetAchievementLink and GetAchievementLink(match.id)
+        GameTooltip:AddLine(link or ("Achievement: " .. (match.name or "Unknown")), 0.35, 0.75, 1, true)
+    elseif not self.searchFinished[titleID] then
+        GameTooltip:AddLine("Achievement link: searching Blizzard records…", 0.48, 0.51, 0.58, true)
+        self:StartLazyAchievementSearch(titleID)
+    else
+        GameTooltip:AddLine("Achievement link unavailable", 0.48, 0.51, 0.58)
+    end
+    for _, variant in ipairs(self:GetVariantLines(titleID)) do
+        GameTooltip:AddDoubleLine(variant.label, variant.value, 0.65,0.68,0.75, 1,1,1)
+    end
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine("Left-click to equip", 0.45, 0.65, 0.95)
+    GameTooltip:AddLine("Click the star to favourite", 0.45, 0.65, 0.95)
+    if match and match.id then GameTooltip:AddLine("Right-click to open achievement", 0.45, 0.65, 0.95) end
+    GameTooltip:Show()
+end
+
+DateValue = function(match, firstSeen)
     if match and match.year then
         local year = match.year < 100 and (2000 + match.year) or match.year
         return (year * 10000) + (match.month * 100) + match.day
@@ -218,7 +383,7 @@ function Titles:CreatePanel(parent)
         self:Refresh()
     end)
 
-    local favorite = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    local favorite = AUI:CreateButton(panel)
     favorite:SetSize(110, 26)
     favorite:SetPoint("LEFT", search, "RIGHT", 8, 0)
     favorite:SetScript("OnClick", function()
@@ -227,7 +392,7 @@ function Titles:CreatePanel(parent)
     end)
     panel.favoriteButton = favorite
 
-    local sort = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    local sort = AUI:CreateButton(panel)
     sort:SetSize(126, 26)
     sort:SetPoint("LEFT", favorite, "RIGHT", 8, 0)
     sort:SetScript("OnClick", function()
@@ -236,11 +401,13 @@ function Titles:CreatePanel(parent)
     end)
     panel.sortButton = sort
 
+    local scroll=AUI:CreateListScroll(panel,32,1,function() self:RefreshRows() end)
+    scroll:SetPoint("TOPLEFT",12,-82); scroll:SetPoint("BOTTOMRIGHT",-14,70); panel.scroll=scroll
     panel.rows = {}
-    for index = 1, 11 do
-        local row = CreateFrame("Button", nil, panel)
+    for index = 1, 20 do
+        local row = CreateFrame("Button", nil, scroll.content)
         row:SetSize(500, 30)
-        row:SetPoint("TOPLEFT", 12, -82 - ((index - 1) * 32))
+        scroll:PlaceItem(row,index)
         row.favorite = CreateFrame("Button", nil, row)
         row.favorite:SetSize(22, 22)
         row.favorite:SetPoint("LEFT", 2, 0)
@@ -269,13 +436,6 @@ function Titles:CreatePanel(parent)
         panel.rows[index] = row
     end
 
-    local scroll = CreateFrame("ScrollFrame", "ProjectRuthlessTitleScroll", panel, "FauxScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 12, -82)
-    scroll:SetPoint("BOTTOMRIGHT", -14, 70)
-    scroll:SetScript("OnVerticalScroll", function(frame, offset)
-        FauxScrollFrame_OnVerticalScroll(frame, offset, 32, function() self:RefreshRows() end)
-    end)
-    panel.scroll = scroll
 
     local card = CreateFrame("Frame", nil, panel, "BackdropTemplate")
     card:SetSize(500, 190)
@@ -288,9 +448,9 @@ function Titles:CreatePanel(parent)
     card.date = card:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); card.date:SetPoint("TOPLEFT", 18, -52)
     card.source = card:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); card.source:SetPoint("TOPLEFT", 18, -76)
     card.achievement = card:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); card.achievement:SetPoint("TOPLEFT", 18, -100)
-    card.favorite = CreateFrame("Button", nil, card, "UIPanelButtonTemplate"); card.favorite:SetSize(130, 26); card.favorite:SetPoint("BOTTOMLEFT", 16, 14)
+    card.favorite = AUI:CreateButton(card); card.favorite:SetSize(130, 26); card.favorite:SetPoint("BOTTOMLEFT", 16, 14)
     card.favorite:SetScript("OnClick", function() self:ToggleFavorite(card.titleID); self:ShowProvenance(card.titleID) end)
-    card.open = CreateFrame("Button", nil, card, "UIPanelButtonTemplate"); card.open:SetSize(160, 26); card.open:SetPoint("LEFT", card.favorite, "RIGHT", 8, 0); card.open:SetText("Open achievement")
+    card.open = AUI:CreateButton(card); card.open:SetSize(160, 26); card.open:SetPoint("LEFT", card.favorite, "RIGHT", 8, 0); card.open:SetText("Open achievement")
     card.open:SetScript("OnClick", function() self:OpenAchievement(card.achievementID) end)
     local close = CreateFrame("Button", nil, card, "UIPanelCloseButton"); close:SetPoint("TOPRIGHT")
     card:Hide()
@@ -301,8 +461,10 @@ end
 
 function Titles:RefreshRows()
     if not self.panel then return end
-    local offset = FauxScrollFrame_GetOffset(self.panel.scroll)
+    self.panel.scroll:SetItemCount(#self.filtered)
+    local offset = self.panel.scroll:GetItemOffset()
     for index, row in ipairs(self.panel.rows) do
+        self.panel.scroll:PlaceItem(row,index)
         local entry = self.filtered[offset + index]
         if entry then
             row.titleID = entry.id
@@ -323,7 +485,7 @@ end
 function Titles:Refresh()
     if not self.panel then return end
     self:RebuildFilter()
-    FauxScrollFrame_Update(self.panel.scroll, #self.filtered, #self.panel.rows, 32)
+    self.panel.scroll:SetItemCount(#self.filtered)
     self.panel.favoriteButton:SetText(Settings().favoritesOnly and "Favourites" or "All titles")
     self.panel.sortButton:SetText(Settings().sort == "recent" and "Sort: recent" or "Sort: A–Z")
     self:RefreshRows()

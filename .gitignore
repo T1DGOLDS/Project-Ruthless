@@ -1,3 +1,4 @@
 *.zip
 .luacheckcache
 release/
+node_modules/

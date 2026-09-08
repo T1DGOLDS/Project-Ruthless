@@ -152,7 +152,7 @@ function ErrorLog:CreateViewer()
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
     frame.TitleText:SetText("Project Ruthless — Lua Error Log")
 
-    local scroll = CreateFrame("ScrollFrame", nil, frame, "UIPanelScrollFrameTemplate")
+    local scroll = AUI:CreateSmoothScrollFrame(frame)
     scroll:SetPoint("TOPLEFT", 12, -34)
     scroll:SetPoint("BOTTOMRIGHT", -30, 12)
 
@@ -166,6 +166,7 @@ function ErrorLog:CreateViewer()
         frame:Hide()
     end)
     scroll:SetScrollChild(editBox)
+    AUI:ConfigureScrollingEditBox(editBox,scroll,1)
 
     frame.editBox = editBox
     self.viewer = frame

@@ -1,16 +1,19 @@
 ## Interface: 120100
 ## Title: Project Ruthless
-## Notes: Andrew's personal, modular World of Warcraft interface.
+## Notes: Practical interface tools that preserve familiar Blizzard workflows.
 ## Author: Andrew
-## Version: 0.6.0
-## Dependencies: !ProjectRuthless
-## OptionalDeps: ElvUI, ElvUI_Options, Epithet
+## Version: 0.11.0
+## OptionalDeps: ElvUI, ElvUI_Options, Epithet, RaiderIO
 ## SavedVariables: ProjectRuthlessDB
 ## SavedVariablesPerCharacter: ProjectRuthlessCharDB
 
 Core.lua
 Modules\ErrorLog.lua
 Modules\Titles.lua
+Modules\CharacterV2.lua
+Modules\Spellbook.lua
+Modules\Talents.lua
+Modules\Achievements.lua
 Modules\Menu.lua
 Modules\LowHealthGlow.lua
 Modules\ElvUICompat.lua

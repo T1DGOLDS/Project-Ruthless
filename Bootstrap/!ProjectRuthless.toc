@@ -1,7 +1,0 @@
-## Interface: 120100
-## Title: Project Ruthless Bootstrap
-## Notes: Early error capture for Project Ruthless.
-## Author: Andrew
-## Version: 0.1.0
-
-Bootstrap.lua

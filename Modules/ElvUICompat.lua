@@ -31,3 +31,7 @@ end
 function Compat:OnPlayerLogin()
     self:ApplySafeTooltip()
 end
+
+function Compat:ApplySettings()
+    self:ApplySafeTooltip()
+end

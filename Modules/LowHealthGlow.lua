@@ -32,16 +32,19 @@ function LowHealthGlow:CreateAlphaCurve()
     local curve = C_CurveUtil.CreateCurve()
     curve:SetType(Enum.LuaCurveType.Linear)
     curve:AddPoint(0, settings.maxAlpha)
-    curve:AddPoint(0.01, settings.maxAlpha)
-    curve:AddPoint(0.03, 0.34)
-    curve:AddPoint(0.05, 0.27)
-    curve:AddPoint(0.075, 0.19)
-    curve:AddPoint(0.10, 0.12)
-    curve:AddPoint(0.15, 0.065)
-    curve:AddPoint(0.25, 0.02)
+    curve:AddPoint(settings.threshold * 0.12, settings.maxAlpha * 0.92)
+    curve:AddPoint(settings.threshold * 0.28, settings.maxAlpha * 0.66)
+    curve:AddPoint(settings.threshold * 0.50, settings.maxAlpha * 0.30)
+    curve:AddPoint(settings.threshold * 0.75, settings.maxAlpha * 0.08)
     curve:AddPoint(settings.threshold, 0)
     curve:AddPoint(1, 0)
     self.alphaCurve = curve
+end
+
+function LowHealthGlow:ApplySettings()
+    self:CreateOverlay()
+    self:CreateAlphaCurve()
+    self:Update()
 end
 
 function LowHealthGlow:Update()
