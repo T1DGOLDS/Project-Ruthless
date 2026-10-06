@@ -45,9 +45,13 @@ for (const feature of ['Character', 'Talents', 'Achievements']) {
 const character = read('Modules/CharacterV2.lua');
 const talents = read('Modules/Talents.lua');
 const achievements = read('Modules/Achievements.lua');
+const menu = read('Modules/Menu.lua');
 assert.match(character, /function Character:OnPlayerLogin\(\)\s*\n\s*if not self:IsSupported\(\) then return end/);
 assert.match(talents, /function Talents:OnPlayerLogin\(\)\s*\n\s*if not AUI:IsFeatureSupported\("Talents"\) then return end/);
 assert.match(achievements, /function Achievements:OnPlayerLogin\(\)\s*\n\s*if not AUI:IsFeatureSupported\("Achievements"\) then return end/);
+assert.doesNotMatch(menu, /if AUI\.isForever then[\s\S]*?ToggleCharacter\(/, 'Forever menu must not taint secret values by calling ToggleCharacter');
+const unsupportedTalentsBranch = talents.match(/if not AUI:IsFeatureSupported\("Talents"\) then([\s\S]*?)\n\s*end/)[1];
+assert.doesNotMatch(unsupportedTalentsBranch, /OpenToClassTalentsTab/, 'Unsupported Forever Talents must stay on the native launch path');
 console.log('PASS: Forever leaves unsupported native frames untouched');
 
 const spellbook = read('Modules/Spellbook.lua');

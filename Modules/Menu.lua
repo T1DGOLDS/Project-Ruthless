@@ -85,9 +85,8 @@ end
 function Menu:CreateCharacterOptions(parent)
     local panel=self:CreateOptionsPanel(parent,"PLAYER PANEL","Character","Control the standalone Character replacement opened by the normal Character button and keybind.")
     if AUI.isForever then
-        local note=AddLabel(panel,"WoW Forever uses its native Character window in this beta build. The Ruthless replacement stays disabled until its Camelot equipment interactions have passed live testing.","TOPLEFT",panel,"TOPLEFT",20,-124,"GameFontNormal")
+        local note=AddLabel(panel,"WoW Forever uses its native Character window in this beta build. Open it with Forever's Character button or keybind; launching it from addon code taints protected health values in the current beta.","TOPLEFT",panel,"TOPLEFT",20,-124,"GameFontNormal")
         note:SetWidth(580); note:SetJustifyH("LEFT"); note:SetTextColor(unpack(COLORS.muted))
-        self:CreateAction(panel,"Open Character",18,-214,140,function() if ToggleCharacter then ToggleCharacter("PaperDollFrame",true) end end)
         self.panels.character=panel
         return
     end
@@ -125,9 +124,8 @@ end
 function Menu:CreateTalentsOptions(parent)
     local panel=self:CreateOptionsPanel(parent,"BUILDS & SPECIALIZATION","Talents","A compact workspace with native talent trees, specialization choices, and a clean loadout list.")
     if AUI.isForever then
-        local note=AddLabel(panel,"Forever's Camelot talent window uses primary and secondary spec groups instead of Retail's specialization/loadout layout. Project Ruthless leaves that native window intact for the beta.","TOPLEFT",panel,"TOPLEFT",20,-124,"GameFontNormal")
+        local note=AddLabel(panel,"Forever's Camelot talent window uses primary and secondary spec groups instead of Retail's specialization/loadout layout. Project Ruthless leaves that native window intact; open it with Forever's Talents button or keybind.","TOPLEFT",panel,"TOPLEFT",20,-124,"GameFontNormal")
         note:SetWidth(580); note:SetJustifyH("LEFT"); note:SetTextColor(unpack(COLORS.muted))
-        self:CreateAction(panel,"Open native Talents",18,-214,160,function() if AUI.modules.Talents then AUI.modules.Talents:Show() end end)
         self.panels.talents=panel
         return
     end

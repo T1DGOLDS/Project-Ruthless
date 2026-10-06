@@ -422,7 +422,6 @@ end
 function Talents:Show()
     if not AUI:IsFeatureSupported("Talents") then
         AUI:PrintFeatureUnavailable("Talents")
-        if PlayerSpellsUtil and PlayerSpellsUtil.OpenToClassTalentsTab then PlayerSpellsUtil.OpenToClassTalentsTab() end
         return
     end
     if InCombatLockdown() then AUI:Print("Open Talents after combat."); return end

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### 0.12.0-beta.2 - 2026-10-06 (WoW Forever taint fix)
+
+- Removed addon-driven Character and Talents launch buttons on Forever. Opening Camelot's Character frame through addon Lua tainted secret health values and caused Blizzard's `TextStatusBar.lua` to fail when showing or hiding the panel.
+- Added a regression check that rejects native Character and Talents launch calls from unsupported Forever paths.
+
 ### 0.12.0-beta.1 - 2026-10-06 (WoW Forever compatibility preview)
 
 - Added a Camelot manifest for WoW Forever 1.60.1 (`Interface 16001`) while preserving the Retail manifest and package.
