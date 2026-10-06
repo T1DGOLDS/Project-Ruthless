@@ -1084,6 +1084,7 @@ function Spellbook:Show(mode, searchText)
 end
 
 function Spellbook:SeparateFromTalents()
+    if AUI.isForever then return end
     if self.playerSpellsHooked or not PlayerSpellsFrame then return end
     self.playerSpellsHooked=true
     local function HideSpellbookTab(frame)
@@ -1096,6 +1097,10 @@ function Spellbook:SeparateFromTalents()
 end
 
 function Spellbook:InstallMicroButton()
+    -- Forever already ships separate Spellbook and Talents micro buttons. Its
+    -- Spellbook button is routed through PlayerSpellsUtil below, so leave the
+    -- Professions button and its native behavior untouched.
+    if AUI.isForever then return end
     if self.microButtonInstalled or not ProfessionMicroButton then return end
     self.microButtonInstalled=true
     self.originalToggleProfessionsBook=_G.ToggleProfessionsBook
@@ -1118,22 +1123,29 @@ function Spellbook:InstallPlayerSpellsRedirects()
     self.playerSpellsRedirected=true
     self.originalOpenToSpellBookTab=PlayerSpellsUtil.OpenToSpellBookTab
     self.originalOpenToSpellBookTabAtSpell=PlayerSpellsUtil.OpenToSpellBookTabAtSpell
+    self.originalToggleSpellBookFrame=PlayerSpellsUtil.ToggleSpellBookFrame
     PlayerSpellsUtil.OpenToSpellBookTab=function()
         if ProjectRuthlessDB.spellbook.separateFromTalents then Spellbook:Show("class")
         elseif Spellbook.originalOpenToSpellBookTab then return Spellbook.originalOpenToSpellBookTab() end
     end
-    PlayerSpellsUtil.OpenToSpellBookTabAtSpell=function(spellID)
-        if not ProjectRuthlessDB.spellbook.separateFromTalents and Spellbook.originalOpenToSpellBookTabAtSpell then return Spellbook.originalOpenToSpellBookTabAtSpell(spellID) end
+    PlayerSpellsUtil.OpenToSpellBookTabAtSpell=function(spellID,...)
+        if not ProjectRuthlessDB.spellbook.separateFromTalents and Spellbook.originalOpenToSpellBookTabAtSpell then return Spellbook.originalOpenToSpellBookTabAtSpell(spellID,...) end
         local info=C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(spellID)
         Spellbook:Show("class",info and info.name or "")
         return nil
+    end
+    if AUI.isForever and self.originalToggleSpellBookFrame then
+        PlayerSpellsUtil.ToggleSpellBookFrame=function(...)
+            if ProjectRuthlessDB.spellbook.separateFromTalents then return Spellbook:Toggle() end
+            return Spellbook.originalToggleSpellBookFrame(...)
+        end
     end
 end
 
 function Spellbook:ApplySettings()
     if self.frame then self:Refresh() end
     if PlayerSpellsFrame and PlayerSpellsFrame.UpdateTabs then PlayerSpellsFrame:UpdateTabs() end
-    if ProfessionMicroButton and LoadMicroButtonTextures then LoadMicroButtonTextures(ProfessionMicroButton,ProjectRuthlessDB.spellbook.replaceProfessions and "Spellbook" or "Professions") end
+    if not AUI.isForever and ProfessionMicroButton and LoadMicroButtonTextures then LoadMicroButtonTextures(ProfessionMicroButton,ProjectRuthlessDB.spellbook.replaceProfessions and "Spellbook" or "Professions") end
 end
 
 function Spellbook:OnPlayerLogin()

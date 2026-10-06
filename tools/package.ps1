@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.11.0",
+    [string]$Version = "0.12.0-beta.1",
     [string]$RepositoryRoot = (Split-Path -Parent $PSScriptRoot)
 )
 
@@ -15,6 +15,7 @@ New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
 
 Copy-Item -LiteralPath (Join-Path $RepositoryRoot "Core.lua") -Destination $packageRoot
 Copy-Item -LiteralPath (Join-Path $RepositoryRoot "ProjectRuthless.toc") -Destination $packageRoot
+Copy-Item -LiteralPath (Join-Path $RepositoryRoot "ProjectRuthless_Camelot.toc") -Destination $packageRoot
 Copy-Item -LiteralPath (Join-Path $RepositoryRoot "README.md") -Destination $packageRoot
 Copy-Item -LiteralPath (Join-Path $RepositoryRoot "CHANGELOG.md") -Destination $packageRoot
 Copy-Item -LiteralPath (Join-Path $RepositoryRoot "LICENSE") -Destination $packageRoot

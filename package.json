@@ -1,12 +1,13 @@
 {
   "name": "project-ruthless",
-  "version": "0.11.0",
+  "version": "0.12.0-beta.1",
   "private": true,
   "description": "Local validation tools for the Project Ruthless World of Warcraft addon",
   "scripts": {
     "test:achievements": "node tests/run-achievements.cjs",
     "test:equipment": "node tests/run-equipment-sets.cjs",
-    "test:talents": "node tests/run-talents.cjs"
+    "test:talents": "node tests/run-talents.cjs",
+    "test:forever": "node tests/run-forever-compat.cjs"
   },
   "devDependencies": {
     "fengari": "^0.1.5",

@@ -1,6 +1,7 @@
 unpack = table.unpack
 local AUI = {modules={}}
 function AUI:RegisterModule(name, module) self.modules[name] = module end
+function AUI:IsFeatureSupported() return true end
 
 ProjectRuthlessDB = {enabled=true, achievements={enabled=true}}
 RAID_CLASS_COLORS = {PALADIN={r=0.96,g=0.55,b=0.73}}

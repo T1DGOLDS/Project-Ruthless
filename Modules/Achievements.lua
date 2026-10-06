@@ -273,7 +273,8 @@ function Achievements:ShowNativeStatistics()
 end
 
 function Achievements:IsEnabled()
-    return ProjectRuthlessDB and ProjectRuthlessDB.enabled and ProjectRuthlessDB.achievements.enabled
+    return AUI:IsFeatureSupported("Achievements")
+        and ProjectRuthlessDB and ProjectRuthlessDB.enabled and ProjectRuthlessDB.achievements.enabled
 end
 
 function Achievements:Install()
@@ -300,6 +301,10 @@ function Achievements:Install()
 end
 
 function Achievements:Show()
+    if not AUI:IsFeatureSupported("Achievements") then
+        AUI:PrintFeatureUnavailable("Achievements")
+        return
+    end
     if AchievementFrame_LoadUI then AchievementFrame_LoadUI() end
     self:Install()
     if not AchievementFrame then return end
@@ -315,6 +320,7 @@ function Achievements:ApplySettings()
 end
 
 function Achievements:OnPlayerLogin()
+    if not AUI:IsFeatureSupported("Achievements") then return end
     self:Install()
     local events = CreateFrame("Frame")
     events:RegisterEvent("ADDON_LOADED")

@@ -1,0 +1,72 @@
+const fs = require('fs');
+const path = require('path');
+const assert = require('assert');
+
+const root = path.resolve(process.argv[2] || path.join(__dirname, '..'));
+const dependencyRoot = process.env.PR_TEST_DEPS || path.join(root, 'node_modules');
+const nativeRoot = process.env.PR_WOW_FOREVER_SOURCE;
+if (!nativeRoot) {
+  throw new Error('Set PR_WOW_FOREVER_SOURCE to the WoW Forever Interface/AddOns source directory.');
+}
+
+const parser = require(path.join(dependencyRoot, 'luaparse'));
+for (const file of fs.readdirSync(root, { recursive: true }).filter(file => file.endsWith('.lua') && !file.startsWith('tests'))) {
+  parser.parse(fs.readFileSync(path.join(root, file), 'utf8'), { luaVersion: '5.1' });
+}
+console.log('PASS: Lua 5.1 syntax');
+
+function read(relativePath) {
+  return fs.readFileSync(path.join(root, relativePath), 'utf8');
+}
+
+function native(relativePath) {
+  return fs.readFileSync(path.join(nativeRoot, relativePath), 'utf8');
+}
+
+function tocFiles(source) {
+  return source.split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line && !line.startsWith('##'));
+}
+
+const retailToc = read('ProjectRuthless.toc');
+const foreverToc = read('ProjectRuthless_Camelot.toc');
+assert.match(foreverToc, /^## Interface: 16001$/m);
+assert.match(foreverToc, /^## AllowLoadGameType: camelot$/m);
+assert.deepStrictEqual(tocFiles(foreverToc), tocFiles(retailToc), 'Retail and Forever must load the same production files in the same order');
+console.log('PASS: Camelot manifest and file order');
+
+const core = read('Core.lua');
+assert.match(core, /AUI\.isForever\s*=\s*AUI\.interfaceVersion\s*>=\s*16000\s*and\s*AUI\.interfaceVersion\s*<\s*20000/);
+for (const feature of ['Character', 'Talents', 'Achievements']) {
+  assert.match(core, new RegExp(`${feature}\\s*=\\s*true`), `${feature} must be protected on Forever`);
+}
+
+const character = read('Modules/CharacterV2.lua');
+const talents = read('Modules/Talents.lua');
+const achievements = read('Modules/Achievements.lua');
+assert.match(character, /function Character:OnPlayerLogin\(\)\s*\n\s*if not self:IsSupported\(\) then return end/);
+assert.match(talents, /function Talents:OnPlayerLogin\(\)\s*\n\s*if not AUI:IsFeatureSupported\("Talents"\) then return end/);
+assert.match(achievements, /function Achievements:OnPlayerLogin\(\)\s*\n\s*if not AUI:IsFeatureSupported\("Achievements"\) then return end/);
+console.log('PASS: Forever leaves unsupported native frames untouched');
+
+const spellbook = read('Modules/Spellbook.lua');
+assert.match(spellbook, /function Spellbook:InstallMicroButton\(\)[\s\S]*?if AUI\.isForever then return end/);
+assert.match(spellbook, /self\.originalToggleSpellBookFrame=PlayerSpellsUtil\.ToggleSpellBookFrame/);
+assert.match(spellbook, /if AUI\.isForever and self\.originalToggleSpellBookFrame then[\s\S]*?PlayerSpellsUtil\.ToggleSpellBookFrame=function/);
+assert.match(spellbook, /Spellbook\.originalOpenToSpellBookTabAtSpell\(spellID,\.\.\.\)/);
+
+const playerSpellsToc = native('Blizzard_PlayerSpells/Blizzard_PlayerSpells.toc');
+assert.match(playerSpellsToc, /\[Game\]\/Blizzard_PlayerSpellsFrame\.lua\s+\[AllowLoadGameType camelot\]/);
+assert.match(playerSpellsToc, /\[Game\]\/SpellBook\/Blizzard_SpellBookFrame\.lua\s+\[AllowLoadGameType camelot\]/);
+const camelotBindings = native('Blizzard_FrameXML/Bindings_Camelot.xml');
+assert.match(camelotBindings, /PlayerSpellsUtil\.ToggleSpellBookFrame\(\)/);
+console.log('PASS: Forever Spellbook button and keybind redirect contract');
+
+const achievementToc = native('Blizzard_AchievementUI/Blizzard_AchievementUI.toc');
+const allowLine = achievementToc.match(/^## AllowLoadGameType:\s*(.+)$/m);
+assert(allowLine && !allowLine[1].split(/\s*,\s*/).includes('camelot'), 'Recheck Achievement support: Blizzard now allows the Camelot game type');
+
+const packageScript = read('tools/package.ps1');
+assert.match(packageScript, /ProjectRuthless_Camelot\.toc/);
+console.log('PASS: package includes Retail and Forever manifests');

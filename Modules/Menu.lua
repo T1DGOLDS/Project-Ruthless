@@ -84,6 +84,13 @@ end
 
 function Menu:CreateCharacterOptions(parent)
     local panel=self:CreateOptionsPanel(parent,"PLAYER PANEL","Character","Control the standalone Character replacement opened by the normal Character button and keybind.")
+    if AUI.isForever then
+        local note=AddLabel(panel,"WoW Forever uses its native Character window in this beta build. The Ruthless replacement stays disabled until its Camelot equipment interactions have passed live testing.","TOPLEFT",panel,"TOPLEFT",20,-124,"GameFontNormal")
+        note:SetWidth(580); note:SetJustifyH("LEFT"); note:SetTextColor(unpack(COLORS.muted))
+        self:CreateAction(panel,"Open Character",18,-214,140,function() if ToggleCharacter then ToggleCharacter("PaperDollFrame",true) end end)
+        self.panels.character=panel
+        return
+    end
     self:CreateCheckbox(panel,"Enable experimental Character workspace","Use the Ruthless Paper Doll workspace. Blizzard's Character frame is the stable default.",-116,function()return ProjectRuthlessDB.character.replaceBlizzard end,function(v)ProjectRuthlessDB.character.replaceBlizzard=v end,"Character")
     self:CreateCheckbox(panel,"Show item-level badges","Display compact item levels over equipped gear slots.",-172,function()return ProjectRuthlessDB.character.showItemLevels end,function(v)ProjectRuthlessDB.character.showItemLevels=v end,"Character")
     self:CreateCheckbox(panel,"Show progress summary","Display Mythic+, raid, and rated-PvP progress beside the character identity.",-228,function()return ProjectRuthlessDB.character.showProgress end,function(v)ProjectRuthlessDB.character.showProgress=v end,"Character")
@@ -93,8 +100,12 @@ end
 
 function Menu:CreateSpellbookOptions(parent)
     local panel=self:CreateOptionsPanel(parent,"ABILITIES & MACROS","Spellbook","Choose how aggressively Project Ruthless restores the pre-TWW Spellbook workflow.")
-    self:CreateCheckbox(panel,"Replace the Professions book button","Open the Project Ruthless Spellbook from the normal book micro button.",-116,function()return ProjectRuthlessDB.spellbook.replaceProfessions end,function(v)ProjectRuthlessDB.spellbook.replaceProfessions=v end,"Spellbook")
-    self:CreateCheckbox(panel,"Remove Spellbook from Talents","Keep Talents focused and route Spellbook requests to the standalone window.",-172,function()return ProjectRuthlessDB.spellbook.separateFromTalents end,function(v)ProjectRuthlessDB.spellbook.separateFromTalents=v end,"Spellbook")
+    if AUI.isForever then
+        self:CreateCheckbox(panel,"Use the Ruthless Spellbook and macros","Open the Ruthless workspace from Forever's dedicated Spellbook button and keybind.",-116,function()return ProjectRuthlessDB.spellbook.separateFromTalents end,function(v)ProjectRuthlessDB.spellbook.separateFromTalents=v end,"Spellbook")
+    else
+        self:CreateCheckbox(panel,"Replace the Professions book button","Open the Project Ruthless Spellbook from the normal book micro button.",-116,function()return ProjectRuthlessDB.spellbook.replaceProfessions end,function(v)ProjectRuthlessDB.spellbook.replaceProfessions=v end,"Spellbook")
+        self:CreateCheckbox(panel,"Remove Spellbook from Talents","Keep Talents focused and route Spellbook requests to the standalone window.",-172,function()return ProjectRuthlessDB.spellbook.separateFromTalents end,function(v)ProjectRuthlessDB.spellbook.separateFromTalents=v end,"Spellbook")
+    end
     self:CreateCheckbox(panel,"Show other-specialization spells","Keep unavailable spec abilities visible as dimmed reference entries.",-228,function()return ProjectRuthlessDB.spellbook.showOffSpec end,function(v)ProjectRuthlessDB.spellbook.showOffSpec=v end,"Spellbook")
     self:CreateCheckbox(panel,"Highlight abilities missing from bars","Use Blizzard's missing-action-bar glow on relevant active abilities.",-284,function()return ProjectRuthlessDB.spellbook.highlightMissing end,function(v)ProjectRuthlessDB.spellbook.highlightMissing=v end,"Spellbook")
     self:CreateCheckbox(panel,"Macro autocomplete","Suggest live slash commands, conditionals, and learned spells in the macro editor.",-340,function()return ProjectRuthlessDB.spellbook.macroAutocomplete end,function(v)ProjectRuthlessDB.spellbook.macroAutocomplete=v end,"Spellbook")
@@ -113,6 +124,13 @@ end
 
 function Menu:CreateTalentsOptions(parent)
     local panel=self:CreateOptionsPanel(parent,"BUILDS & SPECIALIZATION","Talents","A compact workspace with native talent trees, specialization choices, and a clean loadout list.")
+    if AUI.isForever then
+        local note=AddLabel(panel,"Forever's Camelot talent window uses primary and secondary spec groups instead of Retail's specialization/loadout layout. Project Ruthless leaves that native window intact for the beta.","TOPLEFT",panel,"TOPLEFT",20,-124,"GameFontNormal")
+        note:SetWidth(580); note:SetJustifyH("LEFT"); note:SetTextColor(unpack(COLORS.muted))
+        self:CreateAction(panel,"Open native Talents",18,-214,160,function() if AUI.modules.Talents then AUI.modules.Talents:Show() end end)
+        self.panels.talents=panel
+        return
+    end
     self:CreateCheckbox(panel,"Use compact Talents","Use the Ruthless layout on the normal Talents button and keybind.",-116,function()return ProjectRuthlessDB.talents.enabled end,function(v)ProjectRuthlessDB.talents.enabled=v end,"Talents")
     self:CreateAction(panel,"Open Talents",18,-184,140,function() if AUI.modules.Talents then AUI.modules.Talents:Show() end end)
     local note=AddLabel(panel,"Save copy names a copy of your current build. Manage opens rename, delete, and action-bar options. Changes made during combat apply after combat ends.","TOPLEFT",panel,"TOPLEFT",20,-232,"GameFontNormalSmall")
@@ -122,6 +140,12 @@ end
 
 function Menu:CreateAchievementsOptions(parent)
     local panel=self:CreateOptionsPanel(parent,"ACHIEVEMENTS & STATISTICS","Achievements","Turn Blizzard's Statistics tab into a useful overview of your character and account progress.")
+    if AUI.isForever then
+        local note=AddLabel(panel,"Blizzard's Achievement UI is not exposed as a Camelot addon in the current Forever beta. The Ruthless Statistics dashboard stays disabled instead of trying to load a Retail-only frame.","TOPLEFT",panel,"TOPLEFT",20,-124,"GameFontNormal")
+        note:SetWidth(580); note:SetJustifyH("LEFT"); note:SetTextColor(unpack(COLORS.muted))
+        self.panels.achievements=panel
+        return
+    end
     self:CreateCheckbox(panel,"Use the Statistics dashboard","Open Statistics on the Ruthless overview while retaining every Blizzard detail category.",-116,function()return ProjectRuthlessDB.achievements.enabled end,function(v)ProjectRuthlessDB.achievements.enabled=v end,"Achievements")
     self:CreateAction(panel,"Open Statistics",18,-184,140,function() if AUI.modules.Achievements then AUI.modules.Achievements:Show() end end)
     local note=AddLabel(panel,"The dashboard uses Blizzard's live achievement, title, and statistics records. Browse details returns to the complete native category list.","TOPLEFT",panel,"TOPLEFT",20,-232,"GameFontNormalSmall")

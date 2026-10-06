@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### 0.12.0-beta.1 - 2026-10-06 (WoW Forever compatibility preview)
+
+- Added a Camelot manifest for WoW Forever 1.60.1 (`Interface 16001`) while preserving the Retail manifest and package.
+- Routed Forever's dedicated Spellbook button and keybind into the Ruthless Spellbook and macro workspace without replacing its Professions button.
+- Left Forever's native Character and Talents windows intact while their Camelot-specific layouts undergo live beta testing.
+- Disabled the Ruthless Statistics dashboard on Forever because Blizzard's current Achievement UI is not exposed to the Camelot game type.
+- Added a Forever compatibility gate that checks manifests, client detection, native-frame safeguards, and the beta Spellbook redirect contract.
+
 ### 0.11.0 - 2026-09-09 (release candidate)
 
 - Restored Blizzard's native PaperDoll item-slot handlers in the optional Character workspace. Drag/drop, right-click use, modified-click socketing, tooltips, and Alt item flyouts now stay under Blizzard's implementation without replacing Blizzard's internal slot registry.

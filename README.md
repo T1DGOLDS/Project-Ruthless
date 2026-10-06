@@ -2,6 +2,8 @@
 
 Project Ruthless is a modular World of Warcraft interface focused on practical tools that preserve Blizzard's familiar workflows.
 
+It supports modern Retail and includes a WoW Forever beta compatibility target for client 1.60.1 (`Interface 16001`, game type `camelot`).
+
 The project begins as a hybrid ElvUI companion so Andrew's long-developed layouts remain intact. Modules will gradually move suitable components onto Blizzard's native UI without forcing a visual reset.
 
 ## Current milestone
@@ -53,8 +55,14 @@ The live WoW AddOns directory uses a junction to this repository. Edit the sourc
 ## Installation
 
 1. Download the latest `ProjectRuthless.zip` release.
-2. Extract the `ProjectRuthless` folder into `_retail_/Interface/AddOns`.
+2. Extract the `ProjectRuthless` folder into `_retail_/Interface/AddOns` for Retail or `_classic_beta_/Interface/AddOns` for the WoW Forever beta.
 3. Enable Project Ruthless from WoW's AddOns screen.
+
+### WoW Forever beta
+
+The Forever build keeps the Ruthless Spellbook, macro workspace, settings, diagnostics, and low-health warning. Forever already has a dedicated Spellbook micro button, so Project Ruthless routes that button and its keybind directly to the Ruthless workspace and leaves the Professions button untouched.
+
+Forever's Character and Talents frames contain Camelot-specific behavior. Project Ruthless currently leaves those native frames intact instead of applying the Retail replacements. The Statistics dashboard is also disabled because Blizzard's current Achievement UI is not exposed as a Camelot addon. These boundaries are deliberate until each frame passes live beta testing.
 
 ElvUI, Raider.IO, and Epithet integrations are optional. Project Ruthless does not require a separate bootstrap addon.
 

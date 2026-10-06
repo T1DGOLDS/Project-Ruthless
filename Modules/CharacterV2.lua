@@ -3,6 +3,10 @@ local _, AUI = ...
 local Character = { slots = {}, setRows = {}, statRows = {}, titleRows = {}, filteredTitles = {} }
 AUI:RegisterModule("Character", Character)
 
+function Character:IsSupported()
+    return AUI:IsFeatureSupported("Character")
+end
+
 local LEFT_SLOTS = { 1, 2, 3, 15, 5, 4, 19, 9 }
 local RIGHT_SLOTS = { 10, 6, 7, 8, 11, 12, 13, 14 }
 local COLORS = {
@@ -831,6 +835,10 @@ function Character:InstallReplacement()
 end
 
 function Character:ApplySettings()
+    if not self:IsSupported() then
+        if self.frame and self.frame:IsShown() then self.frame:Hide() end
+        return
+    end
     if self.frame then
         if not ProjectRuthlessDB.character.replaceBlizzard and self.frame:IsShown() then self.frame:Hide() end
         self:Refresh()
@@ -884,6 +892,7 @@ function Character:Refresh()
 end
 
 function Character:OnPlayerLogin()
+    if not self:IsSupported() then return end
     if self.events then return end
     local events=CreateFrame("Frame")
     for _, event in ipairs({"PLAYER_EQUIPMENT_CHANGED","EQUIPMENT_SETS_CHANGED","EQUIPMENT_SWAP_FINISHED","PLAYER_REGEN_ENABLED","UNIT_SPELLCAST_STOP","UNIT_SPELLCAST_CHANNEL_STOP","COMBAT_RATING_UPDATE","MASTERY_UPDATE","UNIT_STATS","PVP_RATED_STATS_UPDATE"}) do events:RegisterEvent(event) end

@@ -32,7 +32,8 @@ local function Hint(widget, title, body)
 end
 
 function Talents:IsEnabled()
-    return ProjectRuthlessDB and ProjectRuthlessDB.enabled and ProjectRuthlessDB.talents.enabled
+    return AUI:IsFeatureSupported("Talents")
+        and ProjectRuthlessDB and ProjectRuthlessDB.enabled and ProjectRuthlessDB.talents.enabled
 end
 
 function Talents:IsEditable()
@@ -419,6 +420,11 @@ function Talents:Install()
 end
 
 function Talents:Show()
+    if not AUI:IsFeatureSupported("Talents") then
+        AUI:PrintFeatureUnavailable("Talents")
+        if PlayerSpellsUtil and PlayerSpellsUtil.OpenToClassTalentsTab then PlayerSpellsUtil.OpenToClassTalentsTab() end
+        return
+    end
     if InCombatLockdown() then AUI:Print("Open Talents after combat."); return end
     PlayerSpellsUtil.OpenToClassTalentsTab()
     self:Install(); self:ApplyLayout()
@@ -429,6 +435,7 @@ function Talents:ApplySettings()
 end
 
 function Talents:OnPlayerLogin()
+    if not AUI:IsFeatureSupported("Talents") then return end
     self:Install()
     local events=CreateFrame("Frame")
     for _,event in ipairs({"ADDON_LOADED","PLAYER_SPECIALIZATION_CHANGED","PLAYER_REGEN_DISABLED","PLAYER_REGEN_ENABLED","TRAIT_CONFIG_LIST_UPDATED","TRAIT_CONFIG_UPDATED","DISPLAY_SIZE_CHANGED","UI_SCALE_CHANGED","UNIT_SPELLCAST_START","UNIT_SPELLCAST_STOP","UNIT_SPELLCAST_CHANNEL_START","UNIT_SPELLCAST_CHANNEL_STOP","UNIT_SPELLCAST_FAILED","UNIT_SPELLCAST_INTERRUPTED"}) do events:RegisterEvent(event) end

@@ -5,6 +5,24 @@ AUI.name = addonName
 AUI.version = C_AddOns.GetAddOnMetadata(addonName, "Version") or "dev"
 AUI.modules = {}
 
+local interfaceVersion = type(GetBuildInfo) == "function" and select(4, GetBuildInfo()) or 0
+AUI.interfaceVersion = tonumber(interfaceVersion) or 0
+AUI.isForever = AUI.interfaceVersion >= 16000 and AUI.interfaceVersion < 20000
+
+local foreverUnsupported = {
+    Character = true,
+    Talents = true,
+    Achievements = true,
+}
+
+function AUI:IsFeatureSupported(feature)
+    return not (self.isForever and foreverUnsupported[feature])
+end
+
+function AUI:PrintFeatureUnavailable(feature)
+    self:Print(("%s uses Blizzard's native window in the WoW Forever beta while its Camelot layout is being validated."):format(feature))
+end
+
 local defaults = {
     enabled = true,
     general = {
@@ -245,8 +263,11 @@ function AUI:ShowStatus()
     local elvVersion = E and E.version or "not loaded"
     local tooltipState = ProjectRuthlessDB.elvui.safeTooltip and "enabled" or "disabled"
 
-    self:Print(("v%s | ElvUI: %s | safe tooltip: %s"):format(
+    local client = self.isForever and "WoW Forever beta" or "Retail"
+    self:Print(("v%s | %s (%d) | ElvUI: %s | safe tooltip: %s"):format(
         self.version,
+        client,
+        self.interfaceVersion,
         tostring(elvVersion),
         tooltipState
     ))
