@@ -42,6 +42,14 @@ for (const feature of ['Character', 'Talents', 'Achievements']) {
   assert.match(core, new RegExp(`${feature}\\s*=\\s*true`), `${feature} must be protected on Forever`);
 }
 
+const simpleEditBoxAPI = native('Blizzard_APIDocumentationGenerated/SimpleEditBoxAPIDocumentation.lua');
+const simpleFontStringAPI = native('Blizzard_APIDocumentationGenerated/SimpleFontStringAPIDocumentation.lua');
+assert.doesNotMatch(simpleEditBoxAPI, /Name = "GetStringHeight"/, 'Recheck scrolling edit-box measurement: Forever now exposes GetStringHeight directly');
+assert.match(simpleFontStringAPI, /Name = "GetStringHeight"/);
+assert.doesNotMatch(core, /box:GetStringHeight\(\)/, 'SimpleEditBox cannot measure string height on Forever');
+assert.match(core, /measurement:GetStringHeight\(\)/);
+console.log('PASS: Forever scrolling edit boxes use the supported FontString measurement API');
+
 const character = read('Modules/CharacterV2.lua');
 const talents = read('Modules/Talents.lua');
 const achievements = read('Modules/Achievements.lua');

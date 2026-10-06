@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### 0.12.0-beta.3 - 2026-10-06 (WoW Forever diagnostics fix)
+
+- Replaced the Retail-only `SimpleEditBox:GetStringHeight()` call with a hidden `FontString` measurement shared by diagnostics and macro editing.
+- Added a source-contract check against Forever's generated widget API documentation so scrolling edit boxes cannot regress to the unsupported method.
+
 ### 0.12.0-beta.2 - 2026-10-06 (WoW Forever taint fix)
 
 - Removed addon-driven Character and Talents launch buttons on Forever. Opening Camelot's Character frame through addon Lua tainted secret health values and caused Blizzard's `TextStatusBar.lua` to fail when showing or hiding the panel.

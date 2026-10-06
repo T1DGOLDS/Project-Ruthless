@@ -247,7 +247,24 @@ function AUI:ConfigureScrollingEditBox(editBox,scroll,minimumHeight)
         if top<current then scroll:ScrollTo(top)
         elseif top+height>current+scroll:GetHeight() then scroll:ScrollTo(top+height-scroll:GetHeight()) end
     end)
-    editBox:HookScript("OnTextChanged",function(box) box:SetHeight(math.max(minimumHeight or 1,box:GetStringHeight()+12)) end)
+
+    -- SimpleEditBox has no GetStringHeight method on every supported client.
+    -- Measure through a FontString, which exposes the API on both Retail and
+    -- Forever, and keep it invisible by leaving it unanchored.
+    local measurement=editBox:CreateFontString(nil,"ARTWORK")
+    local fontPath,fontHeight,fontFlags=editBox:GetFont()
+    if fontPath then measurement:SetFont(fontPath,fontHeight,fontFlags) else measurement:SetFontObject(ChatFontNormal) end
+    local function UpdateHeight(box)
+        local left,right,top,bottom=box:GetTextInsets()
+        measurement:SetWidth(math.max(1,box:GetWidth()-(left or 0)-(right or 0)))
+        measurement:SetText(box:GetText() or "")
+        local height=math.max(minimumHeight or 1,measurement:GetStringHeight()+(top or 0)+(bottom or 0)+4)
+        if math.abs((box:GetHeight() or 0)-height)>0.5 then box:SetHeight(height) end
+    end
+    editBox:HookScript("OnTextChanged",UpdateHeight)
+    editBox:HookScript("OnSizeChanged",function(box,width)
+        if width and width~=box.measurementWidth then box.measurementWidth=width; UpdateHeight(box) end
+    end)
 end
 
 function AUI:GetElvUI()
