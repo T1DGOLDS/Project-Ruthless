@@ -134,6 +134,16 @@ local function IsSpellOnBars(spellID)
     return #FindSpellActionSlots(spellID) > 0
 end
 
+function Spellbook:GetActionBarState(spellID)
+    local key=spellID and tostring(spellID)
+    if not key then return nil end
+    self.actionBarState=self.actionBarState or {}
+    if AUI.isForever and InCombatLockdown() then return self.actionBarState[key] end
+    local onBars=IsSpellOnBars(spellID)
+    self.actionBarState[key]=onBars
+    return onBars
+end
+
 local function PlayerBank()
     return Enum.SpellBookSpellBank.Player
 end
@@ -204,8 +214,8 @@ function Spellbook:MatchesSpellFilter(item)
     local filter=self.spellFilter or Settings().state.spellFilter or "all"
     if filter=="current" then return not item.offSpec end
     if filter=="passive" then return item.passive==true end
-    if filter=="onbar" then return not item.passive and IsSpellOnBars(item.spellID) end
-    if filter=="missing" then return not item.passive and not item.offSpec and not IsSpellOnBars(item.spellID) end
+    if filter=="onbar" then return not item.passive and self:GetActionBarState(item.spellID)==true end
+    if filter=="missing" then return not item.passive and not item.offSpec and self:GetActionBarState(item.spellID)==false end
     return true
 end
 
@@ -752,10 +762,12 @@ function Spellbook:CreateSpellButton(parent)
     end)
     button:SetScript("OnLeave", function(self) self:SetBackdropColor(unpack(COLORS.inset)); GameTooltip_Hide() end)
     button:SetScript("OnClick", function(self,mouseButton)
-        if mouseButton=="RightButton" then Spellbook:TogglePinnedSpell(self.spellID)
+        if AUI.isForever and InCombatLockdown() then AUI:Print("Combat Spellbook is browse-only; use your action bars to cast.")
+        elseif mouseButton=="RightButton" then Spellbook:TogglePinnedSpell(self.spellID)
         elseif self.slotIndex and not self.passive then C_SpellBook.CastSpellBookItem(self.slotIndex, self.spellBank) end
     end)
     button:SetScript("OnDragStart", function(self)
+        if AUI.isForever and InCombatLockdown() then return end
         if self.slotIndex and not self.passive then C_SpellBook.PickupSpellBookItem(self.slotIndex, self.spellBank) end
     end)
     return button
@@ -775,7 +787,7 @@ end
 
 function Spellbook:Refresh()
     if not self.frame then return end
-    if AUI.isForever and InCombatLockdown() then return end
+    local combatRestricted=AUI.isForever and InCombatLockdown()
     if self.mode == "macros" then
         for _, display in ipairs(self.displayFrames) do display:Hide(); if display.actionBarAnim and display.actionBarAnim:IsPlaying() then display.actionBarAnim:Stop() end end
         self.empty:Hide(); self:RefreshMacroList()
@@ -810,23 +822,26 @@ function Spellbook:Refresh()
                 button:SetAlpha(item.offSpec and 0.42 or 1)
                 button.icon:SetDesaturated(item.offSpec == true)
                 local status
-                if ProjectRuthlessDB.spellbook.highlightMissing and not item.passive and not item.offSpec and item.bookInfo and SpellSearchUtil and SpellSearchUtil.GetActionbarStatusForSpellBookItemInfo then
+                if not combatRestricted and ProjectRuthlessDB.spellbook.highlightMissing and not item.passive and not item.offSpec and item.bookInfo and SpellSearchUtil and SpellSearchUtil.GetActionbarStatusForSpellBookItemInfo then
                     local ok, result=pcall(SpellSearchUtil.GetActionbarStatusForSpellBookItemInfo,item.bookInfo); if ok then status=result end
                 end
                 local missingStatus=ActionButtonUtil and ActionButtonUtil.ActionBarActionStatus and ActionButtonUtil.ActionBarActionStatus.MissingFromAllBars
                 if status ~= nil and missingStatus ~= nil then button.actionBarMissing=status == missingStatus
-                elseif ProjectRuthlessDB.spellbook.highlightMissing and not item.passive and not item.offSpec and item.spellID and C_ActionBar and C_ActionBar.FindSpellActionButtons then
+                elseif not combatRestricted and ProjectRuthlessDB.spellbook.highlightMissing and not item.passive and not item.offSpec and item.spellID and C_ActionBar and C_ActionBar.FindSpellActionButtons then
                     local slots=C_ActionBar.FindSpellActionButtons(item.spellID); button.actionBarMissing=not slots or #slots == 0
                 else button.actionBarMissing=false end
-                local onBars=not item.passive and IsSpellOnBars(item.spellID)
+                local onBars=not item.passive and self:GetActionBarState(item.spellID)
                 button.barMarker:SetShown(onBars and not AUI.isForever); button.pin:SetShown(item.pinned==true)
                 button.actionBarHighlight:SetShown(button.actionBarMissing)
                 if button.actionBarMissing then if not button.actionBarAnim:IsPlaying() then button.actionBarAnim:Play() end
                 elseif button.actionBarAnim:IsPlaying() then button.actionBarAnim:Stop() end
-                local cooldown = C_SpellBook.GetSpellBookItemCooldown and C_SpellBook.GetSpellBookItemCooldown(item.slotIndex, item.spellBank)
-                if cooldown and cooldown.duration and cooldown.duration > 0 then
-                    button.cooldown:SetCooldown(cooldown.startTime or 0, cooldown.duration, cooldown.modRate or 1)
-                else button.cooldown:Clear() end
+                if combatRestricted then button.cooldown:Clear()
+                else
+                    local cooldown = C_SpellBook.GetSpellBookItemCooldown and C_SpellBook.GetSpellBookItemCooldown(item.slotIndex, item.spellBank)
+                    if cooldown and cooldown.duration and cooldown.duration > 0 then
+                        button.cooldown:SetCooldown(cooldown.startTime or 0, cooldown.duration, cooldown.modRate or 1)
+                    else button.cooldown:Clear() end
+                end
                 pendingColumn = 1 - pendingColumn
                 if pendingColumn == 0 then y=y+50 end
             end
@@ -842,6 +857,7 @@ function Spellbook:Refresh()
         local label="All spells"; for _,filter in ipairs(SPELL_FILTERS) do if filter.id==(self.spellFilter or "all") then label=filter.label break end end
         self.filterButton:SetText("Filter: "..label)
     end
+    if self.pinHint then self.pinHint:SetText(combatRestricted and "Combat: browsing only" or "Right-click a spell to pin it") end
     for id, tab in pairs(self.tabs) do
         local active = id == self.mode
         tab:SetBackdropColor(active and 0.10 or COLORS.inset[1], active and 0.075 or COLORS.inset[2], active and 0.10 or COLORS.inset[3], 0.98)
@@ -1075,12 +1091,10 @@ function Spellbook:Create()
 end
 
 function Spellbook:Toggle()
-    if AUI.isForever and InCombatLockdown() then AUI:Print("Open the Ruthless Spellbook after combat."); return end
     self:Create(); self.frame:SetShown(not self.frame:IsShown())
 end
 
 function Spellbook:Show(mode, searchText)
-    if AUI.isForever and InCombatLockdown() then AUI:Print("Open the Ruthless Spellbook after combat."); return end
     self:Create()
     if mode then self:SelectMode(mode) end
     if searchText ~= nil then self.searchBox:SetText(searchText) end
@@ -1162,7 +1176,7 @@ function Spellbook:OnPlayerLogin()
             Spellbook.macroCommandSuggestions=nil
             if addon == "Blizzard_PlayerSpells" then Spellbook:SeparateFromTalents() end
         elseif event == "PLAYER_REGEN_DISABLED" and AUI.isForever then
-            if Spellbook.frame and Spellbook.frame:IsShown() then Spellbook.frame:Hide() end
+            if Spellbook.frame and Spellbook.frame:IsShown() then Spellbook:Refresh() end
             return
         elseif event == "SPELLS_CHANGED" then Spellbook.spellSuggestions=nil; if Spellbook.frame and Spellbook.frame:IsShown() then C_Timer.After(0,function() Spellbook:Refresh() end) end
         elseif Spellbook.frame and Spellbook.frame:IsShown() then C_Timer.After(0,function() Spellbook:Refresh() end) end

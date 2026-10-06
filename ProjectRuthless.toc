@@ -2,7 +2,7 @@
 ## Title: Project Ruthless
 ## Notes: Practical interface tools that preserve familiar Blizzard workflows.
 ## Author: Andrew
-## Version: 0.12.0-beta.4
+## Version: 0.12.0-beta.5
 ## OptionalDeps: ElvUI, ElvUI_Options, Epithet, RaiderIO
 ## SavedVariables: ProjectRuthlessDB
 ## SavedVariablesPerCharacter: ProjectRuthlessCharDB

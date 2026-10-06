@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### 0.12.0-beta.5 - 2026-10-06 (combat Spellbook browsing)
+
+- Restored opening and browsing the Ruthless Spellbook during Forever combat with a protected-state-safe read-only presentation.
+- Suspends cooldown reads, live action-bar scans, spell casting, and spell dragging during combat while keeping tabs, search, filters with cached bar state, and macro browsing available.
+
 ### 0.12.0-beta.4 - 2026-10-06 (WoW Forever combat safety)
 
 - Prevented the Ruthless Spellbook from refreshing or opening during Forever combat, where spell cooldown fields become secret values.
