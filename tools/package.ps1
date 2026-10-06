@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "0.12.0-beta.5",
+    [string]$Version = "0.12.0-beta.6",
     [string]$RepositoryRoot = (Split-Path -Parent $PSScriptRoot)
 )
 

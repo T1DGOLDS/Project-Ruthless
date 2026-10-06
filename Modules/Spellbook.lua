@@ -1003,22 +1003,39 @@ function Spellbook:CreateMacroView(parent)
     local iconButton=CreateFrame("Button",nil,details,"BackdropTemplate"); iconButton:SetSize(42,42); iconButton:SetPoint("TOPLEFT"); Surface(iconButton,COLORS.inset); iconButton:SetScript("OnClick",function() Spellbook:ShowMacroIconPicker() end)
     local icon=iconButton:CreateTexture(nil,"ARTWORK"); icon:SetPoint("TOPLEFT",3,-3); icon:SetPoint("BOTTOMRIGHT",-3,3); icon:SetTexture(134400); icon:SetTexCoord(0.08,0.92,0.08,0.92); self.macroIcon=icon
     iconButton:SetScript("OnEnter",function(self) GameTooltip:SetOwner(self,"ANCHOR_RIGHT"); GameTooltip:AddLine("Choose macro icon",1,1,1); GameTooltip:Show() end); iconButton:SetScript("OnLeave",GameTooltip_Hide)
-    local name=CreateFrame("EditBox",nil,details,"InputBoxTemplate"); name:SetSize(342,28); name:SetPoint("LEFT",iconButton,"RIGHT",10,0); name:SetAutoFocus(false); name:SetMaxLetters(16); self.macroName=name
+    local name=CreateFrame("EditBox",nil,details,"InputBoxTemplate"); name:SetSize(342,28); name:SetPoint("LEFT",iconButton,"RIGHT",10,0); name:SetAutoFocus(false); name:SetMaxLetters(16); name:SetTextColor(unpack(COLORS.text)); self.macroName=name
+    local nameLabel=Label(details,"MACRO NAME","GameFontNormalSmall"); nameLabel:SetPoint("BOTTOMLEFT",name,"TOPLEFT",3,1); nameLabel:SetTextColor(unpack(COLORS.muted))
     name:SetScript("OnTextChanged",function() if not Spellbook.loadingMacro then Spellbook:MarkMacroDirty(); Spellbook:RefreshMacroList() end end)
     name:SetScript("OnEnterPressed",function(box) box:ClearFocus() end); name:SetScript("OnEscapePressed",function(box) box:ClearFocus() end)
     local previewIcon=details:CreateTexture(nil,"ARTWORK"); previewIcon:SetSize(16,16); previewIcon:SetPoint("TOPLEFT",name,"BOTTOMLEFT",3,-1); previewIcon:SetTexCoord(0.08,0.92,0.08,0.92); self.macroPreviewIcon=previewIcon
     local previewHit=CreateFrame("Button",nil,details); previewHit:SetAllPoints(previewIcon); previewHit:SetScript("OnEnter",function(button) if Spellbook.macroPreviewSpellID then GameTooltip:SetOwner(button,"ANCHOR_RIGHT"); GameTooltip:SetSpellByID(Spellbook.macroPreviewSpellID); GameTooltip:Show() end end); previewHit:SetScript("OnLeave",GameTooltip_Hide)
     local previewText=Label(details,"Character macro","GameFontNormalSmall"); previewText:SetPoint("LEFT",previewIcon,"RIGHT",5,0); previewText:SetTextColor(unpack(COLORS.muted)); self.macroPreviewText=previewText
 
-    local editorBackground=CreateFrame("Frame",nil,details,"BackdropTemplate"); editorBackground:SetPoint("TOPLEFT",0,-51); editorBackground:SetSize(410,154); Surface(editorBackground,COLORS.inset)
-    local editorScroll=AUI:CreateSmoothScrollFrame(editorBackground); editorScroll:SetPoint("TOPLEFT",8,-8); editorScroll:SetPoint("BOTTOMRIGHT",-4,8)
-    local editor=CreateFrame("EditBox",nil,editorScroll); editor:SetMultiLine(true); editor:SetAutoFocus(false); editor:EnableMouse(true); editor:SetFontObject("ChatFontNormal"); editor:SetTextColor(unpack(COLORS.text)); editor:SetWidth(366); editor:SetHeight(138); editor:SetMaxLetters(255); editor:SetCountInvisibleLetters(true); editor:SetTextInsets(2,2,2,2); editorScroll:SetScrollChild(editor); self.macroEditor=editor
+    local editorBackground=CreateFrame("Frame",nil,details,"BackdropTemplate"); editorBackground:SetPoint("TOPLEFT",0,-51); editorBackground:SetSize(410,154); Surface(editorBackground,COLORS.inset,{0.28,0.30,0.38,1})
+    local bodyLabel=Label(editorBackground,"MACRO BODY","GameFontNormalSmall"); bodyLabel:SetPoint("TOPLEFT",8,-7); bodyLabel:SetTextColor(unpack(COLORS.muted))
+    local focusLabel=Label(editorBackground,"CLICK A FIELD TO TYPE","GameFontNormalSmall"); focusLabel:SetPoint("TOPRIGHT",-8,-7); focusLabel:SetTextColor(unpack(COLORS.muted))
+    local editorScroll=AUI:CreateSmoothScrollFrame(editorBackground); editorScroll:SetPoint("TOPLEFT",8,-24); editorScroll:SetPoint("BOTTOMRIGHT",-4,8)
+    local editor=CreateFrame("EditBox",nil,editorScroll); editor:SetMultiLine(true); editor:SetAutoFocus(false); editor:EnableMouse(true); editor:SetFontObject("ChatFontNormal"); editor:SetTextColor(1,1,1,1); editor:SetWidth(366); editor:SetHeight(122); editor:SetMaxLetters(255); editor:SetCountInvisibleLetters(true); editor:SetTextInsets(2,2,2,2); editorScroll:SetScrollChild(editor); self.macroEditor=editor
     editorScroll:EnableMouse(true); editorScroll:SetScript("OnMouseDown",function() editor:SetFocus() end)
+    local ar,ag,ab=AccentColor()
+    local function SetTypingFocus(field)
+        local editingName=field=="name"; local editingBody=field=="body"
+        nameLabel:SetTextColor(editingName and ar or COLORS.muted[1],editingName and ag or COLORS.muted[2],editingName and ab or COLORS.muted[3],1)
+        bodyLabel:SetTextColor(editingBody and ar or COLORS.muted[1],editingBody and ag or COLORS.muted[2],editingBody and ab or COLORS.muted[3],1)
+        editorBackground:SetBackdropBorderColor(editingBody and ar or 0.28,editingBody and ag or 0.30,editingBody and ab or 0.38,1)
+        focusLabel:SetText(editingName and "TYPING IN NAME" or editingBody and "TYPING IN BODY" or "CLICK A FIELD TO TYPE")
+        focusLabel:SetTextColor((editingName or editingBody) and ar or COLORS.muted[1],(editingName or editingBody) and ag or COLORS.muted[2],(editingName or editingBody) and ab or COLORS.muted[3],1)
+    end
+    local function RefreshTypingFocus()
+        if name:HasFocus() then SetTypingFocus("name") elseif editor:HasFocus() then SetTypingFocus("body") else SetTypingFocus(nil) end
+    end
+    name:SetScript("OnEditFocusGained",function() SetTypingFocus("name") end); name:SetScript("OnEditFocusLost",function() C_Timer.After(0,RefreshTypingFocus) end)
+    editor:SetScript("OnEditFocusGained",function() SetTypingFocus("body") end); editor:SetScript("OnEditFocusLost",function() C_Timer.After(0,RefreshTypingFocus) end)
     editor:SetScript("OnTextChanged",function(box)
         if not Spellbook.loadingMacro then Spellbook:MarkMacroDirty(); Spellbook:RefreshMacroList() end
         Spellbook:UpdateMacroSuggestions(); Spellbook:AnalyseMacro()
     end)
-    AUI:ConfigureScrollingEditBox(editor,editorScroll,138)
+    AUI:ConfigureScrollingEditBox(editor,editorScroll,122)
     editor:SetAltArrowKeyMode(false)
     editor:HookScript("OnCursorChanged",function() Spellbook:UpdateMacroSuggestions() end)
     editor:SetScript("OnEscapePressed",function(box) if Spellbook.macroSuggestions:IsShown() then Spellbook.macroSuggestions:Hide() else box:ClearFocus() end end)

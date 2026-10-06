@@ -80,6 +80,13 @@ assert.match(spellbook, /event == "PLAYER_REGEN_DISABLED" and AUI\.isForever[\s\
 assert.match(spellbook, /AUI\.isForever and InCombatLockdown\(\) then AUI:Print\("Combat Spellbook is browse-only; use your action bars to cast\."\)/);
 console.log('PASS: Forever Spellbook provides a read-only combat view without secret cooldowns or protected action-bar mutations');
 
+assert.match(spellbook, /Label\(details,"MACRO NAME","GameFontNormalSmall"\)/);
+assert.match(spellbook, /Label\(editorBackground,"MACRO BODY","GameFontNormalSmall"\)/);
+assert.match(spellbook, /TYPING IN NAME/);
+assert.match(spellbook, /TYPING IN BODY/);
+assert.match(spellbook, /OnEditFocusGained/);
+console.log('PASS: macro name and body expose persistent labels and keyboard-focus feedback');
+
 const playerSpellsToc = native('Blizzard_PlayerSpells/Blizzard_PlayerSpells.toc');
 assert.match(playerSpellsToc, /\[Game\]\/Blizzard_PlayerSpellsFrame\.lua\s+\[AllowLoadGameType camelot\]/);
 assert.match(playerSpellsToc, /\[Game\]\/SpellBook\/Blizzard_SpellBookFrame\.lua\s+\[AllowLoadGameType camelot\]/);

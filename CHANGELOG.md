@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### 0.12.0-beta.6 - 2026-10-06 (macro editing clarity)
+
+- Added persistent Macro Name and Macro Body labels, a stronger body-editor border, and white editor text.
+- Added live `TYPING IN NAME` / `TYPING IN BODY` focus feedback so the active keyboard destination is always visible.
+
 ### 0.12.0-beta.5 - 2026-10-06 (combat Spellbook browsing)
 
 - Restored opening and browsing the Ruthless Spellbook during Forever combat with a protected-state-safe read-only presentation.
