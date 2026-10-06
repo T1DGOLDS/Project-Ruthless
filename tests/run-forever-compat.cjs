@@ -68,6 +68,15 @@ assert.match(spellbook, /self\.originalToggleSpellBookFrame=PlayerSpellsUtil\.To
 assert.match(spellbook, /if AUI\.isForever and self\.originalToggleSpellBookFrame then[\s\S]*?PlayerSpellsUtil\.ToggleSpellBookFrame=function/);
 assert.match(spellbook, /Spellbook\.originalOpenToSpellBookTabAtSpell\(spellID,\.\.\.\)/);
 
+const spellBookAPI = native('Blizzard_APIDocumentationGenerated/SpellBookDocumentation.lua');
+assert.match(spellBookAPI, /Name = "GetSpellBookItemCooldown"[\s\S]*?SecretWhenCooldownsRestricted\s*=\s*true/);
+assert.match(spellbook, /function Spellbook:Refresh\(\)\s*\n\s*if not self\.frame then return end\s*\n\s*if AUI\.isForever and InCombatLockdown\(\) then return end/);
+assert.match(spellbook, /function Spellbook:PulseActionBarLocations\(spellID\)\s*\n\s*if AUI\.isForever then[\s\S]*?return end/);
+assert.match(spellbook, /if not AUI\.isForever and MultiActionBar_ShowAllGrids/);
+assert.match(spellbook, /if not AUI\.isForever and MultiActionBar_HideAllGrids/);
+assert.match(spellbook, /event == "PLAYER_REGEN_DISABLED" and AUI\.isForever[\s\S]*?Spellbook\.frame:Hide\(\)[\s\S]*?return/);
+console.log('PASS: Forever Spellbook avoids secret cooldowns and protected action-bar mutations in combat');
+
 const playerSpellsToc = native('Blizzard_PlayerSpells/Blizzard_PlayerSpells.toc');
 assert.match(playerSpellsToc, /\[Game\]\/Blizzard_PlayerSpellsFrame\.lua\s+\[AllowLoadGameType camelot\]/);
 assert.match(playerSpellsToc, /\[Game\]\/SpellBook\/Blizzard_SpellBookFrame\.lua\s+\[AllowLoadGameType camelot\]/);

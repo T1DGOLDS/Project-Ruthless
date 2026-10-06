@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### 0.12.0-beta.4 - 2026-10-06 (WoW Forever combat safety)
+
+- Prevented the Ruthless Spellbook from refreshing or opening during Forever combat, where spell cooldown fields become secret values.
+- Automatically closes the Ruthless Spellbook when Forever combat begins and removes its action-bar grid and pulse mutations on that client.
+- Added source-contract checks for secret cooldown handling, combat closure, and protected action-bar isolation.
+
 ### 0.12.0-beta.3 - 2026-10-06 (WoW Forever diagnostics fix)
 
 - Replaced the Retail-only `SimpleEditBox:GetStringHeight()` call with a hidden `FontString` measurement shared by diagnostics and macro editing.

@@ -225,6 +225,7 @@ function Spellbook:TogglePinnedSpell(spellID)
 end
 
 function Spellbook:PulseActionBarLocations(spellID)
+    if AUI.isForever then AUI:Print("Action-bar location pulses are disabled on WoW Forever to protect combat bars."); return end
     if InCombatLockdown() then AUI:Print("Action-bar location pulses are available out of combat."); return end
     local slotSet={}
     for _,slot in ipairs(FindSpellActionSlots(spellID)) do slotSet[slot]=true end
@@ -774,6 +775,7 @@ end
 
 function Spellbook:Refresh()
     if not self.frame then return end
+    if AUI.isForever and InCombatLockdown() then return end
     if self.mode == "macros" then
         for _, display in ipairs(self.displayFrames) do display:Hide(); if display.actionBarAnim and display.actionBarAnim:IsPlaying() then display.actionBarAnim:Stop() end end
         self.empty:Hide(); self:RefreshMacroList()
@@ -817,7 +819,7 @@ function Spellbook:Refresh()
                     local slots=C_ActionBar.FindSpellActionButtons(item.spellID); button.actionBarMissing=not slots or #slots == 0
                 else button.actionBarMissing=false end
                 local onBars=not item.passive and IsSpellOnBars(item.spellID)
-                button.barMarker:SetShown(onBars); button.pin:SetShown(item.pinned==true)
+                button.barMarker:SetShown(onBars and not AUI.isForever); button.pin:SetShown(item.pinned==true)
                 button.actionBarHighlight:SetShown(button.actionBarMissing)
                 if button.actionBarMissing then if not button.actionBarAnim:IsPlaying() then button.actionBarAnim:Play() end
                 elseif button.actionBarAnim:IsPlaying() then button.actionBarAnim:Stop() end
@@ -1066,17 +1068,19 @@ function Spellbook:Create()
     self.scroll,self.content=scroll,content
     self.empty=Label(frame,"No spells match this search and filter.","GameFontNormal"); self.empty:SetPoint("TOPLEFT",28,-152); self.empty:SetTextColor(unpack(COLORS.muted)); self.empty:Hide()
     self:CreateMacroView(frame)
-    frame:SetScript("OnShow",function() Spellbook:Refresh(); C_Timer.After(0,function() local value=Settings().state.scroll[Spellbook.mode] or 0; Spellbook.scroll.targetScroll=value; Spellbook.scroll:SetVerticalScroll(value) end); if MultiActionBar_ShowAllGrids then MultiActionBar_ShowAllGrids(ACTION_BUTTON_SHOW_GRID_REASON_SPELLCOLLECTION) end; if ProfessionMicroButton and ProfessionMicroButton.SetPushed then ProfessionMicroButton:SetPushed() end; PlaySound(SOUNDKIT.IG_SPELLBOOK_OPEN) end)
-    frame:SetScript("OnHide",function() Settings().state.scroll[Spellbook.mode]=Spellbook.scroll:GetVerticalScroll(); if MultiActionBar_HideAllGrids then MultiActionBar_HideAllGrids(ACTION_BUTTON_SHOW_GRID_REASON_SPELLCOLLECTION) end; if ProfessionMicroButton and ProfessionMicroButton.SetNormal then ProfessionMicroButton:SetNormal() end; PlaySound(SOUNDKIT.IG_ABILITY_CLOSE) end)
+    frame:SetScript("OnShow",function() Spellbook:Refresh(); C_Timer.After(0,function() local value=Settings().state.scroll[Spellbook.mode] or 0; Spellbook.scroll.targetScroll=value; Spellbook.scroll:SetVerticalScroll(value) end); if not AUI.isForever and MultiActionBar_ShowAllGrids then MultiActionBar_ShowAllGrids(ACTION_BUTTON_SHOW_GRID_REASON_SPELLCOLLECTION) end; if not AUI.isForever and ProfessionMicroButton and ProfessionMicroButton.SetPushed then ProfessionMicroButton:SetPushed() end; PlaySound(SOUNDKIT.IG_SPELLBOOK_OPEN) end)
+    frame:SetScript("OnHide",function() Settings().state.scroll[Spellbook.mode]=Spellbook.scroll:GetVerticalScroll(); if not AUI.isForever and MultiActionBar_HideAllGrids then MultiActionBar_HideAllGrids(ACTION_BUTTON_SHOW_GRID_REASON_SPELLCOLLECTION) end; if not AUI.isForever and ProfessionMicroButton and ProfessionMicroButton.SetNormal then ProfessionMicroButton:SetNormal() end; PlaySound(SOUNDKIT.IG_ABILITY_CLOSE) end)
     tinsert(UISpecialFrames,"ProjectRuthlessSpellbookFrame")
     self.frame=frame; AUI:ApplyWindowSettings(); self:SelectMode(Settings().state.mode or "class")
 end
 
 function Spellbook:Toggle()
+    if AUI.isForever and InCombatLockdown() then AUI:Print("Open the Ruthless Spellbook after combat."); return end
     self:Create(); self.frame:SetShown(not self.frame:IsShown())
 end
 
 function Spellbook:Show(mode, searchText)
+    if AUI.isForever and InCombatLockdown() then AUI:Print("Open the Ruthless Spellbook after combat."); return end
     self:Create()
     if mode then self:SelectMode(mode) end
     if searchText ~= nil then self.searchBox:SetText(searchText) end
@@ -1157,6 +1161,9 @@ function Spellbook:OnPlayerLogin()
         if event == "ADDON_LOADED" then
             Spellbook.macroCommandSuggestions=nil
             if addon == "Blizzard_PlayerSpells" then Spellbook:SeparateFromTalents() end
+        elseif event == "PLAYER_REGEN_DISABLED" and AUI.isForever then
+            if Spellbook.frame and Spellbook.frame:IsShown() then Spellbook.frame:Hide() end
+            return
         elseif event == "SPELLS_CHANGED" then Spellbook.spellSuggestions=nil; if Spellbook.frame and Spellbook.frame:IsShown() then C_Timer.After(0,function() Spellbook:Refresh() end) end
         elseif Spellbook.frame and Spellbook.frame:IsShown() then C_Timer.After(0,function() Spellbook:Refresh() end) end
     end)

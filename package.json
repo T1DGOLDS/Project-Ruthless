@@ -1,6 +1,6 @@
 {
   "name": "project-ruthless",
-  "version": "0.12.0-beta.3",
+  "version": "0.12.0-beta.4",
   "private": true,
   "description": "Local validation tools for the Project Ruthless World of Warcraft addon",
   "scripts": {
