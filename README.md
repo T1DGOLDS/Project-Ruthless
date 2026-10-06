@@ -23,6 +23,7 @@ Project Ruthless currently provides:
 - a functional `/pr` settings centre for presentation, Character, Spellbook, health-warning, compatibility, and diagnostic controls.
 - a compact Talents workspace on the normal Talents button/keybind and `/pr talents`, with specialization buttons, a clean loadout list, Save copy/Import/Export/Manage actions, and the native class/hero talent trees.
 - a Statistics dashboard inside Blizzard Achievements with account progress, titles, honorable kills, recent milestones, and category completion at a glance.
+- a lightweight main-map quest layer that enables Forever's server-provided local stories and low-level quest starts while retaining Blizzard's native quest pins, tooltips, objectives, turn-ins, and tracking.
 
 ### Character equipment sets (experimental)
 
@@ -64,6 +65,8 @@ The Forever build keeps the Ruthless Spellbook, macro workspace, settings, diagn
 
 Forever's Character and Talents frames contain Camelot-specific behavior. Project Ruthless currently leaves those native frames intact instead of applying the Retail replacements. The Statistics dashboard is also disabled because Blizzard's current Achievement UI is not exposed as a Camelot addon. These boundaries are deliberate until each frame passes live beta testing.
 
+The Map & quests module uses Forever's live quest-line and quest-offer feeds, including optional local stories and trivial quests. It deliberately avoids a bundled third-party quest database, so it cannot reveal quest locations that the server does not advertise to the client.
+
 ElvUI, Raider.IO, and Epithet integrations are optional. Project Ruthless does not require a separate bootstrap addon.
 
 ## License
@@ -77,6 +80,7 @@ Project Ruthless is released under the MIT License. See `LICENSE`.
 - `/pr errors`
 - `/pr achievements`
 - `/pr statistics`
+- `/pr quests`
 - `/pr errors clear`
 - `/pr errors test`
 - `/pr errors on`

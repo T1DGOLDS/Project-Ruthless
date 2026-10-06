@@ -151,6 +151,17 @@ function Menu:CreateAchievementsOptions(parent)
     self.panels.achievements=panel
 end
 
+function Menu:CreateMapQuestOptions(parent)
+    local panel=self:CreateOptionsPanel(parent,"WORLD NAVIGATION","Map & quests","Show the complete quest picture that WoW Forever provides to the main map.")
+    self:CreateCheckbox(panel,"Show quest markers","Enable the lightweight native quest-map layer.",-116,function()return ProjectRuthlessDB.mapQuests.enabled end,function(v)ProjectRuthlessDB.mapQuests.enabled=v end,"MapQuests")
+    self:CreateCheckbox(panel,"Show local stories","Include optional side-story quest lines that Forever normally hides behind a map filter.",-172,function()return ProjectRuthlessDB.mapQuests.showLocalStories end,function(v)ProjectRuthlessDB.mapQuests.showLocalStories=v end,"MapQuests")
+    self:CreateCheckbox(panel,"Show low-level quests","Include trivial quests below your current level.",-228,function()return ProjectRuthlessDB.mapQuests.showTrivial end,function(v)ProjectRuthlessDB.mapQuests.showTrivial=v end,"MapQuests")
+    self:CreateCheckbox(panel,"Show account-completed quests","Include quest starts already completed by another character on the account.",-284,function()return ProjectRuthlessDB.mapQuests.showAccountCompleted end,function(v)ProjectRuthlessDB.mapQuests.showAccountCompleted=v end,"MapQuests")
+    local note=AddLabel(panel,"Markers come from Forever's live quest-line, objective, turn-in, task, and quest-hub data. The addon does not guess undisclosed quest locations or replace Blizzard's map interactions.","TOPLEFT",panel,"TOPLEFT",20,-352,"GameFontNormalSmall")
+    note:SetWidth(590); note:SetJustifyH("LEFT"); note:SetTextColor(unpack(COLORS.muted))
+    self.panels.mapquests=panel
+end
+
 function Menu:CreateCompatibilityOptions(parent)
     local panel=self:CreateOptionsPanel(parent,"ADDON COEXISTENCE","Compatibility","Compatibility switches for the existing UI while Project Ruthless replaces it piece by piece.")
     self:CreateCheckbox(panel,"ElvUI safe-tooltip mode","Keep ElvUI's tooltip module and Blizzard tooltip skin disabled to avoid tooltip taint.",-116,function()return ProjectRuthlessDB.elvui.safeTooltip end,function(v)ProjectRuthlessDB.elvui.safeTooltip=v end,"ElvUICompat")
@@ -282,6 +293,7 @@ function Menu:Create()
     self:CreateSpellbookOptions(content)
     self:CreateTalentsOptions(content)
     self:CreateAchievementsOptions(content)
+    self:CreateMapQuestOptions(content)
     self:CreateHealthOptions(content)
     self:CreateCompatibilityOptions(content)
     self:CreateErrorsPanel(content)
@@ -291,10 +303,11 @@ function Menu:Create()
     self:CreateTab("spellbook", "Spellbook", 3)
     self:CreateTab("talents", "Talents", 4)
     self:CreateTab("achievements", "Achievements", 5)
-    self:CreateTab("health", "Health warning", 6)
-    self:CreateTab("compatibility", "Compatibility", 7)
-    self:CreateTab("errors", "Diagnostics", 8)
-    self:CreateTab("status", "About", 9)
+    self:CreateTab("mapquests", "Map & quests", 6)
+    self:CreateTab("health", "Health warning", 7)
+    self:CreateTab("compatibility", "Compatibility", 8)
+    self:CreateTab("errors", "Diagnostics", 9)
+    self:CreateTab("status", "About", 10)
     AUI:ApplyWindowSettings()
 end
 

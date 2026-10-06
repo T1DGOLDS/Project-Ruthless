@@ -59,6 +59,12 @@ local defaults = {
     achievements = {
         enabled = true,
     },
+    mapQuests = {
+        enabled = true,
+        showLocalStories = true,
+        showTrivial = true,
+        showAccountCompleted = false,
+    },
     errorLog = {
         enabled = true,
         entries = {},
@@ -322,6 +328,11 @@ local function HandleSlashCommand(input)
         return
     end
 
+    if (command == "map" or command == "quests") and AUI.modules.Menu then
+        AUI.modules.Menu:Show("mapquests")
+        return
+    end
+
     if command == "tooltip on" then
         ProjectRuthlessDB.elvui.safeTooltip = true
         AUI:Print("Safe tooltip compatibility enabled. Reloading the UI.")
@@ -347,7 +358,7 @@ local function HandleSlashCommand(input)
         return
     end
 
-    AUI:Print("Commands: /pr, /pr status, /pr spellbook, /pr talents, /pr achievements, /pr errors, /pr healthglow test, /pr tooltip on, /pr tooltip off")
+    AUI:Print("Commands: /pr, /pr status, /pr spellbook, /pr talents, /pr achievements, /pr quests, /pr errors, /pr healthglow test, /pr tooltip on, /pr tooltip off")
 end
 
 local eventFrame = CreateFrame("Frame")

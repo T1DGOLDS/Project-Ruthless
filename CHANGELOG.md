@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### 0.13.0-beta.1 - 2026-10-06 (lightweight quest map)
+
+- Added a lightweight Map & quests module using Forever's native quest-line, quest-offer, active objective, turn-in, task, and quest-hub data.
+- Enables optional local-story and low-level quest markers on the main map, with account-completed quest starts available as an opt-in filter.
+- Added `/pr quests` and a Map & quests settings page. Map updates remain Blizzard-owned; Project Ruthless changes visibility filters and requests a native provider refresh.
+
 ### 0.12.0-beta.7 - 2026-10-06 (visible macro caret)
 
 - Added an explicit class-coloured blinking text caret to both the macro name and macro body fields.

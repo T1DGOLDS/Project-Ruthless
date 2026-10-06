@@ -50,10 +50,26 @@ assert.doesNotMatch(core, /box:GetStringHeight\(\)/, 'SimpleEditBox cannot measu
 assert.match(core, /measurement:GetStringHeight\(\)/);
 console.log('PASS: Forever scrolling edit boxes use the supported FontString measurement API');
 
+const mapQuests = read('Modules/MapQuests.lua');
+const menu = read('Modules/Menu.lua');
+const questOfferProvider = native('Blizzard_SharedMapDataProviders/QuestOfferDataProvider.lua');
+const worldMap = native('Blizzard_WorldMap/Blizzard_WorldMap.lua');
+assert.match(worldMap, /AddDataProvider\(CreateFromMixins\(QuestOfferDataProviderMixin\)\)/);
+assert.match(questOfferProvider, /QuestOfferDataProviderMixin:Init\("questPOILocalStory"\)/);
+assert.match(questOfferProvider, /C_QuestLine\.GetAvailableQuestLines\(mapID\)/);
+assert.match(mapQuests, /SetCVar\("questPOILocalStory",enabled and settings\.showLocalStories and "1" or "0"\)/);
+assert.match(mapQuests, /Enum\.MinimapTrackingFilter\.TrivialQuests/);
+assert.match(mapQuests, /Enum\.MinimapTrackingFilter\.AccountCompletedQuests/);
+assert.match(mapQuests, /C_QuestLine\.RequestQuestLinesForMap\(mapID\)/);
+assert.match(mapQuests, /WorldMapFrame:RefreshAllDataProviders\(\)/);
+assert.doesNotMatch(mapQuests, /AcquirePin\(/, 'MapQuests should preserve Blizzard pin ownership');
+assert.match(core, /mapQuests\s*=\s*{[\s\S]*?showLocalStories\s*=\s*true[\s\S]*?showTrivial\s*=\s*true[\s\S]*?showAccountCompleted\s*=\s*false/);
+assert.match(menu, /CreateTab\("mapquests", "Map & quests", 6\)/);
+console.log('PASS: lightweight quest map uses Forever native offers, filters, and Blizzard-owned pins');
+
 const character = read('Modules/CharacterV2.lua');
 const talents = read('Modules/Talents.lua');
 const achievements = read('Modules/Achievements.lua');
-const menu = read('Modules/Menu.lua');
 assert.match(character, /function Character:OnPlayerLogin\(\)\s*\n\s*if not self:IsSupported\(\) then return end/);
 assert.match(talents, /function Talents:OnPlayerLogin\(\)\s*\n\s*if not AUI:IsFeatureSupported\("Talents"\) then return end/);
 assert.match(achievements, /function Achievements:OnPlayerLogin\(\)\s*\n\s*if not AUI:IsFeatureSupported\("Achievements"\) then return end/);
