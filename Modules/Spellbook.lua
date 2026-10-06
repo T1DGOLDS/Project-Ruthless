@@ -111,6 +111,35 @@ local function Label(parent, text, font)
     return label
 end
 
+local function InstallVisibleCaret(editBox)
+    local r,g,b=AccentColor()
+    local caret=editBox:CreateTexture(nil,"OVERLAY")
+    caret:SetColorTexture(r,g,b,1); caret:SetSize(2,14); caret:Hide()
+    caret.cursorX,caret.cursorY,caret.cursorHeight=0,0,14
+    local function PositionCaret()
+        caret:ClearAllPoints()
+        caret:SetPoint("TOPLEFT",editBox,"TOPLEFT",caret.cursorX+1,caret.cursorY)
+        caret:SetHeight(caret.cursorHeight)
+        if editBox:HasFocus() then caret:Show(); caret:SetAlpha(1) end
+        caret.blinkElapsed=0
+    end
+    editBox:HookScript("OnCursorChanged",function(_,x,y,_,height)
+        caret.cursorX=x or 0; caret.cursorY=y or 0; caret.cursorHeight=math.max(height or 14,12)
+        PositionCaret()
+    end)
+    editBox:HookScript("OnEditFocusGained",PositionCaret)
+    editBox:HookScript("OnEditFocusLost",function() caret:Hide() end)
+    editBox:HookScript("OnUpdate",function(box,elapsed)
+        if not box:HasFocus() then caret:Hide(); return end
+        caret.blinkElapsed=(caret.blinkElapsed or 0)+elapsed
+        if caret.blinkElapsed>=0.5 then
+            caret.blinkElapsed=caret.blinkElapsed-0.5
+            caret:SetShown(not caret:IsShown())
+        end
+    end)
+    return caret
+end
+
 local function Clean(text)
     return strtrim((text or ""):gsub("[%p%c]", " "):gsub("%s+", " ")):lower()
 end
@@ -1031,6 +1060,7 @@ function Spellbook:CreateMacroView(parent)
     end
     name:SetScript("OnEditFocusGained",function() SetTypingFocus("name") end); name:SetScript("OnEditFocusLost",function() C_Timer.After(0,RefreshTypingFocus) end)
     editor:SetScript("OnEditFocusGained",function() SetTypingFocus("body") end); editor:SetScript("OnEditFocusLost",function() C_Timer.After(0,RefreshTypingFocus) end)
+    self.macroNameCaret=InstallVisibleCaret(name); self.macroBodyCaret=InstallVisibleCaret(editor)
     editor:SetScript("OnTextChanged",function(box)
         if not Spellbook.loadingMacro then Spellbook:MarkMacroDirty(); Spellbook:RefreshMacroList() end
         Spellbook:UpdateMacroSuggestions(); Spellbook:AnalyseMacro()

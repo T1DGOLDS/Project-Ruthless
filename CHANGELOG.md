@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### 0.12.0-beta.7 - 2026-10-06 (visible macro caret)
+
+- Added an explicit class-coloured blinking text caret to both the macro name and macro body fields.
+- The caret follows WoW's live cursor coordinates and remains visible above the custom editor surfaces while typing.
+
 ### 0.12.0-beta.6 - 2026-10-06 (macro editing clarity)
 
 - Added persistent Macro Name and Macro Body labels, a stronger body-editor border, and white editor text.

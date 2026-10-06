@@ -85,7 +85,11 @@ assert.match(spellbook, /Label\(editorBackground,"MACRO BODY","GameFontNormalSma
 assert.match(spellbook, /TYPING IN NAME/);
 assert.match(spellbook, /TYPING IN BODY/);
 assert.match(spellbook, /OnEditFocusGained/);
-console.log('PASS: macro name and body expose persistent labels and keyboard-focus feedback');
+assert.match(spellbook, /local function InstallVisibleCaret\(editBox\)/);
+assert.match(spellbook, /caret:SetPoint\("TOPLEFT",editBox,"TOPLEFT",caret\.cursorX\+1,caret\.cursorY\)/);
+assert.match(spellbook, /caret\.blinkElapsed>=0\.5/);
+assert.match(spellbook, /self\.macroNameCaret=InstallVisibleCaret\(name\); self\.macroBodyCaret=InstallVisibleCaret\(editor\)/);
+console.log('PASS: macro name and body expose labels, focus feedback, and explicit blinking carets');
 
 const playerSpellsToc = native('Blizzard_PlayerSpells/Blizzard_PlayerSpells.toc');
 assert.match(playerSpellsToc, /\[Game\]\/Blizzard_PlayerSpellsFrame\.lua\s+\[AllowLoadGameType camelot\]/);
