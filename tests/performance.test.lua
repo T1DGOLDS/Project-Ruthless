@@ -343,6 +343,9 @@ ProjectRuthlessDB.general.windowScale=.9;assert(profiles:Load('Review'));assert(
 local savedCombat=InCombatLockdown;InCombatLockdown=function()return true end
 assert(not profiles:Import(exported));InCombatLockdown=savedCombat
 assert(not profiles:Parse('return os.execute("bad")'));assert(not profiles:Save(string.rep('x',41)))
+ProjectRuthlessDB.elvui={safeTooltip=true}
+assert(profiles:Import('RUI_SETTINGS_1\ngeneral.windowScale=1\nelvui.safeTooltip=false'))
+assert(ProjectRuthlessDB.elvui.safeTooltip==true and not profiles:Export():find('elvui',1,true))
 print('PASS: settings roundtrip, named profiles, atomic invalid-import rejection, version/range/duplicate checks, undo and combat block')
 
 for _,method in ipairs({'SetJustifyH','SetAutoFocus','SetMaxLetters','SetMultiLine','SetFontObject','SetTextInsets','SetFont','ClearFocus'})do Frame[method]=function()end end

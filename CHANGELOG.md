@@ -1,3 +1,11 @@
+## 0.14.0-beta.73 — testing and release foundations
+
+- Preserve beta 72 source and a verified recovery ZIP on GitHub before runtime changes. Add six explicit live acceptance gates; stable releases require matching tested source and evidence. Validate all twelve suites before publishing, disclose experimental gate status, preserve local ZIPs and refuse asset replacement.
+- Remove active ElvUI tooltip coupling, optional dependency and settings controls. Retain read-only conflict detection and migration of retired profile fields without applying them. Previous changes made by older versions cannot be restored without knowing their original values.
+- Route settings updates to the affected module, isolate background-group refreshes and window-opacity changes, and initialize modules in registration order. Remove duplicate bar discovery entries, ignore unrelated addon-load discovery/styling events and update owned unit health/power/name fields only for the relevant event. No opaque health/power arithmetic introduced.
+- Add an explicitly enabled local testing recorder and copyable bug reporter. Retain bounded CPU samples, native spike counts, whole-game frame-gap summaries, paced memory measurements and error/configuration context. Exact allocation counts are unavailable. No automatic uploads, messages, external profiler dependency or global profiling-setting changes.
+- Local checks cover recorder lifecycle, unavailable/secret metrics, bounds, attribution, retired preferences, targeted refreshes and live-release gating. In-game performance, rendering and combat safety remain pending. The full settings/search/profile/accessibility/onboarding/aura overhaul remains planned.
+
 ## 0.14.0-beta.72 — 2026-10-13
 
 - Merge learned/future spell ranks under native spec groups and order by learned level; enrich old trainer records with exact-rank client metadata, retain explicit unknowns and display learned levels.

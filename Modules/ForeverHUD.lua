@@ -1,6 +1,14 @@
 local _,AUI=...
 local H={registered={}}
 AUI:RegisterModule("ForeverHUD",H)
+local hudAddonFamilies={"Blizzard_ActionBar","Blizzard_UnitFrame","Blizzard_StatusTrackingBar","Blizzard_Minimap","Blizzard_BuffFrame","Blizzard_ChatFrame","Blizzard_CastingBar","Blizzard_AuraContainer","Blizzard_CompactRaid","ProjectRuthless_"}
+function H:IsRelevantAddon(name)
+    if type(name)~="string"then return true end
+    for _,family in ipairs(hudAddonFamilies)do
+        if name:sub(1,#family)==family then return true end
+    end
+    return false
+end
 local specs={
  {"minimap","Minimap",{"MinimapCluster"}},
  {"player","Player frame",{"PlayerFrame"}}, {"target","Target frame",{"TargetFrame"}},
@@ -13,7 +21,6 @@ local specs={
  {"bar1","Main action bar",{"MainActionBar","MainMenuBar"}},
  {"bar2","Bottom-left action bar",{"MultiBarBottomLeft"}}, {"bar3","Bottom-right action bar",{"MultiBarBottomRight"}},
  {"bar4","Right action bar",{"MultiBarRight"}}, {"bar5","Left action bar",{"MultiBarLeft"}},
- {"bar6","Action bar 6",{"MultiBar5"}}, {"bar7","Action bar 7",{"MultiBar6"}}, {"bar8","Action bar 8",{"MultiBar7"}},
  {"bar6","Action bar 6",{"MultiBar5"}}, {"bar7","Action bar 7",{"MultiBar6"}}, {"bar8","Action bar 8",{"MultiBar7"}},
  {"petbar","Pet action bar",{"PetActionBar","PetActionBarFrame"}}, {"stancebar","Stance bar",{"StanceBar","StanceBarFrame"}},
  {"buffs","Buffs",{"BuffFrame"}}, {"debuffs","Debuffs",{"DebuffFrame"}},
@@ -356,19 +363,24 @@ function H:CreatePartyRow(index,parent,unitOverride)
         bar.RightText=bar:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
         bar.LeftText=bar:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
     end
-    local function update()
+    local function update(event)
         local health,power=row.HealthBarContainer.HealthBar,row.ManaBar
-        row.Name:SetText(UnitName(unit))
+        local full=not event or not event:match("^UNIT_")or event=="UNIT_TARGET"or event=="UNIT_CONNECTION"
+        if full or event=="UNIT_NAME_UPDATE"then row.Name:SetText(UnitName(unit))end
+        if full or event=="UNIT_HEALTH"or event=="UNIT_MAXHEALTH"then
         health:SetMinMaxValues(0,UnitHealthMax(unit));health:SetValue(UnitHealth(unit))
-        power:SetMinMaxValues(0,UnitPowerMax(unit));power:SetValue(UnitPower(unit))
-        health.RightText:SetText(UnitHealth(unit));power.RightText:SetText(UnitPower(unit))
+        health.RightText:SetText(UnitHealth(unit))
         if type(UnitHealthPercent)=="function"and CurveConstants and CurveConstants.ScaleTo100 then
             health.LeftText:SetFormattedText("%.0f%%",UnitHealthPercent(unit,true,CurveConstants.ScaleTo100))
         end
+        end
+        if full or event=="UNIT_POWER_UPDATE"or event=="UNIT_MAXPOWER"or event=="UNIT_DISPLAYPOWER"then
+        power:SetMinMaxValues(0,UnitPowerMax(unit));power:SetValue(UnitPower(unit));power.RightText:SetText(UnitPower(unit))
         if type(UnitPowerPercent)=="function"and CurveConstants and CurveConstants.ScaleTo100 then
             power.LeftText:SetFormattedText("%.0f%%",UnitPowerPercent(unit,nil,false,CurveConstants.ScaleTo100))
         end
-        self:PaintUnitBars(id,row)
+        end
+        if full or event=="UNIT_DISPLAYPOWER"then self:PaintUnitBars(id,row)end
     end
     for _,event in ipairs({"UNIT_HEALTH","UNIT_MAXHEALTH","UNIT_POWER_UPDATE","UNIT_MAXPOWER","UNIT_DISPLAYPOWER","UNIT_NAME_UPDATE","UNIT_CONNECTION"})do row:RegisterUnitEvent(event,unit)end
     row:RegisterEvent("PLAYER_ENTERING_WORLD");row:RegisterEvent("GROUP_ROSTER_UPDATE")
@@ -376,7 +388,7 @@ function H:CreatePartyRow(index,parent,unitOverride)
     if not unitOverride then for _,event in ipairs({"READY_CHECK","READY_CHECK_CONFIRM","READY_CHECK_FINISHED"})do row:RegisterEvent(event)end end
     row:SetScript("OnEvent",function(_,event)
         if event=="READY_CHECK"or event=="READY_CHECK_CONFIRM"or event=="READY_CHECK_FINISHED"then self:UpdatePartyReady(row,unit,event);return end
-        update()
+        update(event)
         if event=="GROUP_ROSTER_UPDATE"then row.ruiReadyRevision=row.ruiReadyRevision+1;row.ruiReadyStatus=false;row.ruiReady:Hide()end
         if event=="PLAYER_TARGET_CHANGED"or event=="UNIT_TARGET"or event=="UNIT_MODEL_CHANGED"or event=="UNIT_PORTRAIT_UPDATE"or event=="PLAYER_ENTERING_WORLD"or event=="GROUP_ROSTER_UPDATE"or event=="UNIT_NAME_UPDATE"then self:RefreshPortraits(unit)end
     end)
@@ -489,6 +501,7 @@ function H:OnPlayerLogin()
     events:RegisterUnitEvent("UNIT_DISPLAYPOWER","player","target","party1","party2","party3","party4")
     events:RegisterUnitEvent("UNIT_MODEL_CHANGED","player","target","party1","party2","party3","party4");events:RegisterUnitEvent("UNIT_PORTRAIT_UPDATE","player","target","party1","party2","party3","party4")
     events:SetScript("OnEvent",function(_,event,unit)
+        if event=="ADDON_LOADED"and not self:IsRelevantAddon(unit)then return end
         if event=="UNIT_DISPLAYPOWER"then local frame=self.registered[unit];if frame and frame.ruiUnitStyled then self:PaintUnitBars(unit,frame)end;return end
         if event=="PLAYER_TARGET_CHANGED"then self:RefreshPortraits("target");local frame=self.registered.target;if frame and frame.ruiUnitStyled then self:PaintUnitBars("target",frame)end;return end
         if event=="UNIT_MODEL_CHANGED"or event=="UNIT_PORTRAIT_UPDATE"then self:RefreshPortraits(unit);return end

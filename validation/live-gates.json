@@ -1,0 +1,16 @@
+{
+  "version": "0.14.0-beta.73",
+  "interface": 16001,
+  "nativeRevision": "a84e2b1b41d3d4137127c07e4da448aa3251d6f1",
+  "sourceDigest": null,
+  "reviewer": null,
+  "testedAt": null,
+  "gates": [
+    {"id":"installation","status":"pending","evidence":"","check":"Fresh install and upgrade; bundled RUI folders load; native defaults usable with decorative art disabled."},
+    {"id":"profiles","status":"pending","evidence":"","check":"Save/load/reload, existing/new characters, chat filters/tabs, positions, recovery and default selection."},
+    {"id":"combat","status":"pending","evidence":"","check":"Entry/exit, actions/cooldowns, stances/forms, pets, melee/offhand/ranged and queued abilities; no blocked actions or secret errors."},
+    {"id":"information","status":"pending","evidence":"","check":"Map/spellbook combat browsing; native quest pins/areas; party/target frames, portraits, auras and tooltips."},
+    {"id":"accessibility","status":"pending","evidence":"","check":"Native accessibility remains available; readable scale/fonts/contrast; keyboard/focus/non-colour cues; screen fitting and familiar initial layout."},
+    {"id":"performance","status":"pending","evidence":"","check":"Recorded idle/travel/combat/crowded/bag/map runs; compare native/RUI; no callback growth, repeated hitches or silent ownership conflicts."}
+  ]
+}

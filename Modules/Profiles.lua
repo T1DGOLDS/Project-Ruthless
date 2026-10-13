@@ -9,7 +9,7 @@ local spec={
  talents={enabled=true},achievements={enabled=true},
  mapQuests={enabled=true,showLocalStories=true,showTrivial=true,showAccountCompleted=true},
  questWorkspace={enabled=true,showArrow=true,locked=true,autoHandIn=true,prepWestfall=true,useWisp=true,opacity={.25,1}},
- lowHealthGlow={enabled=true,threshold={.05,.95},maxAlpha={0,1}},elvui={safeTooltip=true}
+ lowHealthGlow={enabled=true,threshold={.05,.95},maxAlpha={0,1}}
 }
 spec.general.backgroundOpacity={0,1}
 for _,key in ipairs({"Quest","Player","Target","Party","Chat","ActionBars","XP","Micro","BagButtons","Backpack","Meters","Map","Spellbook","Cast","Options","Professions"})do spec.general["background"..key]={-1,1}end
@@ -38,6 +38,8 @@ function P:Parse(text)
   else
    local section,key,raw=line:match("^(%a+)%.(%a+)=(.+)$")
    local rule=section and spec[section]and spec[section][key]
+   -- Accept this retired field in old exports, without applying or exporting it.
+   if section=="elvui"and key=="safeTooltip"then rule=true end
    if not rule then return nil,"Unknown setting: "..line end
    local value;if raw=="true"then value=true elseif raw=="false"then value=false else value=tonumber(raw)end
    if not valid(rule,value)then return nil,"Invalid value: "..section.."."..key end
@@ -55,8 +57,10 @@ function P:Import(text)
  -- Validate everything before writing anything. Keep one reversible pre-import snapshot.
  ProjectRuthlessDB.settingsBackup=self:Export()
  for section,values in pairs(settings)do
+  if section~="elvui"then
   ProjectRuthlessDB[section]=ProjectRuthlessDB[section]or {}
   for key,value in pairs(values)do ProjectRuthlessDB[section][key]=value end
+  end
  end
  return true,"Settings applied. Reload to refresh all windows."
 end

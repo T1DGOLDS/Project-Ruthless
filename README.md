@@ -1,14 +1,12 @@
-## Beta.23 review build
-
-Install both ProjectRuthless and ProjectRuthless_Options folders from the archive. Options loads on demand when /pr opens. The repository checkout keeps the options source in its own folder; the local development installation links that folder beside the main addon. Profiles supports named settings, validated sharing and undo, with an explicit reload after applying. See docs/FOUNDATION-REVIEW.md for remaining work and live checks.
-
 # Project Ruthless
 
 Project Ruthless is a modular World of Warcraft interface focused on practical tools that preserve Blizzard's familiar workflows.
 
-It supports modern Retail and includes a WoW Forever beta compatibility target for client 1.60.1 (`Interface 16001`, game type `camelot`).
+Active development targets WoW Forever (`Interface 16001`, game type `camelot`). Beta 73 adds local development recordings and bug reports, narrower settings/runtime updates and release acceptance gates. Live combat and performance acceptance remain pending.
 
-The project begins as a hybrid ElvUI companion so Andrew's long-developed layouts remain intact. Modules will gradually move suitable components onto Blizzard's native UI without forcing a visual reset.
+Install the three bundled folders: ProjectRuthless, ProjectRuthless_Options and ProjectRuthless_DungeonData. Options and dungeon data load on demand. `/pr` opens settings; `/pr record on` enables local test recording; `/pr record off` stops it; `/pr report` opens a copyable bug report. See [testing and release gates](docs/TESTING-AND-RELEASES.md).
+
+RUI no longer edits ElvUI settings or requires a UI overhaul addon. Quest-location coverage still uses an optional external database adapter; complete data independence is planned. Settings and layout profiles remain separate in this build. Legacy Retail files are retained without new Retail feature development; the historical feature descriptions below do not establish Forever support.
 
 ## Current milestone
 
@@ -18,7 +16,7 @@ Project Ruthless currently provides:
 - account-wide and per-character saved settings;
 - a small module lifecycle;
 - `/pr` command namespace;
-- an ElvUI compatibility module that applies the safe-tooltip workaround consistently.
+- native UI foundations without an active ElvUI compatibility module;
 - a persistent, copyable Lua error log for addon development.
 - a sleek dark `/pr` control centre with automatic character class-colour accents.
 - a progressive red border glow that warns when player health falls below 35%.

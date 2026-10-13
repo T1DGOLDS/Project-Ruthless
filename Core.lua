@@ -4,6 +4,7 @@ ProjectRuthless = AUI
 AUI.name = addonName
 AUI.version = C_AddOns.GetAddOnMetadata(addonName, "Version") or "dev"
 AUI.modules = {}
+AUI.moduleOrder = {}
 
 local interfaceVersion = type(GetBuildInfo) == "function" and select(4, GetBuildInfo()) or 0
 AUI.interfaceVersion = tonumber(interfaceVersion) or 0
@@ -86,9 +87,6 @@ local defaults = {
         sort = "alphabetical",
         favoritesOnly = false,
     },
-    elvui = {
-        safeTooltip = true,
-    },
 }
 
 local function ApplyDefaults(target, source)
@@ -105,6 +103,7 @@ local function ApplyDefaults(target, source)
 end
 
 function AUI:RegisterModule(name, module)
+    if not self.modules[name]then self.moduleOrder[#self.moduleOrder+1]=name end
     self.modules[name] = module
 end
 
@@ -112,22 +111,25 @@ function AUI:Print(message)
     print(("|cff7f5af0Project Ruthless|r: %s"):format(message))
 end
 
-function AUI:ApplyWindowSettings()
+function AUI:ApplyWindowSettings(key)
     local settings=ProjectRuthlessDB and ProjectRuthlessDB.general or {}
     local scale=settings.windowScale or 1
     local alpha=settings.windowOpacity or 1
     for _,moduleName in ipairs({"Menu","Character","Spellbook"}) do
         local module=self.modules[moduleName]
-        if module and module.frame then module.frame:SetScale(scale); module.frame:SetAlpha(alpha) end
+        if module and module.frame then
+            if key~="windowOpacity"then module.frame:SetScale(scale)end
+            if key~="windowScale"then module.frame:SetAlpha(alpha)end
+        end
     end
-    if self.modules.Talents then self.modules.Talents:ApplySettings() end
+    if key~="windowOpacity"and self.modules.Talents then self.modules.Talents:ApplySettings() end
     local editor=self.modules.LayoutEditor
-    if editor and ProjectRuthlessCharDB and ProjectRuthlessCharDB.layoutEditor then for id,value in pairs(ProjectRuthlessCharDB.layoutEditor.elements or {})do editor:Apply(id,value)end end
+    if not key and editor and ProjectRuthlessCharDB and ProjectRuthlessCharDB.layoutEditor then for id,value in pairs(ProjectRuthlessCharDB.layoutEditor.elements or {})do editor:Apply(id,value)end end
 end
 
-function AUI:SettingsChanged(section)
-    if self.isForever then self:RefreshBackgrounds();if self.modules.ForeverHUD then self.modules.ForeverHUD:ApplySettings()end end
-    self:ApplyWindowSettings()
+function AUI:SettingsChanged(section,key)
+    if section=="Backgrounds"then self:RefreshBackgrounds(key);return end
+    if section=="General"then self:ApplyWindowSettings(key);return end
     local module=self.modules[section]
     if module and module.ApplySettings then module:ApplySettings() end
 end
@@ -173,13 +175,15 @@ function AUI:PaintBackground(frame,key,r,g,b,texture)
     local alpha=self:BackgroundOpacity(key)
     if texture then frame:SetColorTexture(r,g,b,alpha)else frame:SetBackdropColor(r,g,b,alpha)end
 end
-function AUI:RefreshBackgrounds()
+function AUI:RefreshBackgrounds(key)
     for frame,style in pairs(self.backgrounds)do
+        if not key or key==style.key then
         local alpha=self:BackgroundOpacity(style.key)
         if style.texture then frame:SetColorTexture(style.r,style.g,style.b,alpha)else frame:SetBackdropColor(style.r,style.g,style.b,alpha)end
+        end
     end
     local details=Details or _detalhes
-    if self.isForever and type(details)=="table"and type(details.GetAllInstances)=="function"then
+    if (not key or key=="Meters")and self.isForever and type(details)=="table"and type(details.GetAllInstances)=="function"then
         local ok,instances=pcall(details.GetAllInstances,details)
         if ok and type(instances)=="table"then for _,instance in ipairs(instances)do if type(instance.SetBackgroundAlpha)=="function"then instance:SetBackgroundAlpha(0)end end end
     end
@@ -391,27 +395,9 @@ function AUI:ConfigureScrollingEditBox(editBox,scroll,minimumHeight)
     end)
 end
 
-function AUI:GetElvUI()
-    if type(_G.ElvUI) ~= "table" then
-        return nil
-    end
-
-    return _G.ElvUI[1]
-end
-
 function AUI:ShowStatus()
-    local E = self:GetElvUI()
-    local elvVersion = E and E.version or "not loaded"
-    local tooltipState = ProjectRuthlessDB.elvui.safeTooltip and "enabled" or "disabled"
-
     local client = self.isForever and "WoW Forever beta" or "Retail"
-    self:Print(("v%s | %s (%d) | ElvUI: %s | safe tooltip: %s"):format(
-        self.version,
-        client,
-        self.interfaceVersion,
-        tostring(elvVersion),
-        tooltipState
-    ))
+    self:Print(("v%s | %s (%d) | Native UI foundations"):format(self.version,client,self.interfaceVersion))
 end
 
 function AUI:ShowPerformance()
@@ -450,6 +436,7 @@ local function HandleSlashCommand(input)
         AUI:ShowStatus()
         return
     end
+    if AUI.modules.Diagnostics and (command=="report"or command=="record"or command:match("^record "))then AUI.modules.Diagnostics:HandleCommand(command);return end
 
     if command == "talents" and AUI.modules.Talents then
         AUI.modules.Talents:Show()
@@ -471,16 +458,8 @@ local function HandleSlashCommand(input)
         return
     end
 
-    if command == "tooltip on" then
-        ProjectRuthlessDB.elvui.safeTooltip = true
-        AUI:Print("Safe tooltip compatibility enabled. Reloading the UI.")
-        ReloadUI()
-        return
-    end
-
-    if command == "tooltip off" then
-        ProjectRuthlessDB.elvui.safeTooltip = false
-        AUI:Print("Safe tooltip compatibility disabled. This does not re-enable ElvUI tooltips automatically.")
+    if command=="tooltip on"or command=="tooltip off"then
+        AUI:Print("Legacy compatibility command retired. RUI does not change another addon's tooltip settings.")
         return
     end
 
@@ -497,7 +476,7 @@ local function HandleSlashCommand(input)
     end
 
     local achievementCommand=not AUI.isForever and ", /pr achievements" or ""
-    AUI:Print("Commands: /pr, /pr status, /pr perf, /pr spellbook, /pr talents"..achievementCommand..", /pr quests, /pr errors, /pr healthglow test, /pr tooltip on, /pr tooltip off")
+    AUI:Print("Commands: /pr, /pr status, /pr perf, /pr record on|off, /pr report, /pr spellbook, /pr talents"..achievementCommand..", /pr quests, /pr errors, /pr healthglow test")
 end
 
 local eventFrame = CreateFrame("Frame")
@@ -527,14 +506,16 @@ eventFrame:SetScript("OnEvent", function(_, event, loadedAddon)
             AUI.modules.ErrorLog:Install()
         end
 
-        for _, module in pairs(AUI.modules) do
+        for _, name in ipairs(AUI.moduleOrder) do
+            local module=AUI.modules[name]
             if module.OnAddonLoaded then
                 module:OnAddonLoaded()
             end
         end
     elseif event == "PLAYER_LOGIN" then
         eventFrame:UnregisterEvent("PLAYER_LOGIN")
-        for _, module in pairs(AUI.modules) do
+        for _, name in ipairs(AUI.moduleOrder) do
+            local module=AUI.modules[name]
             if module.OnPlayerLogin then
                 module:OnPlayerLogin()
             end

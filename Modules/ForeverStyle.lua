@@ -522,7 +522,10 @@ function S:OnPlayerLogin()
     if profile and not profile.__art then profile.__art={blizzardArt=store.blizzardArt==true}end
     local events=CreateFrame("Frame");self.events=events
     for _,event in ipairs({"ADDON_LOADED","PLAYER_ENTERING_WORLD","PLAYER_REGEN_DISABLED","PLAYER_REGEN_ENABLED","UPDATE_CHAT_WINDOWS"})do events:RegisterEvent(event)end
-    events:SetScript("OnEvent",function(_,event)
+    events:SetScript("OnEvent",function(_,event,loaded)
+        local hud=AUI.modules.ForeverHUD
+        local nativeSkin=type(loaded)=="string"and (loaded:match("^Blizzard_Professions")or loaded:match("^Blizzard_SpellBook")or loaded:match("^Blizzard_PlayerSpells")or loaded:match("^Blizzard_Container"))
+        if event=="ADDON_LOADED"and hud and not hud:IsRelevantAddon(loaded)and not nativeSkin and loaded~="Details"then return end
         if event=="PLAYER_REGEN_DISABLED"then self.resting=true;self.revision=(self.revision or 0)+1;return end
         if event=="PLAYER_REGEN_ENABLED"then
             local revision=self.revision

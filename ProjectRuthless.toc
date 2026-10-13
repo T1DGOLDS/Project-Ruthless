@@ -2,8 +2,8 @@
 ## Title: Project Ruthless
 ## Notes: Practical interface tools that preserve familiar Blizzard workflows.
 ## Author: Andrew
-## Version: 0.14.0-beta.72
-## OptionalDeps: ElvUI, ElvUI_Options, Epithet, RaiderIO, ForeverWisp, AtlasLootClassic, QuestieDB, TomTom
+## Version: 0.14.0-beta.73
+## OptionalDeps: Epithet, RaiderIO, ForeverWisp, AtlasLootClassic, QuestieDB, TomTom
 ## SavedVariables: ProjectRuthlessDB
 ## SavedVariablesPerCharacter: ProjectRuthlessCharDB
 
@@ -25,4 +25,3 @@ Modules\QuestLocations.lua
 Modules\DungeonAtlas.lua
 Modules\MenuLoader.lua
 Modules\LowHealthGlow.lua
-Modules\ElvUICompat.lua

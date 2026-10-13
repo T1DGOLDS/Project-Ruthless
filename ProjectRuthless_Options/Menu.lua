@@ -33,7 +33,7 @@ function Menu:CreateOptionsPanel(parent, eyebrow, title, description)
     return panel
 end
 
-function Menu:CreateCheckbox(parent,label,description,y,getter,setter,section)
+function Menu:CreateCheckbox(parent,label,description,y,getter,setter,section,key)
     local button=CreateFrame("Button",nil,parent,"BackdropTemplate"); button:SetSize(610,48); button:SetPoint("TOPLEFT",18,y); ApplyBackdrop(button,{0.035,0.039,0.052,0.92})
     button.box=CreateFrame("Frame",nil,button,"BackdropTemplate"); button.box:SetSize(20,20); button.box:SetPoint("LEFT",10,0); ApplyBackdrop(button.box,{0.02,0.023,0.032,1})
     button.tick=button.box:CreateTexture(nil,"ARTWORK"); button.tick:SetAtlas("common-icon-checkmark"); button.tick:SetSize(14,14); button.tick:SetPoint("CENTER")
@@ -41,13 +41,13 @@ function Menu:CreateCheckbox(parent,label,description,y,getter,setter,section)
     button.description=AddLabel(button,description,"TOPLEFT",button,"TOPLEFT",42,-27,"GameFontNormalSmall"); button.description:SetTextColor(unpack(COLORS.muted))
     button.getter=getter; button.setter=setter
     button.RefreshValue=function(self) local checked=self.getter(); self.tick:SetShown(checked); local r,g,b=GetAccentColor(); self.box:SetBackdropBorderColor(checked and r or COLORS.border[1],checked and g or COLORS.border[2],checked and b or COLORS.border[3],1) end
-    button:SetScript("OnClick",function(self) self.setter(not self.getter()); AUI:SettingsChanged(section); Menu:Refresh() end)
+    button:SetScript("OnClick",function(self) self.setter(not self.getter()); AUI:SettingsChanged(section,key); Menu:Refresh() end)
     button:SetScript("OnEnter",function(self) self:SetBackdropColor(0.055,0.060,0.078,AUI.isForever and AUI:BackgroundOpacity("Options")or .96) end); button:SetScript("OnLeave",function(self) self:SetBackdropColor(0.035,0.039,0.052,AUI.isForever and AUI:BackgroundOpacity("Options")or .92) end)
     self.optionControls=self.optionControls or {}; self.optionControls[#self.optionControls+1]=button
     return button
 end
 
-function Menu:CreateSlider(parent,label,description,y,minimum,maximum,step,formatter,getter,setter,section)
+function Menu:CreateSlider(parent,label,description,y,minimum,maximum,step,formatter,getter,setter,section,key)
     local holder=CreateFrame("Frame",nil,parent,"BackdropTemplate"); holder:SetSize(610,70); holder:SetPoint("TOPLEFT",18,y); ApplyBackdrop(holder,{0.035,0.039,0.052,0.92})
     holder.label=AddLabel(holder,label,"TOPLEFT",holder,"TOPLEFT",12,-9,"GameFontNormal"); holder.value=AddLabel(holder,"","TOPRIGHT",holder,"TOPRIGHT",-12,-9,"GameFontNormal")
     holder.description=AddLabel(holder,description,"TOPLEFT",holder,"TOPLEFT",12,-29,"GameFontNormalSmall"); holder.description:SetTextColor(unpack(COLORS.muted))
@@ -58,10 +58,10 @@ function Menu:CreateSlider(parent,label,description,y,minimum,maximum,step,forma
     slider:SetScript("OnValueChanged",function(_,value)
         value=math.max(minimum,math.min(maximum,minimum+math.floor((value-minimum)/step+0.5)*step))
         holder.value:SetText(formatter(value))
-        if not Menu.refreshing then setter(value); if not (label=="Window scale" and holder.dragging) then AUI:SettingsChanged(section) end end
+        if not Menu.refreshing then setter(value); if not (label=="Window scale" and holder.dragging) then AUI:SettingsChanged(section,key) end end
     end)
     slider:HookScript("OnMouseDown",function() holder.dragging=true end)
-    local function FinishDrag() if holder.dragging then holder.dragging=false; AUI:SettingsChanged(section) end end
+    local function FinishDrag() if holder.dragging then holder.dragging=false; AUI:SettingsChanged(section,key) end end
     slider:HookScript("OnMouseUp",FinishDrag); slider:HookScript("OnHide",FinishDrag)
     holder.getter=getter; holder.RefreshValue=function(self) local value=self.getter(); slider:SetValue(value); self.value:SetText(formatter(value)) end
     self.optionControls=self.optionControls or {}; self.optionControls[#self.optionControls+1]=holder
@@ -125,13 +125,13 @@ end
 
 function Menu:CreateGeneralPanel(parent)
     local panel=self:CreateOptionsPanel(parent,"CORE SETTINGS","General","Shared presentation settings for every Project Ruthless window.")
-    self:CreateSlider(panel,"Window scale","Scale Ruthless windows; Talents also fits within your screen.",-116,0.75,1.25,0.01,function(v)return ("%d%%"):format(math.floor(v*100+0.5))end,function()return ProjectRuthlessDB.general.windowScale end,function(v)ProjectRuthlessDB.general.windowScale=v end,"General")
-    self:CreateSlider(panel,"Window opacity","Fade complete Project Ruthless windows without affecting the rest of the UI.",-194,0.65,1,0.05,function(v)return ("%d%%"):format(math.floor(v*100+0.5))end,function()return ProjectRuthlessDB.general.windowOpacity end,function(v)ProjectRuthlessDB.general.windowOpacity=v end,"General")
+    self:CreateSlider(panel,"Window scale","Scale Ruthless windows; Talents also fits within your screen.",-116,0.75,1.25,0.01,function(v)return ("%d%%"):format(math.floor(v*100+0.5))end,function()return ProjectRuthlessDB.general.windowScale end,function(v)ProjectRuthlessDB.general.windowScale=v end,"General","windowScale")
+    self:CreateSlider(panel,"Window opacity","Fade complete Project Ruthless windows without affecting the rest of the UI.",-194,0.65,1,0.05,function(v)return ("%d%%"):format(math.floor(v*100+0.5))end,function()return ProjectRuthlessDB.general.windowOpacity end,function(v)ProjectRuthlessDB.general.windowOpacity=v end,"General","windowOpacity")
     local note=AddLabel(panel,"Settings are account-wide. Character-specific state is kept separately where it makes sense.","TOPLEFT",panel,"TOPLEFT",20,-286,"GameFontNormalSmall"); note:SetWidth(590); note:SetJustifyH("LEFT"); note:SetTextColor(unpack(COLORS.muted))
     self:CreateAction(panel,"Edit RUI layout",20,-340,180,function()AUI.modules.LayoutEditor:Show()end)
     if AUI.isForever then self:CreateAction(panel,"Leveling history",208,-340,180,function()AUI.modules.LevelHistory:Show()end)end
     if AUI.isForever then self:CreateCheckbox(panel,"Show Blizzard decorative art","Restore stock borders and trim on RUI-skinned controls. Saved with the active layout profile.",-390,function()return AUI.modules.ForeverStyle:BlizzardArtEnabled()end,function(v)AUI.modules.ForeverStyle:SetBlizzardArt(v)end,"ForeverStyle")end
-    if AUI.isForever then self:CreateCheckbox(panel,"Grouped party panel","Off: one compact block per character. On: one shared panel. Move the party together in Edit Mode.",-444,function()return ProjectRuthlessDB.general.partyGrouped==true end,function(v)ProjectRuthlessDB.general.partyGrouped=v end,"ForeverHUD")end
+    if AUI.isForever then self:CreateCheckbox(panel,"Shared party background","Off: one compact block per character. On: one shared panel. Move the party together in Edit Mode.",-444,function()return ProjectRuthlessDB.general.partyGrouped==true end,function(v)ProjectRuthlessDB.general.partyGrouped=v end,"ForeverHUD")end
     self.panels.general=panel
 end
 
@@ -149,9 +149,9 @@ function Menu:CreateBackgroundOptions(parent)
         local key,label=group[1],group[2];local field="background"..key;local y=-126-(i-1)*132
         self:CreateCheckbox(content,label.." override","Off follows the global slider.",y,
             function()return type(ProjectRuthlessDB.general[field])=="number"and ProjectRuthlessDB.general[field]>=0 end,
-            function(enabled)ProjectRuthlessDB.general[field]=enabled and AUI:BackgroundOpacity(key)or -1;self:Refresh()end,"Backgrounds")
+            function(enabled)ProjectRuthlessDB.general[field]=enabled and AUI:BackgroundOpacity(key)or -1;self:Refresh()end,"Backgrounds",key)
         self:CreateSlider(content,label.." opacity","Moving this slider enables its individual override.",y-52,0,1,.01,percent,
-            function()return AUI:BackgroundOpacity(key)end,function(v)ProjectRuthlessDB.general[field]=v end,"Backgrounds")
+            function()return AUI:BackgroundOpacity(key)end,function(v)ProjectRuthlessDB.general[field]=v end,"Backgrounds",key)
     end
     content:SetHeight(140+#AUI.backgroundGroups*132);self.panels.backgrounds=panel
 end
@@ -244,9 +244,10 @@ function Menu:CreateMapQuestOptions(parent)
 end
 
 function Menu:CreateCompatibilityOptions(parent)
-    local panel=self:CreateOptionsPanel(parent,"ADDON COEXISTENCE","Compatibility","Compatibility switches for the existing UI while Project Ruthless replaces it piece by piece.")
-    self:CreateCheckbox(panel,"ElvUI safe-tooltip mode","Keep ElvUI's tooltip module and Blizzard tooltip skin disabled to avoid tooltip taint.",-116,function()return ProjectRuthlessDB.elvui.safeTooltip end,function(v)ProjectRuthlessDB.elvui.safeTooltip=v end,"ElvUICompat")
-    local note=AddLabel(panel,"Enabling this applies immediately. Disabling it stops future enforcement but does not rewrite your ElvUI profile.","TOPLEFT",panel,"TOPLEFT",20,-184,"GameFontNormalSmall"); note:SetWidth(590); note:SetJustifyH("LEFT"); note:SetTextColor(unpack(COLORS.muted))
+    local panel=self:CreateOptionsPanel(parent,"CONFIGURATION HEALTH","Compatibility","Review possible ownership conflicts and reasons a feature may be unavailable. These checks are read-only.")
+    local note=AddLabel(panel,"Open a testing report for configuration checks, potential overlapping UI addons and captured errors. A loaded addon is only a possible conflict, not proof of the cause.","TOPLEFT",panel,"TOPLEFT",20,-120,"GameFontNormal")
+    note:SetWidth(580);note:SetJustifyH("LEFT");note:SetTextColor(unpack(COLORS.muted))
+    self:CreateAction(panel,"Review configuration",20,-214,220,function()if AUI.modules.Diagnostics then AUI.modules.Diagnostics:Show()end end)
     self.panels.compatibility=panel
 end
 
@@ -259,8 +260,8 @@ function Menu:CreateStatusPanel(parent)
     AddLabel(panel, "Interface status", "TOPLEFT", panel, "TOPLEFT", 18, -44, "GameFontNormalHuge")
 
     panel.versionLabel = AddLabel(panel, "", "TOPLEFT", panel, "TOPLEFT", 18, -92)
-    panel.elvLabel = AddLabel(panel, "", "TOPLEFT", panel, "TOPLEFT", 18, -120)
-    panel.tooltipLabel = AddLabel(panel, "", "TOPLEFT", panel, "TOPLEFT", 18, -148)
+    panel.foundationLabel = AddLabel(panel, "", "TOPLEFT", panel, "TOPLEFT", 18, -120)
+    panel.ownershipLabel = AddLabel(panel, "", "TOPLEFT", panel, "TOPLEFT", 18, -148)
     panel.errorLabel = AddLabel(panel, "", "TOPLEFT", panel, "TOPLEFT", 18, -176)
     panel.dependencies=AddLabel(panel,"","TOPLEFT",panel,"TOPLEFT",18,-220);panel.dependencies:SetWidth(580);panel.dependencies:SetJustifyH("LEFT")
 
@@ -276,6 +277,13 @@ function Menu:CreateErrorsPanel(parent)
     self:CreateCheckbox(panel,"Enable error capture","Record Lua failures and group repeated chat notices.",-108,function()return ProjectRuthlessDB.errorLog.enabled end,function(v)ProjectRuthlessDB.errorLog.enabled=v end,"ErrorLog")
     self:CreateSlider(panel,"Maximum retained errors","Oldest entries are removed when the history reaches this size.",-164,10,200,10,function(v)return tostring(math.floor(v+0.5))end,function()return ProjectRuthlessDB.errorLog.maxEntries end,function(v)ProjectRuthlessDB.errorLog.maxEntries=math.floor(v+0.5); local entries=ProjectRuthlessDB.errorLog.entries; while #entries>ProjectRuthlessDB.errorLog.maxEntries do table.remove(entries,1) end end,"ErrorLog")
     self:CreateAction(panel,"Clear error log",18,-244,130,function() if AUI.modules.ErrorLog then AUI.modules.ErrorLog:HandleCommand("clear") end end)
+    if AUI.isForever then
+        self:CreateAction(panel,"Bug report",158,-244,140,function()AUI.modules.Diagnostics:Show()end)
+        self:CreateAction(panel,"Start/stop recording",308,-244,210,function()
+            local diagnostics=AUI.modules.Diagnostics
+            diagnostics:HandleCommand(diagnostics.session and "record off"or "record on")
+        end)
+    end
 
     local scroll = AUI:CreateSmoothScrollFrame(panel)
     scroll:SetPoint("TOPLEFT", 12, -282)
@@ -430,19 +438,17 @@ function Menu:Refresh()
     end
 
     if self.selectedTab=="status" then
-        local E=AUI:GetElvUI()
         local _,errorCount=AUI.modules.ErrorLog:GetFormattedText()
         local panel=self.panels.status
         panel.versionLabel:SetText("RUI version: "..tostring(AUI.version))
-        local lines={"OPTIONAL DATA & GUIDES"}
-        local function state(label,available,missing)lines[#lines+1]=label..": "..(available and "Ready" or missing)end
-        state("Quest locations",LibQuestieDB~=nil,"Install/enable QuestieDB")
-        state("Leveling guide",ForeverWispFrame~=nil,"Install/enable ForeverWisp")
-        state("Dungeon loot",AtlasLoot~=nil,"Install/enable AtlasLootClassic")
-        state("Waypoint provider",TomTom~=nil,"Native navigation available")
+        local lines={"CURRENT CAPABILITIES"}
+        lines[#lines+1]="RUI settings, layout, frames, bags and chat use native foundations."
+        lines[#lines+1]="Guide selection: "..AUI.modules.QuestWorkspace:GuideSourceLabel()
+        lines[#lines+1]="Quest location coverage still uses an optional external database adapter."
+        lines[#lines+1]="Dungeon data is bundled with RUI."
         panel.dependencies:SetText(table.concat(lines,"\n"))
-        panel.elvLabel:SetText("ElvUI detected: "..tostring(E and E.version or "not loaded"))
-        panel.tooltipLabel:SetText("Safe tooltip compatibility: "..(ProjectRuthlessDB.elvui.safeTooltip and "Enabled"or "Disabled"))
+        panel.foundationLabel:SetText("UI overhaul dependency: none")
+        panel.ownershipLabel:SetText("Compatibility checks: read-only")
         panel.errorLabel:SetText(("Captured Lua errors: %d"):format(errorCount))
     elseif self.selectedTab=="errors" then
         local errorText=AUI.modules.ErrorLog:GetFormattedText()

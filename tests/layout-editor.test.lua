@@ -503,8 +503,11 @@ local opaque=setmetatable({},{__eq=function()error('secret compare')end,__lt=fun
 UnitHealth=function()return opaque end;UnitHealthMax=UnitHealth;UnitPower=UnitHealth;UnitPowerMax=UnitHealth
 function prototype:SetMinMaxValues(lo,hi)self.minimum=lo;self.maximum=hi end
 function prototype:SetValue(v)self.value=v end
+local priorPowerText=member.ManaBar.RightText.text
 busy=true;member.scripts.OnEvent(member,'UNIT_HEALTH','party1')
 assert(rawequal(member.HealthBarContainer.HealthBar.value,opaque)and rawequal(member.HealthBarContainer.HealthBar.maximum,opaque))
+assert(rawequal(member.ManaBar.RightText.text,priorPowerText),'health event must not repaint power')
+member.scripts.OnEvent(member,'UNIT_POWER_UPDATE','party1')
 assert(rawequal(member.ManaBar.RightText.text,opaque))
 local before=hud.partyFrame:GetWidth();hud:DiscoverParty();assert(hud.partyFrame:GetWidth()==before and hud.needsDiscovery)
 busy=false;UnitHealth,UnitHealthMax,UnitPower,UnitPowerMax=savedHealth,savedMax,savedPower,savedPowerMax
@@ -549,7 +552,8 @@ do
  local oldName=UnitName;UnitName=function(unit)assert(unit=='targettarget');return 'Target victim'end
  tot.scripts.OnEvent(tot,'UNIT_TARGET','target');assert(tot.Name.text=='Target victim')
  local before=tot.w;busy=true;UnitHealth=function()return opaque end;UnitHealthMax=UnitHealth;UnitPower=UnitHealth;UnitPowerMax=UnitHealth
- tot.scripts.OnEvent(tot,'UNIT_HEALTH','targettarget');assert(rawequal(tot.ruiHealth.value,opaque)and rawequal(tot.ruiPower.maximum,opaque)and tot.w==before)
+ tot.scripts.OnEvent(tot,'UNIT_HEALTH','targettarget');assert(rawequal(tot.ruiHealth.value,opaque)and tot.w==before)
+ tot.scripts.OnEvent(tot,'UNIT_POWER_UPDATE','targettarget');assert(rawequal(tot.ruiPower.maximum,opaque)and tot.w==before)
  busy=false;UnitName=oldName;UnitHealth,UnitHealthMax,UnitPower,UnitPowerMax=savedHealth,savedMax,savedPower,savedPowerMax
  local count=hud.targetOfTarget;hud:CreateTargetOfTarget();assert(hud.targetOfTarget==count)
  print('PASS: owned target-of-target secure clicks/visibility, saved mover, target victim changes and opaque health/power during combat without native initialization')
@@ -741,3 +745,12 @@ errors:Record('bad argument to SetCooldown: Secret values only allowed during un
 assert(ProjectRuthlessDB.errorLog.entries[1].actionBarTaint:find('ActionButton1.action = ProjectRuthless',1,true))
 local count=taintChecks;errors:Record('Unrelated failure');assert(taintChecks==count)
 print('PASS: cooldown error reports include bounded read-only taint provenance, unrelated errors do not scan')
+do
+ local oldDiscover,oldParty,oldTarget=hud.Discover,hud.DiscoverParty,hud.CreateTargetOfTarget
+ local calls=0;hud.Discover=function()calls=calls+1 end;hud.DiscoverParty=hud.Discover;hud.CreateTargetOfTarget=hud.Discover
+ local resting=hud.resting;hud.resting=nil;busy=false
+ hud.events.scripts.OnEvent(hud.events,'ADDON_LOADED','UnrelatedAddon');assert(calls==0)
+ hud.events.scripts.OnEvent(hud.events,'ADDON_LOADED','Blizzard_UnitFrame');assert(calls==3)
+ hud.Discover,hud.DiscoverParty,hud.CreateTargetOfTarget=oldDiscover,oldParty,oldTarget;hud.resting=resting
+ print('PASS: unrelated addon loads skip HUD discovery; relevant native loads retain discovery')
+end
