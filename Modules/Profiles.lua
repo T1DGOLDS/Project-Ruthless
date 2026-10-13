@@ -12,9 +12,19 @@ local spec={
  lowHealthGlow={enabled=true,threshold={.05,.95},maxAlpha={0,1}}
 }
 spec.general.backgroundOpacity={0,1}
+spec.errorLog={enabled=true,maxEntries={10,200}}
 for _,key in ipairs({"Quest","Player","Target","Party","Chat","ActionBars","XP","Micro","BagButtons","Backpack","Meters","Map","Spellbook","Cast","Options","Professions"})do spec.general["background"..key]={-1,1}end
+for _,channel in ipairs({"R","G","B"})do
+ spec.general["color"..channel]={0,1}
+ for _,key in ipairs({"Quest","Player","Target","Party","Chat","ActionBars","XP","Micro","BagButtons","Backpack","Meters","Map","Spellbook","Cast","Options","Professions"})do
+  spec.general["color"..channel..key]={0,1};spec.general["customColor"..key]=true
+ end
+end
+spec.questWorkspace.guideSource={identifier=true}
 local function valid(rule,value)
  if rule==true then return type(value)=="boolean"end
+ if rule.identifier then return type(value)=="string"and #value<=40 and value:match("^[%w_%-]+$")~=nil end
+ if rule.values then return type(value)=="string"and rule.values[value]==true end
  if rule[1]==-1 and type(value)=="number"and value<0 then return value==-1 end
  return type(value)=="number"and value==value and value>=rule[1]and value<=rule[2]
 end
@@ -41,7 +51,7 @@ function P:Parse(text)
    -- Accept this retired field in old exports, without applying or exporting it.
    if section=="elvui"and key=="safeTooltip"then rule=true end
    if not rule then return nil,"Unknown setting: "..line end
-   local value;if raw=="true"then value=true elseif raw=="false"then value=false else value=tonumber(raw)end
+   local value;if type(rule)=="table"and (rule.values or rule.identifier)then value=raw elseif raw=="true"then value=true elseif raw=="false"then value=false else value=tonumber(raw)end
    if not valid(rule,value)then return nil,"Invalid value: "..section.."."..key end
    settings[section]=settings[section]or {}
    if settings[section][key]~=nil then return nil,"Duplicate setting: "..section.."."..key end

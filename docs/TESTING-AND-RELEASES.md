@@ -1,4 +1,4 @@
-# Testing and releases — beta 73
+# Testing and releases — beta 74
 
 ## In-game testing
 
@@ -20,4 +20,14 @@ Experimental prereleases can ship with pending/failed gates disclosed in their r
 
 Compare native UI and RUI on the same hardware/settings with similar scenes. Record idle, travel, crowded nameplates, five-player combat, bag opening/sorting, map/spellbook browsing and repeated UI open/close cycles. Include stance/form changes, queued melee abilities, offhand/ranged attacks, pets, target changes and party aura transitions. Test with optional addons absent, then with likely overlapping UI addons. A loaded addon is a possible conflict, not proof of causation; RUI's diagnostics never change its settings.
 
-Fresh-install/default-layout, unified-profile, full accessibility, aura/cooldown editor and third-party-data independence work remain separate planned milestones. Current settings/layout profiles are still separate; this beta does not claim those gates have passed. Existing native cooldown-taint reports still require live diagnosis.
+Fresh-install/default-layout, full accessibility, aura/cooldown editor and third-party-data independence work remain subsequent milestones. Unified profiles are implemented in beta 74 and require the live checks below. Existing native cooldown-taint reports still require live diagnosis.
+
+## Stage 2 acceptance
+
+After `/reload`, open Profiles. Legacy saves appear as `Settings: name` or `Layout: name`; these deliberately apply only the component that was actually saved. Original stores are retained. For a complete setup, load the intended legacy components, then save a profile under your preferred name. Settings and Edit Mode now use that same selector. The separate default chooses the saved setup for new characters; it does not reset existing characters. Each character keeps a working settings copy on logout/reload rather than inheriting another character's latest edits.
+
+Create two disposable profiles with visibly different positions, colours, party grouping, chat tabs/filters, bag preferences and native bar visibility. Switch between them from both settings and Edit Mode. Verify Undo apply and Edit Mode Cancel restore the previous complete setup. Overwrite one disposable save and use Recover overwritten save. Set one as the new-character default, log into a new character, then return to an existing character and verify its working setup was preserved. Export/import the full profile, then try malformed text and applying during combat; neither should change the setup. Check `/pr report` after these steps.
+
+Profiles include preferences and presentation, not quest/guide progress, leveling history, trainer observations, macro backups or error/recording logs. They do not copy action-button assignments, keybindings, another addon's configuration, or arbitrary native accessibility CVars. Native bar preferences use the game's registered settings callbacks; unavailable preferences are reported and require a live check. Permanent chat tabs outside the saved setup close after successful restoration; temporary whispers and General/Combat Log stay available. Chat message history is not copied.
+
+Search for `auto sort`, `player opacity`, `transparency`, `cooldown` and `gryphon`. Open results and check the correct page/control is visible, including entries farther down Backgrounds and subsequent result pages. Change global background colour, give Player a separate colour, change the global colour again, cancel a colour-picker edit, and reset Player to Follow global. Text and icons should remain readable. Existing pages register their actual controls into the search metadata; the initial declarative definitions cover new feature controls, with further consolidation possible without a second search index.

@@ -2,11 +2,11 @@
 
 Project Ruthless is a modular World of Warcraft interface focused on practical tools that preserve Blizzard's familiar workflows.
 
-Active development targets WoW Forever (`Interface 16001`, game type `camelot`). Beta 73 adds local development recordings and bug reports, narrower settings/runtime updates and release acceptance gates. Live combat and performance acceptance remain pending.
+Active development targets WoW Forever (`Interface 16001`, game type `camelot`). Beta 74 adds unified account profiles, preserved legacy saves, feature-based settings navigation, control-level search and inherited background colours. The testing recorder and six release gates remain available; live acceptance is pending.
 
 Install the three bundled folders: ProjectRuthless, ProjectRuthless_Options and ProjectRuthless_DungeonData. Options and dungeon data load on demand. `/pr` opens settings; `/pr record on` enables local test recording; `/pr record off` stops it; `/pr report` opens a copyable bug report. See [testing and release gates](docs/TESTING-AND-RELEASES.md).
 
-RUI no longer edits ElvUI settings or requires a UI overhaul addon. Quest-location coverage still uses an optional external database adapter; complete data independence is planned. Settings and layout profiles remain separate in this build. Legacy Retail files are retained without new Retail feature development; the historical feature descriptions below do not establish Forever support.
+RUI no longer edits ElvUI settings or requires a UI overhaul addon. Quest-location coverage still uses an optional external database adapter; complete data independence is planned. Settings and Edit Mode use the same account profiles on Forever. Legacy Retail files are retained without new Retail feature development; the historical feature descriptions below do not establish Forever support.
 
 ## Current milestone
 

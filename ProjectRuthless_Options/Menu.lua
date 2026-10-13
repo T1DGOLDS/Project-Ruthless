@@ -42,8 +42,10 @@ function Menu:CreateCheckbox(parent,label,description,y,getter,setter,section,ke
     button.getter=getter; button.setter=setter
     button.RefreshValue=function(self) local checked=self.getter(); self.tick:SetShown(checked); local r,g,b=GetAccentColor(); self.box:SetBackdropBorderColor(checked and r or COLORS.border[1],checked and g or COLORS.border[2],checked and b or COLORS.border[3],1) end
     button:SetScript("OnClick",function(self) self.setter(not self.getter()); AUI:SettingsChanged(section,key); Menu:Refresh() end)
-    button:SetScript("OnEnter",function(self) self:SetBackdropColor(0.055,0.060,0.078,AUI.isForever and AUI:BackgroundOpacity("Options")or .96) end); button:SetScript("OnLeave",function(self) self:SetBackdropColor(0.035,0.039,0.052,AUI.isForever and AUI:BackgroundOpacity("Options")or .92) end)
+    button:SetScript("OnEnter",function(self)if AUI.isForever then AUI:PaintBackground(self,"Options",.055,.060,.078)else self:SetBackdropColor(.055,.060,.078,.96)end end)
+    button:SetScript("OnLeave",function(self)if AUI.isForever then AUI:PaintBackground(self,"Options",.035,.039,.052)else self:SetBackdropColor(.035,.039,.052,.92)end end)
     self.optionControls=self.optionControls or {}; self.optionControls[#self.optionControls+1]=button
+    if AUI.modules.SettingsRegistry then AUI.modules.SettingsRegistry:Register(self.buildingPage,button,label,description,y,"boolean")end
     return button
 end
 
@@ -65,27 +67,42 @@ function Menu:CreateSlider(parent,label,description,y,minimum,maximum,step,forma
     slider:HookScript("OnMouseUp",FinishDrag); slider:HookScript("OnHide",FinishDrag)
     holder.getter=getter; holder.RefreshValue=function(self) local value=self.getter(); slider:SetValue(value); self.value:SetText(formatter(value)) end
     self.optionControls=self.optionControls or {}; self.optionControls[#self.optionControls+1]=holder
+    if AUI.modules.SettingsRegistry then AUI.modules.SettingsRegistry:Register(self.buildingPage,holder,label,description,y,"range")end
     return holder
 end
 
 function Menu:CreateAction(parent,text,x,y,width,callback)
-    local button=AUI:CreateButton(parent); button:SetSize(width or 130,26); button:SetPoint("TOPLEFT",x,y); button:SetText(text); button:SetScript("OnClick",callback); return button
+    local button=AUI:CreateButton(parent); button:SetSize(width or 130,26); button:SetPoint("TOPLEFT",x,y); button:SetText(text); button:SetScript("OnClick",callback)
+    if AUI.modules.SettingsRegistry then AUI.modules.SettingsRegistry:Register(self.buildingPage,button,text,"",y,"action")end
+    return button
 end
 
 function Menu:CreateProfilesPanel(parent)
-    local panel=self:CreateOptionsPanel(parent,"PERSONAL SETTINGS","Profiles","Save a setup or share settings. Quest progress and character positions stay on this character.")
-    local name=CreateFrame("EditBox",nil,panel,"InputBoxTemplate");name:SetAutoFocus(false);name:SetSize(250,24);name:SetPoint("TOPLEFT",24,-116);name:SetMaxLetters(40);name:SetText("My setup")
-    local status=AddLabel(panel,"","TOPLEFT",panel,"TOPLEFT",20,-184,"GameFontNormalSmall");status:SetWidth(590);status:SetJustifyH("LEFT")
-    local scroll=AUI:CreateSmoothScrollFrame(panel);scroll:SetPoint("TOPLEFT",18,-220);scroll:SetSize(610,240)
+    local unified=AUI.isForever and AUI.modules.UnifiedProfiles
+    local panel=self:CreateOptionsPanel(parent,"PERSONAL SETTINGS","Profiles",unified and "One setup for settings, layout and chat. Old partial saves are labelled. Quest progress stays with your character."or "Save a setup or share settings.")
+    local name=CreateFrame("EditBox",nil,panel,"InputBoxTemplate");name:SetAutoFocus(false);name:SetSize(250,24);name:SetPoint("TOPLEFT",24,-116);name:SetMaxLetters(unified and 64 or 40);name:SetText(ProjectRuthlessCharDB.activeProfile or "My setup")
+    local status=AddLabel(panel,"Choose a saved profile to preview what it contains, then Load to apply.","TOPLEFT",panel,"TOPLEFT",20,-240,"GameFontNormalSmall");status:SetWidth(590);status:SetJustifyH("LEFT")
+    local scroll=AUI:CreateSmoothScrollFrame(panel);scroll:SetPoint("TOPLEFT",18,-282);scroll:SetSize(610,160)
     local edit=CreateFrame("EditBox",nil,scroll);edit:SetMultiLine(true);edit:SetAutoFocus(false);edit:SetFontObject(ChatFontNormal);edit:SetWidth(580);edit:SetTextInsets(8,8,8,8);edit:SetMaxLetters(16384)
-    edit:SetScript("OnEscapePressed",function(box)box:ClearFocus()end);scroll:SetScrollChild(edit);AUI:ConfigureScrollingEditBox(edit,scroll,240)
-    local profiles=AUI.modules.Profiles
+    edit:SetScript("OnEscapePressed",function(box)box:ClearFocus()end);scroll:SetScrollChild(edit);AUI:ConfigureScrollingEditBox(edit,scroll,160)
+    if unified then edit:SetMaxLetters(262144)end
+    local profiles=unified or AUI.modules.Profiles
     local function result(ok,message)status:SetText(message);if ok then Menu:Refresh()end end
     self:CreateAction(panel,"Save",18,-152,100,function()result(profiles:Save(name:GetText()))end)
     self:CreateAction(panel,"Load",124,-152,100,function()result(profiles:Load(name:GetText()))end)
     self:CreateAction(panel,"Export",230,-152,100,function()edit:SetText(profiles:Export());edit:SetFocus();edit:HighlightText();status:SetText("Copy these settings to share them.")end)
     self:CreateAction(panel,"Import",336,-152,100,function()result(profiles:Import(edit:GetText()))end)
-    self:CreateAction(panel,"Undo import",442,-152,140,function()result(profiles:Restore())end)
+    self:CreateAction(panel,"Undo apply",442,-152,140,function()result(profiles:Restore())end)
+    if unified then
+        self:CreateAction(panel,"Saved profiles",284,-116,150,function(anchor)unified:Menu(anchor,function(key)
+            name:SetText(key);local entry=unified:Store().entries[key]
+            status:SetText(key..": "..(entry.legacy or "Settings, layout, chat tabs, bag preferences and decorative art. Load applies it; Undo apply restores your current setup."))
+        end)end)
+        local default=self:CreateAction(panel,"",18,-194,300,function(anchor)unified:Menu(anchor,function()Menu:Refresh()end,true)end)
+        default.RefreshValue=function(button)button:SetText("New-character default: "..(unified:Store().default or "None"))end
+        self.optionControls[#self.optionControls+1]=default
+        self:CreateAction(panel,"Recover overwritten save",330,-194,250,function()result(unified:RecoverSaved())end)
+    end
     self:CreateAction(panel,"Reload UI",18,-480,140,function()ReloadUI()end)
     self.panels.profiles=panel
 end
@@ -124,14 +141,14 @@ function Menu:CreateActionBarOptions(parent)
 end
 
 function Menu:CreateGeneralPanel(parent)
-    local panel=self:CreateOptionsPanel(parent,"CORE SETTINGS","General","Shared presentation settings for every Project Ruthless window.")
+    local panel=self:CreateOptionsPanel(parent,"CORE SETTINGS",AUI.isForever and "Appearance"or "General","Shared presentation settings for every Project Ruthless window.")
     self:CreateSlider(panel,"Window scale","Scale Ruthless windows; Talents also fits within your screen.",-116,0.75,1.25,0.01,function(v)return ("%d%%"):format(math.floor(v*100+0.5))end,function()return ProjectRuthlessDB.general.windowScale end,function(v)ProjectRuthlessDB.general.windowScale=v end,"General","windowScale")
     self:CreateSlider(panel,"Window opacity","Fade complete Project Ruthless windows without affecting the rest of the UI.",-194,0.65,1,0.05,function(v)return ("%d%%"):format(math.floor(v*100+0.5))end,function()return ProjectRuthlessDB.general.windowOpacity end,function(v)ProjectRuthlessDB.general.windowOpacity=v end,"General","windowOpacity")
-    local note=AddLabel(panel,"Settings are account-wide. Character-specific state is kept separately where it makes sense.","TOPLEFT",panel,"TOPLEFT",20,-286,"GameFontNormalSmall"); note:SetWidth(590); note:SetJustifyH("LEFT"); note:SetTextColor(unpack(COLORS.muted))
+    local note=AddLabel(panel,AUI.modules.UnifiedProfiles and "Save your setup under Profiles. Each character keeps its working settings; saved profiles are available across the account."or "Settings are account-wide. Character-specific state is kept separately where it makes sense.","TOPLEFT",panel,"TOPLEFT",20,-286,"GameFontNormalSmall"); note:SetWidth(590); note:SetJustifyH("LEFT"); note:SetTextColor(unpack(COLORS.muted))
     self:CreateAction(panel,"Edit RUI layout",20,-340,180,function()AUI.modules.LayoutEditor:Show()end)
-    if AUI.isForever then self:CreateAction(panel,"Leveling history",208,-340,180,function()AUI.modules.LevelHistory:Show()end)end
-    if AUI.isForever then self:CreateCheckbox(panel,"Show Blizzard decorative art","Restore stock borders and trim on RUI-skinned controls. Saved with the active layout profile.",-390,function()return AUI.modules.ForeverStyle:BlizzardArtEnabled()end,function(v)AUI.modules.ForeverStyle:SetBlizzardArt(v)end,"ForeverStyle")end
-    if AUI.isForever then self:CreateCheckbox(panel,"Shared party background","Off: one compact block per character. On: one shared panel. Move the party together in Edit Mode.",-444,function()return ProjectRuthlessDB.general.partyGrouped==true end,function(v)ProjectRuthlessDB.general.partyGrouped=v end,"ForeverHUD")end
+    if AUI.isForever then self:CreateAction(panel,"Background colours & opacity",208,-340,380,function()self:SelectTab("backgrounds")end)end
+    if AUI.isForever then self:CreateCheckbox(panel,"Show Blizzard decorative art","Restore stock borders and trim on RUI-skinned controls. Saved with your profile.",-390,function()return AUI.modules.ForeverStyle:BlizzardArtEnabled()end,function(v)AUI.modules.ForeverStyle:SetBlizzardArt(v)end,"ForeverStyle")end
+    if AUI.isForever and not AUI.modules.SettingsRegistry then self:CreateCheckbox(panel,"Shared party background","Off: one compact block per character. On: one shared panel. Move the party together in Edit Mode.",-444,function()return ProjectRuthlessDB.general.partyGrouped==true end,function(v)ProjectRuthlessDB.general.partyGrouped=v end,"ForeverHUD")end
     self.panels.general=panel
 end
 
@@ -142,18 +159,83 @@ function Menu:CreateBackgroundOptions(parent)
     local percent=function(v)return ("%d%%"):format(math.floor(v*100+.5))end
     self:CreateSlider(content,"Global background opacity","Used by every element unless its override is enabled.",-8,0,1,.01,percent,function()return AUI:BackgroundOpacity()end,function(v)ProjectRuthlessDB.general.backgroundOpacity=v end,"Backgrounds")
     self:CreateAction(content,"Reset all to global",18,-88,180,function()
-        for _,group in ipairs(AUI.backgroundGroups)do ProjectRuthlessDB.general["background"..group[1]]=-1 end
+        for _,group in ipairs(AUI.backgroundGroups)do ProjectRuthlessDB.general["background"..group[1]]=-1;ProjectRuthlessDB.general["customColor"..group[1]]=nil end
         AUI:SettingsChanged("Backgrounds");self:Refresh()
     end)
+    local colours=AUI.modules.SettingsRegistry~=nil
+    if colours then self:CreateBackgroundColour(content,"Global",nil,-124)end
     for i,group in ipairs(AUI.backgroundGroups)do
-        local key,label=group[1],group[2];local field="background"..key;local y=-126-(i-1)*132
+        local key,label=group[1],group[2];local field="background"..key;local y=colours and -172-(i-1)*180 or -126-(i-1)*132
         self:CreateCheckbox(content,label.." override","Off follows the global slider.",y,
             function()return type(ProjectRuthlessDB.general[field])=="number"and ProjectRuthlessDB.general[field]>=0 end,
             function(enabled)ProjectRuthlessDB.general[field]=enabled and AUI:BackgroundOpacity(key)or -1;self:Refresh()end,"Backgrounds",key)
         self:CreateSlider(content,label.." opacity","Moving this slider enables its individual override.",y-52,0,1,.01,percent,
             function()return AUI:BackgroundOpacity(key)end,function(v)ProjectRuthlessDB.general[field]=v end,"Backgrounds",key)
+        if colours then self:CreateBackgroundColour(content,label,key,y-126)end
     end
-    content:SetHeight(140+#AUI.backgroundGroups*132);self.panels.backgrounds=panel
+    content:SetHeight(colours and 190+#AUI.backgroundGroups*180 or 140+#AUI.backgroundGroups*132);self.panels.backgrounds=panel
+end
+
+function Menu:CreateBackgroundColour(parent,label,key,y)
+    local suffix=key or "";local s=ProjectRuthlessDB.general
+    local button=self:CreateAction(parent,label.." background colour",18,y,390,function()
+        if not ColorPickerFrame or not ColorPickerFrame.SetupColorPickerAndShow then
+            if C_AddOns and C_AddOns.LoadAddOn then C_AddOns.LoadAddOn("Blizzard_ColorPickerFrame")end
+        end
+        if not ColorPickerFrame or not ColorPickerFrame.SetupColorPickerAndShow then AUI:Print("The game's colour picker is unavailable.");return end
+        local before={s["colorR"..suffix],s["colorG"..suffix],s["colorB"..suffix],key and s["customColor"..key]}
+        local r,g,b=AUI:BackgroundColor(key)
+        local function refresh()AUI:RefreshBackgrounds(key);Menu:Refresh()end
+        ColorPickerFrame:SetupColorPickerAndShow({r=r,g=g,b=b,hasOpacity=false,
+            swatchFunc=function()
+                s["colorR"..suffix],s["colorG"..suffix],s["colorB"..suffix]=ColorPickerFrame:GetColorRGB()
+                if key then s["customColor"..key]=true end;refresh()
+            end,
+            cancelFunc=function()
+                s["colorR"..suffix],s["colorG"..suffix],s["colorB"..suffix]=before[1],before[2],before[3]
+                if key then s["customColor"..key]=before[4]end;refresh()
+            end})
+    end)
+    button.RefreshValue=function(control)
+        local r,g,b=AUI:BackgroundColor(key)
+        control:SetText(("%s colour · #%02x%02x%02x%s"):format(label,math.floor(r*255+.5),math.floor(g*255+.5),math.floor(b*255+.5),key and not s["customColor"..key]and " · global"or ""))
+    end
+    self.optionControls[#self.optionControls+1]=button
+    self:CreateAction(parent,key and "Follow global"or "Default charcoal",418,y,210,function()
+        s["colorR"..suffix],s["colorG"..suffix],s["colorB"..suffix]=nil,nil,nil
+        if key then s["customColor"..key]=nil end
+        AUI:RefreshBackgrounds(key);Menu:Refresh()
+    end)
+end
+
+function Menu:CreateFeatureOptions(parent,page,title,description)
+    local panel=self:CreateOptionsPanel(parent,"RUI SETTINGS",title,description)
+    local registry=AUI.modules.SettingsRegistry;local y=-116
+    for _,definition in ipairs(registry.definitions)do if definition.page==page then
+        local d=definition
+        self:CreateCheckbox(panel,d.label,d.description,y,function()return registry:Get(d)==true end,function(v)registry:Set(d,v)end)
+        y=y-56
+    end end
+    self:CreateAction(panel,"Edit layout",18,y-10,190,function()AUI.modules.LayoutEditor:Show()end)
+    self:CreateAction(panel,"Background colours & opacity",220,y-10,300,function()self:SelectTab("backgrounds")end)
+    self.panels[page]=panel;return panel
+end
+function Menu:CreateUnitFrameOptions(parent)
+    self:CreateFeatureOptions(parent,"unitframes","Unit frames","Compact party blocks or a shared background. Positions use the same profile as the rest of your interface.")
+end
+function Menu:CreateBagOptions(parent)
+    local panel=self:CreateFeatureOptions(parent,"bags","Bags & inventory","Blizzard owns item actions, search, sorting and bag assignments. RUI owns presentation and saved placement.")
+    self:CreateAction(panel,"Columns: cycle 8 / 10 / 12",18,-270,300,function()
+        local s=AUI.modules.ForeverStyle:BagSettings();s.columns=s.columns==8 and 10 or s.columns==10 and 12 or 8
+        AUI.modules.ForeverStyle:ApplySettings();AUI:Print("Backpack columns: "..s.columns)
+    end)
+end
+function Menu:CreateChatOptions(parent)
+    local panel=self:CreateOptionsPanel(parent,"RUI SETTINGS","Chat","Use each chat tab's native menu for message filters, channels, font size and docking. RUI saves those choices with your profile.")
+    self:CreateAction(panel,"Save or load a complete profile",18,-126,310,function()self:SelectTab("profiles")end)
+    self:CreateAction(panel,"Chat background colour & opacity",18,-170,310,function()self:SelectTab("backgrounds")end)
+    self:CreateAction(panel,"Move chat dock",18,-214,310,function()AUI.modules.LayoutEditor:Show()end)
+    self.panels.chat=panel
 end
 
 function Menu:CreateCharacterOptions(parent)
@@ -193,6 +275,7 @@ function Menu:CreateHealthOptions(parent)
     self:CreateSlider(panel,"Starting health","The warning begins below this health percentage.",-172,0.10,0.60,0.05,function(v)return ("%d%%"):format(math.floor(v*100+0.5))end,function()return ProjectRuthlessDB.lowHealthGlow.threshold end,function(v)ProjectRuthlessDB.lowHealthGlow.threshold=v end,"LowHealthGlow")
     self:CreateSlider(panel,"Maximum intensity","Maximum opacity reached at critically low health.",-250,0.10,0.80,0.05,function(v)return ("%d%%"):format(math.floor(v*100+0.5))end,function()return ProjectRuthlessDB.lowHealthGlow.maxAlpha end,function(v)ProjectRuthlessDB.lowHealthGlow.maxAlpha=v end,"LowHealthGlow")
     self:CreateAction(panel,"Preview glow",18,-338,130,function() if AUI.modules.LowHealthGlow then AUI.modules.LowHealthGlow:Preview() end end)
+    if AUI.isForever then self:CreateAction(panel,"Leveling history",158,-338,200,function()AUI.modules.LevelHistory:Show()end)end
     self.panels.health=panel
 end
 
@@ -336,6 +419,10 @@ end
 
 function Menu:FilterTabs(query)
     query=(query or ""):lower()
+    if AUI.modules.SettingsRegistry then
+        for i,tab in ipairs(self.tabs)do tab:SetShown(true);tab:ClearAllPoints();tab:SetPoint("TOPLEFT",self.sidebar,"TOPLEFT",12,-90-(i-1)*34)end
+        self:SearchControls(query);return
+    end
     local aliases={backgrounds="charcoal opacity transparency global individual shadows",general="scale opacity",profiles="save load import export undo",mapquests="guide dungeon quest tracker arrow waypoint supplies preparation handin",errors="diagnostics lag cpu errors",spellbook="macro ranks professions spells",health="glow warning threshold"}
     local index=0
     for _,tab in ipairs(self.tabs)do
@@ -345,6 +432,56 @@ function Menu:FilterTabs(query)
         tab:SetShown(matches)
         if matches then tab:ClearAllPoints();tab:SetPoint("TOPLEFT",self.sidebar,"TOPLEFT",12,-90-index*40);index=index+1 end
     end
+end
+
+function Menu:SearchControls(query)
+    local registry=AUI.modules.SettingsRegistry
+    if query==""then if self.searchResults then self.searchResults:Hide()end;return end
+    if not self.searchIndexed then
+        for _,section in ipairs(registry.sections)do local id=section.id
+            if self.pageBuilders[id]and not self.panels[id]then
+                self.buildingPage=id;self[self.pageBuilders[id]](self,self.content);self.panels[id]:Hide()
+            end
+        end
+        self.buildingPage=nil;self.searchIndexed=true
+    end
+    if not self.searchResults then
+        local panel=CreateFrame("Frame",nil,self.frame,"BackdropTemplate");self.searchResults=panel
+        panel:SetPoint("TOPLEFT",self.content,"TOPLEFT",0,0);panel:SetSize(650,442);panel:SetFrameLevel(self.frame:GetFrameLevel()+20)
+        ApplyBackdrop(panel,COLORS.window);panel:EnableMouse(true)
+        self.resultTitle=AddLabel(panel,"","TOPLEFT",panel,"TOPLEFT",16,-14,"GameFontNormal")
+        self.resultRows={}
+        for i=1,8 do local button=self:CreateAction(panel,"",12,-42-(i-1)*44,626,function(control)self:OpenSearchResult(control.result)end)
+            button:SetHeight(40);self.resultRows[i]=button
+        end
+        self:CreateAction(panel,"Previous results",12,-400,200,function()self.searchPage=math.max(1,(self.searchPage or 1)-1);self:SearchControls(self.lastSearchQuery)end)
+        self:CreateAction(panel,"Next results",438,-400,200,function()self.searchPage=(self.searchPage or 1)+1;self:SearchControls(self.lastSearchQuery)end)
+    end
+    if self.lastSearchQuery~=query then self.searchPage=1 end;self.lastSearchQuery=query
+    local matches=registry:Search(query)
+    local pages=math.max(1,math.ceil(#matches/8));self.searchPage=math.min(self.searchPage or 1,pages)
+    self.resultTitle:SetText(#matches==0 and "No matching setting. Try a shorter phrase."or ("%d settings found · page %d of %d"):format(#matches,self.searchPage,pages))
+    for i,button in ipairs(self.resultRows)do
+        local row=matches[(self.searchPage-1)*8+i];button.result=row;button:SetShown(row~=nil)
+        if row then
+            local label=row.page;for _,section in ipairs(registry.sections)do if section.id==row.page then label=section.label;break end end
+            button:SetText(row.label.."  ·  "..label)
+        end
+    end
+    self.searchResults:Show()
+end
+function Menu:OpenSearchResult(row)
+    if not row then return end
+    self.search:SetText("");self.search:ClearFocus();self:SelectTab(row.page)
+    local child=row.control:GetParent();local parent=child and child:GetParent()
+    if parent and type(parent.GetScrollChild)=="function"and parent:GetScrollChild()==child then
+        if parent.ScrollTo then parent:ScrollTo(math.max(0,-row.y-20),true)else parent:SetVerticalScroll(math.max(0,-row.y-20))end
+    end
+    local highlight=self.searchHighlight
+    if highlight then highlight:Hide();highlight:SetParent(row.control)
+    else highlight=CreateFrame("Frame",nil,row.control,"BackdropTemplate")end
+    highlight:SetAllPoints();highlight:SetBackdrop({edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=2})
+    local r,g,b=AUI:AccentColor();highlight:SetBackdropBorderColor(r,g,b,1);highlight:Show();self.searchHighlight=highlight
 end
 
 function Menu:Create()
@@ -405,8 +542,11 @@ function Menu:Create()
     self.content = content
     self.optionControls = {}
     local search=CreateFrame("EditBox",nil,sidebar,"InputBoxTemplate");search:SetAutoFocus(false);search:SetMaxLetters(80);search:SetSize(174,24);search:SetPoint("TOPLEFT",20,-18)
+    local searchHint=AddLabel(search,"Search settings","LEFT",search,"LEFT",4,0,"GameFontNormalSmall");searchHint:SetTextColor(unpack(COLORS.muted))
+    search:SetScript("OnEditFocusGained",function()searchHint:Hide()end)
+    search:SetScript("OnEditFocusLost",function(box)searchHint:SetShown(box:GetText()=="")end)
     search:SetScript("OnEscapePressed",function(box)box:SetText("");box:ClearFocus()end)
-    search:SetScript("OnTextChanged",function(box)self:FilterTabs(box:GetText())end)
+    search:SetScript("OnTextChanged",function(box)searchHint:SetShown(box:GetText()=="");self:FilterTabs(box:GetText())end)
     self.search=search
     self.pageBuilders={profiles="CreateProfilesPanel",general="CreateGeneralPanel",character="CreateCharacterOptions",spellbook="CreateSpellbookOptions",talents="CreateTalentsOptions",achievements="CreateAchievementsOptions",mapquests="CreateMapQuestOptions",health="CreateHealthOptions",compatibility="CreateCompatibilityOptions",errors="CreateErrorsPanel",status="CreateStatusPanel"}
     if AUI.isForever then
@@ -414,7 +554,14 @@ function Menu:Create()
         self.pageBuilders.achievements=nil
         self.pageBuilders.actionbars="CreateActionBarOptions"
         self.pageBuilders.backgrounds="CreateBackgroundOptions"
+        if AUI.modules.SettingsRegistry then
+            self.pageBuilders.unitframes="CreateUnitFrameOptions";self.pageBuilders.bags="CreateBagOptions";self.pageBuilders.chat="CreateChatOptions"
+            self.pageBuilders.talents=nil
+        end
     end
+    if AUI.isForever and AUI.modules.SettingsRegistry then
+        for index,section in ipairs(AUI.modules.SettingsRegistry.sections)do self:CreateTab(section.id,section.label,index)end
+    else
     self:CreateTab("general", "General", 1)
     if AUI.isForever then self:CreateTab("actionbars", "Action bars", 2)end
     if not AUI.isForever then self:CreateTab("character", "Character", 2)end
@@ -428,6 +575,7 @@ function Menu:Create()
     self:CreateTab("status", "About", 10)
     self:CreateTab("profiles", "Profiles", 11)
     if AUI.isForever then self:CreateTab("backgrounds","Backgrounds",12)end
+    end
     self:FilterTabs("")
     AUI:ApplyWindowSettings()
 end
@@ -462,7 +610,7 @@ end
 function Menu:SelectTab(id)
     self:Create()
     if not self.pageBuilders[id]then id="general"end
-    if not self.panels[id]then self[self.pageBuilders[id]](self,self.content)end
+    if not self.panels[id]then self.buildingPage=id;self[self.pageBuilders[id]](self,self.content);self.buildingPage=nil end
 
     for _, tab in ipairs(self.tabs) do
         local selected = tab.panelID == id

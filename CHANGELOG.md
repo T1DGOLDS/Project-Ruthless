@@ -1,3 +1,12 @@
+## 0.14.0-beta.74 — unified profiles and settings foundations
+
+- One Forever profile service saves settings, positions/native element options, chat tabs/filters, spell pins, bag preferences, editor grid/panel position, supported native bar settings and decorative-art choices. Settings and Edit Mode share selection and a separate new-character default. Character working settings persist on normal logout/reload.
+- Preserve legacy settings/layout saves separately and import older per-character layouts on first visit. Keep same-name conflicts distinct; legacy partial saves are labelled. Loading is reversible, overwritten saves have bounded recovery, and Edit Mode Cancel restores the complete setup. Quest/leveling progress, trainer data, macro history and error/recording logs stay local.
+- Add bounded non-executable full-profile sharing; retain old settings-text import. Validate before writes and block profile application in combat. Native preferences that cannot apply produce a warning.
+- Organise existing controls by feature; add unit-frame, chat and bag sections. Search individual controls with synonyms, result pagination, readable destinations and direct scrolling/highlighting. Settings pages remain lazy until opened or first searched; search indexing is cached.
+- Add global and per-group background colours alongside opacity, using the native colour picker with cancel/reset and inherited defaults. Text/icons retain their own opacity. Preserve custom colours through hover refreshes.
+- Add profile, settings UI, migration, chat and editor integration regression checks. Automated validation does not certify live rendering, native bar callbacks, combat or accessibility. First-run preset/accessibility and the aura/cooldown manager remain subsequent stages.
+
 ## 0.14.0-beta.73 — testing and release foundations
 
 - Preserve beta 72 source and a verified recovery ZIP on GitHub before runtime changes. Add six explicit live acceptance gates; stable releases require matching tested source and evidence. Validate all twelve suites before publishing, disclose experimental gate status, preserve local ZIPs and refuse asset replacement.

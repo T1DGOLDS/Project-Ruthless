@@ -88,7 +88,7 @@ function D:Checks()
         if not workspace or not workspace:ReadGuide()then add("WARNING","Selected guide has no readable current step. It may be stopped, unavailable or unsupported.","Map > Library > Guide source")end
     end
     if not CustomAuraContainerGroupDefaultOptions then add("WARNING","Native party aura templates are unavailable in this client; party aura containers cannot be initialized.","Unit frames > Party auras (client capability)")end
-    add("INFO","Settings profiles and layout profiles are still separate in this build; unified profiles are planned.","Profiles / Edit Mode")
+    add("INFO",AUI.modules.UnifiedProfiles and "Settings and Edit Mode share account profiles. Legacy partial saves are labelled; save again to capture a complete setup."or "Settings profiles and layout profiles are separate in this client.","Profiles / Edit Mode")
     local api=C_AddOns
     if api and type(api.IsAddOnLoaded)=="function"then
         -- Detection only. Never load, hook, disable or rewrite these addons.

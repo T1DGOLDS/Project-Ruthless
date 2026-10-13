@@ -35,4 +35,5 @@ jobs:
       - run: npm run test:skyborne
       - run: npm run test:leveling
       - run: npm run test:foundation
+      - run: npm run test:settings
       - run: npm run test:release

@@ -1,6 +1,6 @@
 {
   "name": "project-ruthless",
-  "version": "0.14.0-beta.73",
+  "version": "0.14.0-beta.74",
   "private": true,
   "description": "Local validation tools for the Project Ruthless World of Warcraft addon",
   "scripts": {
@@ -15,7 +15,8 @@
     "test:skyborne": "node tests/run-skyborne-map.cjs",
     "test:leveling": "node tests/run-level-history.cjs",
     "test:foundation": "node tests/run-foundation.cjs",
-    "test:release": "node tests/run-release-gates.cjs"
+    "test:release": "node tests/run-release-gates.cjs",
+    "test:settings": "node tests/run-settings.cjs"
   },
   "devDependencies": {
     "fengari": "^0.1.5",

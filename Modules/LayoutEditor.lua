@@ -20,7 +20,7 @@ end
 function E:InitializeCharacter()
     local account=self:AccountLayouts()
     if ProjectRuthlessCharDB.layoutEditor then return end
-    local state=account.default and account.layouts[account.default]
+    local state=not AUI.modules.UnifiedProfiles and account.default and account.layouts[account.default]
     local elements=clone(state);elements.__chat=nil;elements.__art=nil
     ProjectRuthlessCharDB.layoutEditor={elements=elements,layouts={},active=state and account.default or nil,accountMigrated=true,blizzardArt=state and state.__art and state.__art.blizzardArt==true or false}
     ProjectRuthlessCharDB.pendingLayoutChat=state and state.__chat and clone(state.__chat)or nil
@@ -82,7 +82,7 @@ function E:RestoreChat(tabs)
     if not tabs then return true end
     if InCombatLockdown()or type(FCF_OpenNewWindow)~="function"or type(FCF_GetChatWindowInfo)~="function"then return false end
     local max=Constants and Constants.ChatFrameConstants and Constants.ChatFrameConstants.MaxChatWindows or 10
-    local ordered=clone(tabs);local selectedFrame
+    local ordered=clone(tabs);local selectedFrame;local restored={}
     table.sort(ordered,function(a,b)return (a.dockIndex or 100+a.id)<(b.dockIndex or 100+b.id)end)
     for _,tab in ipairs(ordered)do
         local frame=tab.id<=2 and _G["ChatFrame"..tab.id]or nil
@@ -90,11 +90,12 @@ function E:RestoreChat(tabs)
             for id=3,max do
                 local candidate=_G["ChatFrame"..id]
                 local name,_,_,_,_,_,shown,_,docked=FCF_GetChatWindowInfo(id)
-                if candidate and not candidate.isTemporary and name==tab.name and (shown==true or shown==1 or docked==true or docked==1)then frame=candidate;break end
+                if candidate and not restored[candidate]and not candidate.isTemporary and name==tab.name and (shown==true or shown==1 or docked==true or docked==1)then frame=candidate;break end
             end
         end
         if not frame then frame=FCF_OpenNewWindow(tab.name,true)end
         if not frame then return false end
+        restored[frame]=true
         FCF_SetWindowName(frame,tab.name);FCF_SetWindowColor(frame,tab.r,tab.g,tab.b);FCF_SetWindowAlpha(frame,tab.a)
         FCF_SetChatWindowFontSize(nil,frame,tab.size)
         frame:RemoveAllMessageGroups();for _,group in ipairs(tab.messages or {})do frame:AddMessageGroup(group)end
@@ -114,6 +115,14 @@ function E:RestoreChat(tabs)
             end
         end
         FCF_SetLocked(frame,tab.locked);FCF_SetUninteractable(frame,tab.uninteractable)
+    end
+    -- Complete profiles describe the permanent tabs as one setup. Temporary
+    -- whisper windows and the built-in General/Combat Log frames are retained.
+    if AUI.modules.UnifiedProfiles and type(FCF_Close)=="function"then
+        for id=3,max do local frame=_G["ChatFrame"..id]
+            local _,_,_,_,_,_,shown,_,docked=FCF_GetChatWindowInfo(id)
+            if frame and not frame.isTemporary and not restored[frame]and (shown==true or shown==1 or docked==true or docked==1)then FCF_Close(frame)end
+        end
     end
     if selectedFrame and selectedFrame.isDocked and GENERAL_CHAT_DOCK and type(FCFDock_SelectWindow)=="function"then FCFDock_SelectWindow(GENERAL_CHAT_DOCK,selectedFrame)end
     return true
@@ -189,7 +198,10 @@ function E:Snapshot()
     return state
 end
 function E:Checkpoint()
-    self.history[#self.history+1]=self:Snapshot();if #self.history>20 then table.remove(self.history,1)end
+    local state
+    if AUI.isForever and AUI.modules.UnifiedProfiles then state={__profile=AUI.modules.UnifiedProfiles:Capture(),__name=ProjectRuthlessCharDB.activeProfile}
+    else state=self:Snapshot()end
+    self.history[#self.history+1]=state;if #self.history>20 then table.remove(self.history,1)end
 end
 function E:Restore(state)
     if InCombatLockdown()then return end
@@ -198,12 +210,17 @@ function E:Restore(state)
     self:Store().blizzardArt=state.__art and state.__art.blizzardArt==true or false
     for id,value in pairs(self:Store().elements)do self:Apply(id,value)end
     local style=AUI.modules.ForeverStyle;if style then style:ApplySettings()end
+    ProjectRuthlessCharDB.pendingLayoutChat=nil
     if not self:RestoreChat(state.__chat)then ProjectRuthlessCharDB.pendingLayoutChat=clone(state.__chat)end
     self:Refresh()
 end
 function E:Undo()
     if InCombatLockdown()then return end
-    local state=table.remove(self.history);if state then self:Restore(state)end
+    local state=table.remove(self.history)
+    if state then
+        if state.__profile and AUI.modules.UnifiedProfiles then AUI.modules.UnifiedProfiles:Apply(state.__profile,state.__name)
+        else self:Restore(state)end
+    end
 end
 -- Coordinates are UIParent units from screen centre, independent of element scale.
 function E:Snap(id,x,y)
@@ -330,12 +347,14 @@ function E:Create()
         self.coordinates[field]=input
     end
     self:CreateSettingsButton(f,button)
-    self.name=CreateFrame("EditBox",nil,f,"InputBoxTemplate");self.name:SetPoint("TOPLEFT",20,-466);self.name:SetSize(126,24);self.name:SetAutoFocus(false);self.name:SetMaxLetters(32);self.name:SetText(self:Store().active or self:AccountLayouts().default or "")
+    local profileDefault
+    if AUI.modules.UnifiedProfiles then profileDefault=AUI.modules.UnifiedProfiles:Store().default else profileDefault=self:AccountLayouts().default end
+    self.name=CreateFrame("EditBox",nil,f,"InputBoxTemplate");self.name:SetPoint("TOPLEFT",20,-466);self.name:SetSize(126,24);self.name:SetAutoFocus(false);self.name:SetMaxLetters(AUI.modules.UnifiedProfiles and 64 or 32);self.name:SetText(self:Store().active or profileDefault or "")
     button("v",150,-466,28,function(button)self:ProfileMenu(button)end)
-    button("Save",190,-466,48,function()local ok=self:Save(self.name:GetText());if not ok then AUI:Print("Enter a layout name (up to 10 layouts).")end end)
-    button("Load",242,-466,50,function()if not self:Load(self.name:GetText())then AUI:Print("No saved layout with that name.")end end)
+    button("Save",190,-466,48,function()local ok,message=self:Save(self.name:GetText());if message then AUI:Print(message)elseif not ok then AUI:Print("Enter a valid profile name.")end end)
+    button("Load",242,-466,50,function()local ok,message=self:Load(self.name:GetText());if message then AUI:Print(message)elseif not ok then AUI:Print("No saved profile with that name.")end end)
     local defaultLabel=f:CreateFontString(nil,"OVERLAY","GameFontNormalSmall");defaultLabel:SetPoint("TOPLEFT",14,-498);defaultLabel:SetText("Default for new characters")
-    self.defaultProfile=button(self:AccountLayouts().default or "None",14,-514,278,function(anchor)self:DefaultProfileMenu(anchor)end)
+    self.defaultProfile=button(profileDefault or "None",14,-514,278,function(anchor)self:DefaultProfileMenu(anchor)end)
     button("Undo",14,-550,84,function()self:Undo()end)
     button("Reset selected",102,-550,190,function()if self.selected and not InCombatLockdown()then self:Checkpoint();local t=self.targets[self.selected];self:Apply(self.selected,t.default);self:Store().elements[self.selected]=clone(t.default);self:Refresh()end end)
     button("Cancel",14,-588,134,function()self:Close(true)end);button("Done",158,-588,134,function()self:Close()end)
@@ -452,10 +471,17 @@ function E:Show()
     if InCombatLockdown()then AUI:Print("Edit layout after combat.");return end
     self:Create();if self.frame:IsShown()then self:Refresh();return end
     self:Discover();self.before=self:Snapshot();self.history={};self.frame:Show();self:Refresh()
+    if AUI.isForever and AUI.modules.UnifiedProfiles then self.beforeProfile=AUI.modules.UnifiedProfiles:Capture();self.beforeProfileName=ProjectRuthlessCharDB.activeProfile end
 end
 function E:Close(cancel)
     if EditModeSystemSettingsDialog then EditModeSystemSettingsDialog:Hide()end
-    if not InCombatLockdown()then if cancel then self:Restore(self.before)else local state=self:Snapshot();state.__chat=nil;state.__art=nil;self:Store().elements=state end end
+    if not InCombatLockdown()then
+        if cancel then
+            if self.beforeProfile and AUI.modules.UnifiedProfiles then AUI.modules.UnifiedProfiles:Apply(self.beforeProfile,self.beforeProfileName)
+            else self:Restore(self.before)end
+        else local state=self:Snapshot();state.__chat=nil;state.__art=nil;self:Store().elements=state end
+    end
+    self.beforeProfile=nil;self.beforeProfileName=nil
     self.frame:Hide()
 end
 function E:InstallGameMenuEntry()

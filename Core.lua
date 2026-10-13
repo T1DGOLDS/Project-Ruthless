@@ -146,8 +146,8 @@ function AUI:CreateButton(parent)
     local label=button:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
     label:SetPoint("LEFT",5,0); label:SetPoint("RIGHT",-5,0); label:SetJustifyH("CENTER")
     label:SetTextColor(r,g,b,1); button:SetFontString(label); button.label=label
-    button:HookScript("OnEnter",function(self) if self:IsEnabled() then self:SetBackdropColor(0.075,0.065,0.09,AUI.isForever and AUI:BackgroundOpacity("Options")or 1); self:SetBackdropBorderColor(r,g,b,0.9) end end)
-    button:HookScript("OnLeave",function(self) self:SetBackdropColor(0.035,0.039,0.052,AUI.isForever and AUI:BackgroundOpacity("Options")or .98); self:SetBackdropBorderColor(0.16,0.17,0.21,1) end)
+    button:HookScript("OnEnter",function(self) if self:IsEnabled() then if AUI.isForever then AUI:PaintBackground(self,"Options",.075,.065,.09)else self:SetBackdropColor(.075,.065,.09,1)end;self:SetBackdropBorderColor(r,g,b,0.9) end end)
+    button:HookScript("OnLeave",function(self)if AUI.isForever then AUI:PaintBackground(self,"Options",.035,.039,.052)else self:SetBackdropColor(.035,.039,.052,.98)end;self:SetBackdropBorderColor(0.16,0.17,0.21,1)end)
     button:HookScript("OnDisable",function() label:SetTextColor(0.40,0.42,0.48,1) end)
     button:HookScript("OnEnable",function() label:SetTextColor(r,g,b,1) end)
     return button
@@ -173,13 +173,16 @@ end
 function AUI:PaintBackground(frame,key,r,g,b,texture)
     self.backgrounds[frame]={key=key,r=r,g=g,b=b,texture=texture}
     local alpha=self:BackgroundOpacity(key)
+    if self.BackgroundColor then r,g,b=self:BackgroundColor(key,r,g,b)end
     if texture then frame:SetColorTexture(r,g,b,alpha)else frame:SetBackdropColor(r,g,b,alpha)end
 end
 function AUI:RefreshBackgrounds(key)
     for frame,style in pairs(self.backgrounds)do
         if not key or key==style.key then
         local alpha=self:BackgroundOpacity(style.key)
-        if style.texture then frame:SetColorTexture(style.r,style.g,style.b,alpha)else frame:SetBackdropColor(style.r,style.g,style.b,alpha)end
+        local r,g,b=style.r,style.g,style.b
+        if self.BackgroundColor then r,g,b=self:BackgroundColor(style.key,r,g,b)end
+        if style.texture then frame:SetColorTexture(r,g,b,alpha)else frame:SetBackdropColor(r,g,b,alpha)end
         end
     end
     local details=Details or _detalhes
@@ -489,6 +492,7 @@ eventFrame:SetScript("OnEvent", function(_, event, loadedAddon)
         ProjectRuthlessCharDB = ProjectRuthlessCharDB or {}
         ApplyDefaults(ProjectRuthlessDB, defaults)
         if AUI.isForever and ProjectRuthlessDB.general.backgroundOpacity==nil then ProjectRuthlessDB.general.backgroundOpacity=math.max(.72,ProjectRuthlessDB.questWorkspace.opacity or .52)end
+        if AUI.isForever and AUI.modules.UnifiedProfiles then AUI.modules.UnifiedProfiles:InitializeCharacter()end
         if AUI.modules.LayoutEditor then AUI.modules.LayoutEditor:InitializeCharacter()end
 
         -- v0.11.0 restores Blizzard's Character frame for every existing
