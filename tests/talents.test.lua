@@ -42,6 +42,8 @@ function Frame:ClearFocus() self.focus=false end
 function Frame:SetBackdropBorderColor(...) self.border={...} end
 function Frame:SetTextColor(...) self.color={...} end
 for _,name in ipairs({"SetBackdrop","SetBackdropColor","SetFontString","SetJustifyH","SetTexture","SetAtlas","EnableMouseWheel","EnableMouse","RegisterForDrag","RegisterForClicks","SetAutoFocus","SetMaxLetters","RegisterEvent","SetVertexColor","SetColorTexture"}) do Frame[name]=function() end end
+function Frame:RegisterUnitEvent(name,unit)self.events=self.events or {};self.events[name]=unit end
+function Frame:UnregisterEvent(name)if self.events then self.events[name]=nil end end
 function CreateFrame(kind,name,parent)
     return setmetatable({parent=parent,kind=kind,name=name,scripts={},w=100,h=100,scale=1,alpha=1,level=1,shown=true,enabled=true,points={},text="",offset=0},Frame)
 end

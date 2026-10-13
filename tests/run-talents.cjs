@@ -6,7 +6,7 @@ const nativeRoot = process.env.PR_WOW_SOURCE;
 if (!nativeRoot) throw new Error('Set PR_WOW_SOURCE to an extracted Blizzard Interface/AddOns directory.');
 const parser = require(path.join(dependencyRoot,'luaparse'));
 const {lua,lauxlib,lualib,to_luastring,to_jsstring} = require(path.join(dependencyRoot,'fengari'));
-for (const file of fs.readdirSync(root,{recursive:true}).filter(f=>f.endsWith('.lua') && !f.startsWith('tests'))) {
+for (const file of fs.readdirSync(root,{recursive:true}).filter(f=>f.endsWith('.lua') && !f.startsWith('tests') && !f.startsWith('native'))) {
   parser.parse(fs.readFileSync(path.join(root,file),'utf8'),{luaVersion:'5.1'});
 }
 console.log('PASS: Lua 5.1 syntax');

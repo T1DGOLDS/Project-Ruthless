@@ -26,13 +26,36 @@ local function GetSource(message, stack)
     return "Unknown addon"
 end
 
+-- Inspect taint provenance only after this specific failure; never read cooldowns.
+function ErrorLog:ActionBarTaintDetails()
+    if not AUI.isForever or type(issecurevariable)~="function"then return end
+    local lines={};local function check(owner,key,label)
+        local ok,clean,source=pcall(issecurevariable,owner,key)
+        if ok and clean==false then lines[#lines+1]=label.." = "..(type(source)=="string"and source or "tainted")end
+    end
+    for _,name in ipairs({"ActionButton_UpdateCooldown","ActionButton_ApplyCooldown","ActionBarButtonEventsFrame"})do check(_G,name,name)end
+    local registry=ActionBarButtonEventsFrame
+    if registry then
+        check(registry,"frames","ActionBarButtonEventsFrame.frames");check(registry,"OnEvent","ActionBarButtonEventsFrame.OnEvent")
+        if type(registry.frames)=="table"then
+            for key in pairs(registry.frames)do check(registry.frames,key,"ActionBarButtonEventsFrame.frames["..tostring(key).."]")end
+        end
+    end
+    for _,prefix in ipairs({"ActionButton","MultiBarBottomLeftButton","MultiBarBottomRightButton","MultiBarRightButton","MultiBarLeftButton","MultiBar5Button","MultiBar6Button","MultiBar7Button"})do
+        for i=1,12 do local name=prefix..i;local button=_G[name]
+            if button then for _,key in ipairs({"action","spellID","cooldown","chargeCooldown","lossOfControlCooldown","enableLOCCooldown","OnEvent"})do check(button,key,name.."."..key)end end
+        end
+    end
+    if #lines==0 then return "No tainted action-button fields found; upstream execution taint still requires a live taint log."end
+    return table.concat(lines,"\n",1,math.min(#lines,32))
+end
 local function FormatEntry(entry, index)
     return ("Project Ruthless Lua Error #%d\nTime: %s\nCount: %d\n\n%s\n\nStack:\n%s"):format(
         index,
         entry.time or "unknown",
         entry.count or 1,
         entry.message or "unknown error",
-        entry.stack or "stack unavailable"
+        (entry.stack or "stack unavailable")..(entry.actionBarTaint and "\n\nAction-bar taint provenance:\n"..entry.actionBarTaint or "")
     )
 end
 
@@ -59,6 +82,7 @@ function ErrorLog:Record(message)
                 message = text,
                 stack = stack,
                 count = 1,
+                actionBarTaint = text:find("SetCooldown",1,true)and self:ActionBarTaintDetails()or nil,
             }
         end
 
@@ -170,6 +194,7 @@ function ErrorLog:CreateViewer()
 
     frame.editBox = editBox
     self.viewer = frame
+    if UISpecialFrames then UISpecialFrames[#UISpecialFrames+1]="ProjectRuthlessErrorLogFrame"end
     return frame
 end
 
@@ -245,7 +270,5 @@ function ErrorLog:HandleCommand(command)
 end
 
 function ErrorLog:OnPlayerLogin()
-    C_Timer.After(0, function()
-        ErrorLog:Install()
-    end)
+    if not self.installed then self:Install()end
 end

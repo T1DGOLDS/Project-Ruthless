@@ -21,10 +21,10 @@ local function SetTrackingFilter(filterID, enabled)
     return true
 end
 
-function MapQuests:RefreshWorldMap()
+function MapQuests:RefreshWorldMap(request)
     if not WorldMapFrame or not WorldMapFrame:IsShown() then return end
     local mapID=WorldMapFrame.GetMapID and WorldMapFrame:GetMapID()
-    if mapID and C_QuestLine and C_QuestLine.RequestQuestLinesForMap then C_QuestLine.RequestQuestLinesForMap(mapID) end
+    if request~=false and mapID and C_QuestLine and C_QuestLine.RequestQuestLinesForMap then C_QuestLine.RequestQuestLinesForMap(mapID) end
     if WorldMapFrame.RefreshAllDataProviders then WorldMapFrame:RefreshAllDataProviders() end
 end
 
@@ -35,6 +35,8 @@ function MapQuests:ApplySettings()
     self.pendingApply=false
 
     local enabled=settings.enabled==true
+    -- This is the native master switch for both quest pins and blue objective blobs.
+    if SetCVar then SetCVar("questPOI",enabled and "1" or "0") end
     if SetCVar then SetCVar("questPOILocalStory",enabled and settings.showLocalStories and "1" or "0") end
     if Enum and Enum.MinimapTrackingFilter then
         SetTrackingFilter(Enum.MinimapTrackingFilter.TrivialQuests,enabled and settings.showTrivial)
@@ -52,7 +54,11 @@ function MapQuests:OnPlayerLogin()
     events:SetScript("OnEvent",function(_,event)
         if event=="PLAYER_ENTERING_WORLD" then C_Timer.After(1,function() MapQuests:ApplySettings() end)
         elseif event=="PLAYER_REGEN_ENABLED" and MapQuests.pendingApply then MapQuests:ApplySettings()
-        elseif event=="QUESTLINE_UPDATE" and Settings() and Settings().enabled then MapQuests:RefreshWorldMap() end
+        elseif event=="QUESTLINE_UPDATE" and Settings() and Settings().enabled then
+            if not MapQuests.refreshScheduled and WorldMapFrame and WorldMapFrame:IsShown()then
+                MapQuests.refreshScheduled=true;C_Timer.After(0,function()MapQuests.refreshScheduled=nil;MapQuests:RefreshWorldMap(false)end)
+            end
+        end
     end)
     self.events=events
 end

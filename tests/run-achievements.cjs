@@ -5,13 +5,15 @@ const dependencyRoot = process.env.PR_TEST_DEPS || path.join(root, 'node_modules
 const parser = require(path.join(dependencyRoot, 'luaparse'));
 const {lua, lauxlib, lualib, to_luastring, to_jsstring} = require(path.join(dependencyRoot, 'fengari'));
 
-for (const file of fs.readdirSync(root, {recursive:true}).filter(file => file.endsWith('.lua') && !file.startsWith('tests'))) {
+for (const file of fs.readdirSync(root, {recursive:true}).filter(file => file.endsWith('.lua') && !file.startsWith('tests') && !file.startsWith('native'))) {
   parser.parse(fs.readFileSync(path.join(root, file), 'utf8'), {luaVersion:'5.1'});
 }
 console.log('PASS: Lua 5.1 syntax');
 
 const L = lauxlib.luaL_newstate();
 lualib.luaL_openlibs(L);
+lua.lua_pushstring(L,to_luastring(fs.readFileSync(path.join(root,'Core.lua'),'utf8').match(/-- Demand-driven runtime helpers\.[\s\S]*?-- End demand-driven runtime helpers\./)[0]));
+lua.lua_setglobal(L,to_luastring('RUNTIME_SOURCE'));
 lua.lua_pushstring(L, to_luastring(fs.readFileSync(path.join(root, 'Modules/Achievements.lua'), 'utf8')));
 lua.lua_setglobal(L, to_luastring('ACHIEVEMENTS_SOURCE'));
 

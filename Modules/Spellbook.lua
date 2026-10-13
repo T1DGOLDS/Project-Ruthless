@@ -82,6 +82,8 @@ local SPELL_FILTERS = {
     { id="missing", label="Not on bars" },
 }
 
+if AUI.isForever then table.insert(SPELL_FILTERS,2,{id="future",label="Future skills"})end
+
 local KNOWN_CONDITIONS = {}
 for _, condition in ipairs(MACRO_CONDITIONS) do KNOWN_CONDITIONS[condition.text:lower()] = true end
 local VALID_CONDITION_BASES = {
@@ -101,7 +103,7 @@ end
 
 local function Surface(frame, background, border)
     frame:SetBackdrop({ bgFile="Interface\\Buttons\\WHITE8X8", edgeFile="Interface\\Buttons\\WHITE8X8", edgeSize=1 })
-    frame:SetBackdropColor(unpack(background or COLORS.surface))
+    if AUI.isForever then AUI:StyleSurface(frame,"window",nil,"Spellbook")else frame:SetBackdropColor(unpack(background or COLORS.surface))end
     frame:SetBackdropBorderColor(unpack(border or COLORS.border))
 end
 
@@ -116,27 +118,22 @@ local function InstallVisibleCaret(editBox)
     local caret=editBox:CreateTexture(nil,"OVERLAY")
     caret:SetColorTexture(r,g,b,1); caret:SetSize(2,14); caret:Hide()
     caret.cursorX,caret.cursorY,caret.cursorHeight=0,0,14
+    local blink=caret:CreateAnimationGroup();blink:SetLooping("REPEAT")
+    for order=1,2 do local alpha=blink:CreateAnimation("Alpha");alpha:SetOrder(order);alpha:SetStartDelay(.49);alpha:SetDuration(.01);alpha:SetFromAlpha(order==1 and 1 or 0);alpha:SetToAlpha(order==1 and 0 or 1)end
     local function PositionCaret()
         caret:ClearAllPoints()
         caret:SetPoint("TOPLEFT",editBox,"TOPLEFT",caret.cursorX+1,caret.cursorY)
         caret:SetHeight(caret.cursorHeight)
         if editBox:HasFocus() then caret:Show(); caret:SetAlpha(1) end
-        caret.blinkElapsed=0
+        blink:Stop();if editBox:HasFocus()then blink:Play()end
     end
     editBox:HookScript("OnCursorChanged",function(_,x,y,_,height)
         caret.cursorX=x or 0; caret.cursorY=y or 0; caret.cursorHeight=math.max(height or 14,12)
         PositionCaret()
     end)
     editBox:HookScript("OnEditFocusGained",PositionCaret)
-    editBox:HookScript("OnEditFocusLost",function() caret:Hide() end)
-    editBox:HookScript("OnUpdate",function(box,elapsed)
-        if not box:HasFocus() then caret:Hide(); return end
-        caret.blinkElapsed=(caret.blinkElapsed or 0)+elapsed
-        if caret.blinkElapsed>=0.5 then
-            caret.blinkElapsed=caret.blinkElapsed-0.5
-            caret:SetShown(not caret:IsShown())
-        end
-    end)
+    editBox:HookScript("OnEditFocusLost",function()blink:Stop();caret:Hide()end)
+    editBox:HookScript("OnHide",function()blink:Stop();caret:Hide()end)
     return caret
 end
 
@@ -168,6 +165,7 @@ function Spellbook:GetActionBarState(spellID)
     if not key then return nil end
     self.actionBarState=self.actionBarState or {}
     if AUI.isForever and InCombatLockdown() then return self.actionBarState[key] end
+    if self.actionBarState[key]~=nil then return self.actionBarState[key]end
     local onBars=IsSpellOnBars(spellID)
     self.actionBarState[key]=onBars
     return onBars
@@ -177,6 +175,201 @@ local function PlayerBank()
     return Enum.SpellBookSpellBank.Player
 end
 
+local function Read(fn,...)
+    if type(fn)~="function"then return end
+    local ok,a,b,c,d,e=pcall(fn,...)
+    if not ok then return end
+    for _,v in pairs({a,b,c,d,e})do if issecretvalue and issecretvalue(v)then return end end
+    return a,b,c,d,e
+end
+local function TrainingKey(name,rank)return (name or "").."\031"..(rank or "")end
+-- Query only the player's native progression, once per spell-data revision.
+function Spellbook:RequestFutureSkills()
+    if self.futureSkills or self.futureLoading or not C_SpellBook or type(C_SpellBook.GetCurrentLevelSpells)~="function"then return end
+    if InCombatLockdown()then
+        if AUI.AfterCombat then AUI:AfterCombat("futureSkills",function()self:RequestFutureSkills()end)end
+        return
+    end
+    self.futureLoading=true;self.futureRevision=(self.futureRevision or 0)+1
+    local revision=self.futureRevision;local level=1;local items,seen={},{}
+    local maximum=GameRulesUtil and Read(GameRulesUtil.GetEffectiveMaxLevelForPlayer)or 60
+    if type(maximum)~="number"or maximum<1 or maximum>200 then maximum=60 end
+    local function batch()
+        if revision~=self.futureRevision then return end
+        if InCombatLockdown()then self.futureLoading=nil;self:RequestFutureSkills();return end
+        local last=math.min(maximum,level+19)
+        for learned=level,last do
+            local ids=Read(C_SpellBook.GetCurrentLevelSpells,learned)
+            if type(ids)=="table"then for _,id in ipairs(ids)do
+                if type(id)=="number"and not seen[id]then
+                    seen[id]=true
+                    local info=C_Spell and Read(C_Spell.GetSpellInfo,id)
+                    if type(info)=="table"and type(info.name)=="string"then
+                        local rank=C_Spell.GetSpellSubtext and Read(C_Spell.GetSpellSubtext,id)
+                        items[#items+1]={name=info.name,spellID=id,iconID=info.iconID,rank=type(rank)=="string"and rank~=""and rank or nil,requiredLevel=learned,future=true,progression=true}
+                    end
+                end
+            end end
+        end
+        level=last+1
+        if level<=maximum then C_Timer.After(.1,batch);return end
+        self.futureLoading=nil;self.futureSkills=items;self.groupCache=nil
+        if self.frame and self.frame:IsShown()then AUI:QueueRefresh(self)end
+    end
+    C_Timer.After(.1,batch)
+end
+local function SkillLevel(item)
+    local level=item.requiredLevel
+    return type(level)=="number"and level>0 and level or 1000
+end
+local function SortSkills(items)
+    table.sort(items,function(a,b)
+        local al,bl=SkillLevel(a),SkillLevel(b)
+        if al~=bl then return al<bl end
+        if a.name~=b.name then return (a.name or "")<(b.name or "")end
+        local ar,br=tonumber((a.rank or ""):match("%d+")),tonumber((b.rank or ""):match("%d+"))
+        if ar and br and ar~=br then return ar<br end
+        return (a.rank or "")<(b.rank or "")
+    end)
+end
+function Spellbook:FutureTraining(groups)
+    self:RequestFutureSkills()
+    local db=ProjectRuthlessCharDB or {}
+    db.trainingSkillLines=db.trainingSkillLines or {}
+    local known,knownIDs,highest,byName,byGroup={},{},{},{},{}
+    local progression={}
+    for _,item in ipairs(self.futureSkills or {})do progression[TrainingKey(item.name,item.rank)]=item end
+    for _,group in ipairs(groups)do
+        byGroup[group.name]=group
+        for _,item in ipairs(group.items)do
+            local native=progression[TrainingKey(item.name,item.rank)]
+            if SkillLevel(item)==1000 and native then item.requiredLevel=native.requiredLevel end
+            known[TrainingKey(item.name,item.rank)]=true
+            if item.spellID then knownIDs[item.spellID]=true end
+            -- Native spellbook skill lines are authoritative for spec grouping.
+            byName[item.name]=group.name;db.trainingSkillLines[item.name]=group.name
+            if not item.future then
+                local rank=item.rank and tonumber(item.rank:match("%d+"))
+                if rank then highest[item.name]=math.max(highest[item.name]or 0,rank)end
+            end
+        end
+    end
+    local future,seen={},{}
+    local function add(source,key)
+        local rank=source.rank and tonumber(source.rank:match("%d+"))
+        if seen[key]or known[key]or source.spellID and knownIDs[source.spellID]or rank and highest[source.name]and rank<=highest[source.name]then return end
+        -- Merge before deduplication: a price/offer must not hide richer progression.
+        local item={};for k,v in pairs(source)do item[k]=v end
+        local native=progression[key]
+        if native then
+            item.spellID=item.spellID or native.spellID;item.iconID=item.iconID or native.iconID
+            if SkillLevel(item)==1000 then item.requiredLevel=native.requiredLevel end
+        end
+        if SkillLevel(item)==1000 and item.spellID and C_Spell then
+            local level=Read(C_Spell.GetSpellLevelLearned,item.spellID)
+            if type(level)=="number"and level>0 then item.requiredLevel=level end
+        end
+        item.skillLine=byName[item.name]or db.trainingSkillLines[item.name]
+        seen[key]=true;future[#future+1]=item
+    end
+    for key,item in pairs(db.trainingOffers or {})do if item.future then add(item,key)end end
+    for _,item in ipairs(self.futureSkills or {})do
+        local key=TrainingKey(item.name,item.rank)
+        local copy={};for k,v in pairs(item)do copy[k]=v end
+        local price=db.trainingPrices and db.trainingPrices[key]
+        copy.trainingCost=price and price.cost;add(copy,key)
+    end
+    for key,price in pairs(db.trainingPrices or {})do
+        if not (db.trainingOffers and db.trainingOffers[key])then
+            local name,rank=key:match("^(.-)\031(.*)$")
+            if name and name~=""then
+                rank=rank~=""and rank or nil
+                local info=C_Spell and Read(C_Spell.GetSpellInfo,name)
+                local id=type(info)=="table"and info.spellID
+                -- Name lookup can resolve a different rank. Never assign its level.
+                local resolvedRank=id and Read(C_Spell.GetSpellSubtext,id)
+                if resolvedRank~=rank then id=nil end
+                add({name=name,rank=rank,spellID=id,iconID=type(info)=="table"and info.iconID or nil,trainingCost=price.cost,future=true,legacyTraining=true},key)
+            end
+        end
+    end
+    local unassigned={}
+    for _,item in ipairs(future)do
+        local group=item.skillLine and byGroup[item.skillLine]
+        if not group and item.skillLine then
+            group={name=item.skillLine,items={}};groups[#groups+1]=group;byGroup[item.skillLine]=group
+        end
+        if group then group.items[#group.items+1]=item else unassigned[#unassigned+1]=item end
+    end
+    for _,group in ipairs(groups)do SortSkills(group.items)end
+    if #unassigned>0 then
+        SortSkills(unassigned);groups[#groups+1]={name="Training · specialization unconfirmed",items=unassigned}
+    elseif #future==0 then
+        groups[#groups+1]={name=self.futureLoading and "Loading future skills…"or "Future training · visit your class trainer to record skills",items={},hint=true}
+    end
+end
+function Spellbook:TrainingMetadata(item)
+    local _,rank=Read(C_SpellBook.GetSpellBookItemName,item.slotIndex,item.spellBank)
+    item.rank=type(rank)=="string"and rank~=""and rank or nil
+    item.requiredLevel=Read(C_SpellBook.GetSpellBookItemLevelLearned,item.slotIndex,item.spellBank)
+    if SkillLevel(item)==1000 and item.spellID and C_Spell then
+        local level=Read(C_Spell.GetSpellLevelLearned,item.spellID)
+        if type(level)=="number"and level>0 then item.requiredLevel=level end
+    end
+    local prices=ProjectRuthlessCharDB and ProjectRuthlessCharDB.trainingPrices
+    local price=prices and prices[TrainingKey(item.name,item.rank)]
+    item.trainingCost=price and price.cost
+end
+function Spellbook:SpellDetail(item)
+    if not item.future then
+        local detail=item.rank or (item.passive and "Passive"or item.offSpec and "Other specialization"or item.itemType==Enum.SpellBookItemType.Flyout and "Flyout"or "Ability")
+        if AUI.isForever and SkillLevel(item)<1000 then detail=detail.." · Level "..item.requiredLevel end
+        return detail
+    end
+    local cost=item.trainingCost
+    local money=type(cost)=="number"and ("%dg %ds %dc"):format(math.floor(cost/10000),math.floor(cost/100)%100,cost%100)or "Cost unknown"
+    return (item.rank or "Rank unknown").." · "..(type(item.requiredLevel)=="number"and item.requiredLevel>0 and ("Level "..item.requiredLevel)or "Level unknown").." · "..money
+end
+-- Only read trainer offers while its window is open, in small cancellable batches.
+function Spellbook:CaptureTrainingPrices()
+    if not AUI.isForever or InCombatLockdown()then return end
+    local count=Read(GetNumTrainerServices)
+    if type(count)~="number"or count<1 then return end
+    self.trainingRevision=(self.trainingRevision or 0)+1;local revision=self.trainingRevision
+    local index=1;local prices={};local offers={}
+    local trainerType=C_Trainer and Read(C_Trainer.GetTrainerType)
+    local classTrainer=not(Read(IsTradeskillTrainer)) and not(Enum.TrainerType and (trainerType==Enum.TrainerType.Pet or trainerType==Enum.TrainerType.Tradeskills))
+    local function batch()
+        if revision~=self.trainingRevision or InCombatLockdown()then return end
+        local last=math.min(count,index+19)
+        for i=index,last do
+            local name,status,texture,level,rank=Read(GetTrainerServiceInfo,i)
+            -- Older trainer signatures return name, rank, status instead.
+            if status~="available"and status~="unavailable"and status~="used"then
+                if texture=="available"or texture=="unavailable"or texture=="used"then rank,status,level=status,texture,Read(GetTrainerServiceLevel,i)end
+            end
+            local cost=Read(GetTrainerServiceCost,i)
+            if type(name)=="string"and (status=="available"or status=="unavailable"or status=="used")then
+                if type(cost)~="number"or cost<0 then cost=nil end
+                local key=TrainingKey(name,type(rank)=="string"and rank or nil)
+                if cost then prices[key]={cost=cost}end
+                if classTrainer then offers[key]={name=name,rank=type(rank)=="string"and rank or nil,requiredLevel=level,trainingCost=cost,iconID=texture,future=status~="used",trainerOffer=true}end
+            end
+        end
+        index=last+1
+        if index<=count then C_Timer.After(.1,batch);return end
+        ProjectRuthlessCharDB.trainingPrices=ProjectRuthlessCharDB.trainingPrices or {}
+        for key,value in pairs(prices)do ProjectRuthlessCharDB.trainingPrices[key]=value end
+        if classTrainer then
+            ProjectRuthlessCharDB.trainingOffers=ProjectRuthlessCharDB.trainingOffers or {}
+            for key,offer in pairs(offers)do ProjectRuthlessCharDB.trainingOffers[key]=offer end
+        end
+        self.groupCache=nil
+        if self.frame and self.frame:IsShown()then AUI:QueueRefresh(self)end
+    end
+    C_Timer.After(.1,batch)
+end
+
 function Spellbook:AddSkillLine(groups, skillLineIndex, forceName)
     local info = C_SpellBook.GetSpellBookSkillLineInfo(skillLineIndex)
     if not info or info.shouldHide then return end
@@ -184,14 +377,16 @@ function Spellbook:AddSkillLine(groups, skillLineIndex, forceName)
     for index = 1, info.numSpellBookItems or 0 do
         local slotIndex = (info.itemIndexOffset or 0) + index
         local item = C_SpellBook.GetSpellBookItemInfo(slotIndex, PlayerBank())
-        if item and item.itemType ~= Enum.SpellBookItemType.FutureSpell and (ProjectRuthlessDB.spellbook.showOffSpec or not item.isOffSpec) then
+        if item and (AUI.isForever or item.itemType ~= Enum.SpellBookItemType.FutureSpell) and (ProjectRuthlessDB.spellbook.showOffSpec or not item.isOffSpec) then
             items[#items + 1] = {
                 slotIndex=slotIndex, spellBank=PlayerBank(), itemType=item.itemType,
                 spellID=item.spellID, actionID=item.actionID, name=item.name,
                 iconID=item.iconID, passive=item.isPassive, offSpec=item.isOffSpec, bookInfo=item,
+                future=item.itemType==Enum.SpellBookItemType.FutureSpell,
             }
         end
     end
+    if AUI.isForever then for _,item in ipairs(items)do self:TrainingMetadata(item)end end
     if #items > 0 then groups[#groups + 1] = { name=forceName or info.name, items=items } end
 end
 
@@ -203,21 +398,27 @@ function Spellbook:AddProfession(groups, professionIndex)
     for index = 1, numSpells or 0 do
         local slotIndex = (spellOffset or 0) + index
         local item = C_SpellBook.GetSpellBookItemInfo(slotIndex, PlayerBank())
-        if item and item.itemType ~= Enum.SpellBookItemType.FutureSpell then
+        if item and (AUI.isForever or item.itemType ~= Enum.SpellBookItemType.FutureSpell) then
             items[#items + 1] = {
                 slotIndex=slotIndex, spellBank=PlayerBank(), itemType=item.itemType,
                 spellID=item.spellID, actionID=item.actionID, name=item.name,
                 iconID=item.iconID or texture, passive=item.isPassive, bookInfo=item,
+                future=item.itemType==Enum.SpellBookItemType.FutureSpell,
             }
         end
     end
+    if AUI.isForever then for _,item in ipairs(items)do self:TrainingMetadata(item)end end
     local shownRank = (rank or 0) + (rankModifier or 0)
     local suffix = maxRank and maxRank > 0 and (("  %d/%d"):format(shownRank, maxRank)) or ""
     groups[#groups + 1] = { name=(skillLineName or name) .. suffix, items=items, profession=true }
 end
 
 function Spellbook:GetGroups()
-    local groups = {}
+    local key=(self.mode or "class")..":"..tostring(ProjectRuthlessDB.spellbook.showOffSpec)
+    self.groupCache=self.groupCache or {}
+    local groups=self.groupCache[key]
+    if not groups then
+    groups={}
     if self.mode == "general" then
         self:AddSkillLine(groups, Enum.SpellBookSkillLineIndex.General, "General")
     elseif self.mode == "class" then
@@ -228,6 +429,12 @@ function Spellbook:GetGroups()
         local prof1, prof2, archaeology, fishing, cooking = GetProfessions()
         self:AddProfession(groups, prof1); self:AddProfession(groups, prof2); self:AddProfession(groups, cooking); self:AddProfession(groups, fishing); self:AddProfession(groups, archaeology)
     end
+    if AUI.isForever and self.mode=="class"then
+        self:FutureTraining(groups)
+    end
+    self.groupCache[key]=groups
+    end
+    local result={};for _,group in ipairs(groups)do result[#result+1]=group end
     local pinned={}
     for _,group in ipairs(groups) do
         for _,item in ipairs(group.items) do
@@ -235,16 +442,17 @@ function Spellbook:GetGroups()
             if item.pinned then pinned[#pinned+1]=item end
         end
     end
-    if #pinned>0 then table.insert(groups,1,{name="Pinned",items=pinned,pinnedGroup=true}) end
-    return groups
+    if #pinned>0 then table.insert(result,1,{name="Pinned",items=pinned,pinnedGroup=true}) end
+    return result
 end
 
 function Spellbook:MatchesSpellFilter(item)
     local filter=self.spellFilter or Settings().state.spellFilter or "all"
+    if filter=="future"then return item.future==true end
     if filter=="current" then return not item.offSpec end
     if filter=="passive" then return item.passive==true end
-    if filter=="onbar" then return not item.passive and self:GetActionBarState(item.spellID)==true end
-    if filter=="missing" then return not item.passive and not item.offSpec and self:GetActionBarState(item.spellID)==false end
+    if filter=="onbar" then return not item.future and not item.passive and self:GetActionBarState(item.spellID)==true end
+    if filter=="missing" then return not item.future and not item.passive and not item.offSpec and self:GetActionBarState(item.spellID)==false end
     return true
 end
 
@@ -471,7 +679,8 @@ end
 
 function Spellbook:ShowMacroIconPicker()
     if not self.selectedMacro and not self.newMacroDraft then return end
-    self.macroIconChoices=nil; self.iconSearch:SetText(""); self.iconOffset=0; self:RefreshMacroIconPicker(true); self.iconPicker:Show()
+    if not self.iconPicker then self:CreateMacroIconPicker(self.macroView)end
+    self.iconSearch:SetText(""); self.iconOffset=0; self:RefreshMacroIconPicker(true); self.iconPicker:Show()
 end
 
 function Spellbook:CreateMacroIconPicker(parent)
@@ -780,9 +989,14 @@ function Spellbook:CreateSpellButton(parent)
     button.barMarker:SetScript("OnEnter",function(marker) GameTooltip:SetOwner(marker,"ANCHOR_RIGHT"); GameTooltip:AddLine("Locate on action bars",1,1,1); GameTooltip:AddLine("Click to pulse every visible copy.",0.7,0.7,0.75); GameTooltip:Show() end); button.barMarker:SetScript("OnLeave",GameTooltip_Hide)
     button:SetScript("OnEnter", function(self)
         self:SetBackdropColor(0.075,0.078,0.10,0.98)
-        if self.slotIndex then
+        if self.future and not self.slotIndex then
+            GameTooltip:SetOwner(self,"ANCHOR_RIGHT");GameTooltip:AddLine(self.trainingItem.name,1,1,1)
+            GameTooltip:AddLine(Spellbook:SpellDetail(self.trainingItem),.75,.75,.8,true)
+            GameTooltip:AddLine(self.trainingItem.legacyTraining and "Previously recorded trainer price. Required level was not saved; revisit your class trainer to refresh."or self.trainingItem.progression and "Native spell progression. Visit your trainer for the current price and requirements."or "Last observed at your class trainer",.6,.6,.65,true);GameTooltip:Show()
+        elseif self.slotIndex then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             if GameTooltip:SetSpellBookItem(self.slotIndex, self.spellBank) then
+                if self.future then GameTooltip:AddLine(Spellbook:SpellDetail(self.trainingItem),.75,.75,.8,true);GameTooltip:AddLine("Not learned · visit your trainer. Prices are last observed and may change.",.6,.6,.65,true)end
                 if self.actionBarMissing then GameTooltip:AddLine(SPELLBOOK_SEARCH_NOT_ON_ACTIONBAR or "Not on an action bar",1,0.82,0) end
                 GameTooltip:AddLine(self.pinned and "Right-click to unpin" or "Right-click to pin",0.55,0.65,0.8)
                 GameTooltip:Show()
@@ -793,11 +1007,11 @@ function Spellbook:CreateSpellButton(parent)
     button:SetScript("OnClick", function(self,mouseButton)
         if AUI.isForever and InCombatLockdown() then AUI:Print("Combat Spellbook is browse-only; use your action bars to cast.")
         elseif mouseButton=="RightButton" then Spellbook:TogglePinnedSpell(self.spellID)
-        elseif self.slotIndex and not self.passive then C_SpellBook.CastSpellBookItem(self.slotIndex, self.spellBank) end
+        elseif self.slotIndex and not self.future and not self.passive then C_SpellBook.CastSpellBookItem(self.slotIndex, self.spellBank) end
     end)
     button:SetScript("OnDragStart", function(self)
         if AUI.isForever and InCombatLockdown() then return end
-        if self.slotIndex and not self.passive then C_SpellBook.PickupSpellBookItem(self.slotIndex, self.spellBank) end
+        if self.slotIndex and not self.future and not self.passive then C_SpellBook.PickupSpellBookItem(self.slotIndex, self.spellBank) end
     end)
     return button
 end
@@ -836,7 +1050,7 @@ function Spellbook:Refresh()
         for _, item in ipairs(group.items) do
             if self:MatchesSpellFilter(item) and (query == "" or groupMatches or Clean(item.name):find(query, 1, true)) then visible[#visible + 1] = item end
         end
-        if #visible > 0 or (group.profession and query == "") then
+        if #visible > 0 or ((group.profession or group.hint) and query == "") then
             if pendingColumn == 1 then y=y+50; pendingColumn=0 end
             local header = self:AcquireDisplayFrame("header")
             header:ClearAllPoints(); header:SetPoint("TOPLEFT", 0, -y); header:SetPoint("TOPRIGHT", 0, -y); header.text:SetText(group.name)
@@ -845,29 +1059,30 @@ function Spellbook:Refresh()
                 local button = self:AcquireDisplayFrame("spell")
                 local column = pendingColumn
                 button:ClearAllPoints(); button:SetPoint("TOPLEFT", column * 316, -y)
-                button.slotIndex=item.slotIndex; button.spellBank=item.spellBank; button.passive=item.passive; button.spellID=item.spellID; button.pinned=item.pinned
+                button.trainingItem=item;button.slotIndex=item.slotIndex; button.spellBank=item.spellBank; button.passive=item.passive; button.future=item.future; button.spellID=item.spellID; button.pinned=item.pinned
                 button.icon:SetTexture(item.iconID or 134400); button.name:SetText(item.name or "Unknown spell")
-                button.detail:SetText(item.passive and "Passive" or item.offSpec and "Other specialization" or item.itemType == Enum.SpellBookItemType.Flyout and "Flyout" or "Ability")
-                button:SetAlpha(item.offSpec and 0.42 or 1)
-                button.icon:SetDesaturated(item.offSpec == true)
+                button.detail:SetText(self:SpellDetail(item))
+                button.detail:SetPoint("RIGHT",-5,0);button.detail:SetJustifyH("LEFT")
+                button:SetAlpha(item.offSpec and 0.42 or item.future and .65 or 1)
+                button.icon:SetDesaturated(item.offSpec == true or item.future==true)
                 local status
-                if not combatRestricted and ProjectRuthlessDB.spellbook.highlightMissing and not item.passive and not item.offSpec and item.bookInfo and SpellSearchUtil and SpellSearchUtil.GetActionbarStatusForSpellBookItemInfo then
+                if not item.future and not combatRestricted and ProjectRuthlessDB.spellbook.highlightMissing and not item.passive and not item.offSpec and item.bookInfo and SpellSearchUtil and SpellSearchUtil.GetActionbarStatusForSpellBookItemInfo then
                     local ok, result=pcall(SpellSearchUtil.GetActionbarStatusForSpellBookItemInfo,item.bookInfo); if ok then status=result end
                 end
                 local missingStatus=ActionButtonUtil and ActionButtonUtil.ActionBarActionStatus and ActionButtonUtil.ActionBarActionStatus.MissingFromAllBars
                 if status ~= nil and missingStatus ~= nil then button.actionBarMissing=status == missingStatus
-                elseif not combatRestricted and ProjectRuthlessDB.spellbook.highlightMissing and not item.passive and not item.offSpec and item.spellID and C_ActionBar and C_ActionBar.FindSpellActionButtons then
+                elseif not item.future and not combatRestricted and ProjectRuthlessDB.spellbook.highlightMissing and not item.passive and not item.offSpec and item.spellID and C_ActionBar and C_ActionBar.FindSpellActionButtons then
                     local slots=C_ActionBar.FindSpellActionButtons(item.spellID); button.actionBarMissing=not slots or #slots == 0
                 else button.actionBarMissing=false end
-                local onBars=not item.passive and self:GetActionBarState(item.spellID)
+                local onBars=not item.future and not item.passive and self:GetActionBarState(item.spellID)
                 button.barMarker:SetShown(onBars and not AUI.isForever); button.pin:SetShown(item.pinned==true)
                 button.actionBarHighlight:SetShown(button.actionBarMissing)
                 if button.actionBarMissing then if not button.actionBarAnim:IsPlaying() then button.actionBarAnim:Play() end
                 elseif button.actionBarAnim:IsPlaying() then button.actionBarAnim:Stop() end
-                if combatRestricted then button.cooldown:Clear()
+                if combatRestricted or item.future then button.cooldown:Clear()
                 else
                     local cooldown = C_SpellBook.GetSpellBookItemCooldown and C_SpellBook.GetSpellBookItemCooldown(item.slotIndex, item.spellBank)
-                    if cooldown and cooldown.duration and cooldown.duration > 0 then
+                    if cooldown and not (issecretvalue and (issecretvalue(cooldown.duration) or issecretvalue(cooldown.startTime) or issecretvalue(cooldown.modRate))) and cooldown.duration and cooldown.duration > 0 then
                         button.cooldown:SetCooldown(cooldown.startTime or 0, cooldown.duration, cooldown.modRate or 1)
                     else button.cooldown:Clear() end
                 end
@@ -899,7 +1114,7 @@ function Spellbook:SelectMode(mode)
     self.mode=mode; Settings().state.mode=mode
     local remembered=Settings().state.scroll[mode] or 0
     self.scroll.targetScroll=remembered; self.scroll:SetVerticalScroll(remembered)
-    self.scroll:SetShown(mode ~= "macros"); self.searchBox:SetShown(mode ~= "macros"); self.filterButton:SetShown(mode ~= "macros"); self.pinHint:SetShown(mode ~= "macros"); self.macroView:SetShown(mode == "macros")
+    self.scroll:SetShown(mode ~= "macros"); self.searchBox:SetShown(mode ~= "macros"); self.filterButton:SetShown(mode ~= "macros"); self.pinHint:SetShown(mode ~= "macros"); if mode=="macros" and not self.macroView then self:CreateMacroView(self.frame)end; if self.macroView then self.macroView:SetShown(mode=="macros")end
     self:Refresh()
 end
 
@@ -930,6 +1145,7 @@ function Spellbook:CreateTab(parent, id, text, x, width)
 end
 
 function Spellbook:ShowMacroTemplates()
+    if not self.templatePanel then self:CreateMacroTemplatePanel(self.macroView)end
     if not self.selectedMacro and not self.newMacroDraft then self:CreateNewMacro() end
     if self.templatePanel then self.templatePanel:Show() end
 end
@@ -974,6 +1190,7 @@ function Spellbook:RefreshMacroBackups()
 end
 
 function Spellbook:ShowMacroBackups()
+    if not self.backupPanel then self:CreateMacroBackupPanel(self.macroView)end
     self.backupScroll:ScrollTo(0,true); self:RefreshMacroBackups(); self.backupPanel:Show()
 end
 
@@ -1103,8 +1320,6 @@ function Spellbook:CreateMacroView(parent)
     if not StaticPopupDialogs.PROJECT_RUTHLESS_DELETE_MACRO then
         StaticPopupDialogs.PROJECT_RUTHLESS_DELETE_MACRO={text="Delete this macro?",button1=DELETE,button2=CANCEL,OnAccept=function() Spellbook:DeleteSelectedMacro() end,timeout=0,whileDead=true,hideOnEscape=true,preferredIndex=3}
     end
-    self:CreateMacroIconPicker(view)
-    self:CreateMacroTemplatePanel(view); self:CreateMacroBackupPanel(view)
     self:SetMacroScope(self.macroScope)
 end
 
@@ -1130,9 +1345,9 @@ function Spellbook:Create()
     local content=CreateFrame("Frame",nil,scroll); content:SetWidth(636); content:SetHeight(1); scroll:SetScrollChild(content)
     self.scroll,self.content=scroll,content
     self.empty=Label(frame,"No spells match this search and filter.","GameFontNormal"); self.empty:SetPoint("TOPLEFT",28,-152); self.empty:SetTextColor(unpack(COLORS.muted)); self.empty:Hide()
-    self:CreateMacroView(frame)
-    frame:SetScript("OnShow",function() Spellbook:Refresh(); C_Timer.After(0,function() local value=Settings().state.scroll[Spellbook.mode] or 0; Spellbook.scroll.targetScroll=value; Spellbook.scroll:SetVerticalScroll(value) end); if not AUI.isForever and MultiActionBar_ShowAllGrids then MultiActionBar_ShowAllGrids(ACTION_BUTTON_SHOW_GRID_REASON_SPELLCOLLECTION) end; if not AUI.isForever and ProfessionMicroButton and ProfessionMicroButton.SetPushed then ProfessionMicroButton:SetPushed() end; PlaySound(SOUNDKIT.IG_SPELLBOOK_OPEN) end)
+    frame:SetScript("OnShow",function() Spellbook.actionBarState={};Spellbook:Refresh(); C_Timer.After(0,function() local value=Settings().state.scroll[Spellbook.mode] or 0; Spellbook.scroll.targetScroll=value; Spellbook.scroll:SetVerticalScroll(value) end); if not AUI.isForever and MultiActionBar_ShowAllGrids then MultiActionBar_ShowAllGrids(ACTION_BUTTON_SHOW_GRID_REASON_SPELLCOLLECTION) end; if not AUI.isForever and ProfessionMicroButton and ProfessionMicroButton.SetPushed then ProfessionMicroButton:SetPushed() end; PlaySound(SOUNDKIT.IG_SPELLBOOK_OPEN) end)
     frame:SetScript("OnHide",function() Settings().state.scroll[Spellbook.mode]=Spellbook.scroll:GetVerticalScroll(); if not AUI.isForever and MultiActionBar_HideAllGrids then MultiActionBar_HideAllGrids(ACTION_BUTTON_SHOW_GRID_REASON_SPELLCOLLECTION) end; if not AUI.isForever and ProfessionMicroButton and ProfessionMicroButton.SetNormal then ProfessionMicroButton:SetNormal() end; PlaySound(SOUNDKIT.IG_ABILITY_CLOSE) end)
+    if self.events then AUI:BindVisibleEvents(frame,self.events,self.visibleEvents)end
     tinsert(UISpecialFrames,"ProjectRuthlessSpellbookFrame")
     self.frame=frame; AUI:ApplyWindowSettings(); self:SelectMode(Settings().state.mode or "class")
 end
@@ -1190,25 +1405,32 @@ function Spellbook:InstallPlayerSpellsRedirects()
     self.originalOpenToSpellBookTabAtSpell=PlayerSpellsUtil.OpenToSpellBookTabAtSpell
     self.originalToggleSpellBookFrame=PlayerSpellsUtil.ToggleSpellBookFrame
     PlayerSpellsUtil.OpenToSpellBookTab=function()
-        if ProjectRuthlessDB.spellbook.separateFromTalents then Spellbook:Show("class")
+        if AUI.isForever or ProjectRuthlessDB.spellbook.separateFromTalents then Spellbook:Show("class")
         elseif Spellbook.originalOpenToSpellBookTab then return Spellbook.originalOpenToSpellBookTab() end
     end
     PlayerSpellsUtil.OpenToSpellBookTabAtSpell=function(spellID,...)
-        if not ProjectRuthlessDB.spellbook.separateFromTalents and Spellbook.originalOpenToSpellBookTabAtSpell then return Spellbook.originalOpenToSpellBookTabAtSpell(spellID,...) end
+        if not AUI.isForever and not ProjectRuthlessDB.spellbook.separateFromTalents and Spellbook.originalOpenToSpellBookTabAtSpell then return Spellbook.originalOpenToSpellBookTabAtSpell(spellID,...) end
         local info=C_Spell and C_Spell.GetSpellInfo and C_Spell.GetSpellInfo(spellID)
         Spellbook:Show("class",info and info.name or "")
         return nil
     end
+    if AUI.isForever and PlayerSpellsUtil.TogglePlayerSpellsFrame then
+        local original=PlayerSpellsUtil.TogglePlayerSpellsFrame
+        PlayerSpellsUtil.TogglePlayerSpellsFrame=function(tab,...)
+            if tab==PlayerSpellsUtil.FrameTabs.SpellBook then return Spellbook:Toggle()end
+            return original(tab,...)
+        end
+    end
     if AUI.isForever and self.originalToggleSpellBookFrame then
         PlayerSpellsUtil.ToggleSpellBookFrame=function(...)
-            if ProjectRuthlessDB.spellbook.separateFromTalents then return Spellbook:Toggle() end
+            if AUI.isForever or ProjectRuthlessDB.spellbook.separateFromTalents then return Spellbook:Toggle() end
             return Spellbook.originalToggleSpellBookFrame(...)
         end
     end
 end
 
 function Spellbook:ApplySettings()
-    if self.frame then self:Refresh() end
+    if self.frame and self.frame:IsShown() then self:Refresh()end
     if PlayerSpellsFrame and PlayerSpellsFrame.UpdateTabs then PlayerSpellsFrame:UpdateTabs() end
     if not AUI.isForever and ProfessionMicroButton and LoadMicroButtonTextures then LoadMicroButtonTextures(ProfessionMicroButton,ProjectRuthlessDB.spellbook.replaceProfessions and "Spellbook" or "Professions") end
 end
@@ -1216,17 +1438,28 @@ end
 function Spellbook:OnPlayerLogin()
     self:InstallMicroButton(); self:InstallPlayerSpellsRedirects(); self:SeparateFromTalents()
     local events=CreateFrame("Frame")
-    for _,event in ipairs({"SPELLS_CHANGED","SKILL_LINES_CHANGED","PLAYER_SPECIALIZATION_CHANGED","UPDATE_MACROS","ACTIONBAR_SLOT_CHANGED","UPDATE_BONUS_ACTIONBAR","PLAYER_REGEN_ENABLED","PLAYER_REGEN_DISABLED"}) do events:RegisterEvent(event) end
+    self.visibleEvents={"ACTIONBAR_SLOT_CHANGED","UPDATE_BONUS_ACTIONBAR","PLAYER_REGEN_ENABLED","PLAYER_REGEN_DISABLED"}
+    for _,event in ipairs({"SPELLS_CHANGED","SKILL_LINES_CHANGED","PLAYER_SPECIALIZATION_CHANGED","UPDATE_MACROS","PLAYER_EQUIPMENT_CHANGED"})do events:RegisterEvent(event)end
     events:RegisterEvent("ADDON_LOADED")
+    if AUI.isForever then for _,event in ipairs({"TRAINER_SHOW","TRAINER_UPDATE","TRAINER_CLOSED","TRAINER_SERVICE_INFO_NAME_UPDATE","SPELL_TEXT_UPDATE","PLAYER_LEVEL_UP"})do events:RegisterEvent(event)end end
     events:SetScript("OnEvent",function(_,event,addon)
+        if event=="TRAINER_SHOW"or event=="TRAINER_UPDATE"or event=="TRAINER_SERVICE_INFO_NAME_UPDATE"then Spellbook:CaptureTrainingPrices();return end
+        if event=="TRAINER_CLOSED"then Spellbook.trainingRevision=(Spellbook.trainingRevision or 0)+1;return end
+        if event=="SPELL_TEXT_UPDATE"or event=="PLAYER_LEVEL_UP"then Spellbook.groupCache=nil end
+        if event=="SPELLS_CHANGED"or event=="SKILL_LINES_CHANGED"or event=="PLAYER_SPECIALIZATION_CHANGED"then Spellbook.futureRevision=(Spellbook.futureRevision or 0)+1;Spellbook.futureLoading=nil;Spellbook.futureSkills=nil;Spellbook.groupCache=nil;Spellbook.spellSuggestions=nil;Spellbook.macroIconChoices=nil end
+        if event=="PLAYER_EQUIPMENT_CHANGED"then Spellbook.macroIconChoices=nil end
+        if event=="ACTIONBAR_SLOT_CHANGED"or event=="UPDATE_BONUS_ACTIONBAR"or event=="SPELLS_CHANGED"or event=="PLAYER_REGEN_ENABLED"then Spellbook.actionBarState={}end
         if event == "ADDON_LOADED" then
             Spellbook.macroCommandSuggestions=nil
+            Spellbook:InstallPlayerSpellsRedirects()
             if addon == "Blizzard_PlayerSpells" then Spellbook:SeparateFromTalents() end
         elseif event == "PLAYER_REGEN_DISABLED" and AUI.isForever then
             if Spellbook.frame and Spellbook.frame:IsShown() then Spellbook:Refresh() end
             return
-        elseif event == "SPELLS_CHANGED" then Spellbook.spellSuggestions=nil; if Spellbook.frame and Spellbook.frame:IsShown() then C_Timer.After(0,function() Spellbook:Refresh() end) end
-        elseif Spellbook.frame and Spellbook.frame:IsShown() then C_Timer.After(0,function() Spellbook:Refresh() end) end
+        elseif event == "SPELLS_CHANGED" then Spellbook.spellSuggestions=nil; if Spellbook.frame and Spellbook.frame:IsShown() then AUI:QueueRefresh(Spellbook) end
+        elseif Spellbook.frame and Spellbook.frame:IsShown() then AUI:QueueRefresh(Spellbook) end
     end)
     self.events=events
+    if AUI.isForever and ClassTrainerFrame and ClassTrainerFrame:IsShown()then self:CaptureTrainingPrices()end
+    if self.frame then AUI:BindVisibleEvents(self.frame,events,self.visibleEvents)end
 end

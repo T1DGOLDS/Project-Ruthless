@@ -213,9 +213,8 @@ function Achievements:CreateDashboard()
     empty:SetWidth(270); empty:SetTextColor(unpack(COLORS.muted)); empty:Hide(); self.emptyRecent = empty
 
     dashboard:SetScript("OnShow", function() self:Refresh() end)
-    dashboard:RegisterEvent("ACHIEVEMENT_EARNED")
-    dashboard:RegisterEvent("CRITERIA_UPDATE")
-    dashboard:SetScript("OnEvent", function() if dashboard:IsShown() then self:Refresh() end end)
+    AUI:BindVisibleEvents(dashboard,dashboard,{"ACHIEVEMENT_EARNED","CRITERIA_UPDATE"})
+    dashboard:SetScript("OnEvent",function()AUI:QueueRefresh(self)end)
 
     local toggle = AUI:CreateButton(AchievementFrame.HeaderDetails)
     toggle:SetSize(112, 24); toggle:SetPoint("TOPLEFT", AchievementFrame.HeaderDetails, "TOPLEFT", 6, -8)
@@ -262,7 +261,7 @@ function Achievements:ShowDashboard()
     self:CreateDashboard()
     if not self.dashboard then return end
     AchievementFrame_ShowSubFrame()
-    self.dashboard:Show(); self.toggle:SetText("Browse details"); self.toggle:Show(); self:Refresh()
+    self.dashboard:Show(); self.toggle:SetText("Browse details"); self.toggle:Show()
 end
 
 function Achievements:ShowNativeStatistics()
@@ -280,7 +279,6 @@ end
 function Achievements:Install()
     if self.installed or not AchievementFrame or not AchievementFrameStats then return end
     self.installed = true
-    self:CreateDashboard()
     hooksecurefunc("AchievementFrameBaseTab_OnClick", function(tabIndex)
         if tabIndex == 3 and not AchievementFrame.isComparison then
             if self:IsEnabled() then self:ShowDashboard() elseif self.toggle then self.toggle:Hide() end
@@ -315,7 +313,7 @@ end
 function Achievements:ApplySettings()
     if not self.installed then return end
     if AchievementFrame and AchievementFrame:IsShown() and AchievementFrame.selectedTab == 3 then
-        if self:IsEnabled() then self:ShowDashboard() else self.dashboard:Hide(); self.toggle:Hide(); AchievementFrame_ShowSubFrame(AchievementFrameStats) end
+        if self:IsEnabled() then self:ShowDashboard() elseif self.dashboard then self.dashboard:Hide(); self.toggle:Hide(); AchievementFrame_ShowSubFrame(AchievementFrameStats)end
     end
 end
 

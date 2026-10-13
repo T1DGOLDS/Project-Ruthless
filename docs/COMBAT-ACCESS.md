@@ -1,0 +1,13 @@
+# Forever combat access — beta70, 2026-10-13
+
+The map's `HandleUserActionToggleSelf` stays Blizzard-owned. RUI previously replaced it, introducing addon execution into the native ShowUIPanel call chain. Removing that override is source-supported; only a live reload/combat test can confirm the client no longer blocks M. No replacement global map function or protected-handler bypass was introduced. Native M semantics may differ from the old forced close on custom pages.
+
+RUI map pages, authored route/chapter/pause/skip controls, dungeon atlas/loot/floor browsing, local dungeon tracking and quest-list objective selection now work during combat. Native map geometry and quest-waypoint writes wait until combat ends, use current selection and omit removed quests. A dungeon/menu button still uses native ShowUIPanel; if that addon-context entry is blocked by the client, the native M key is the supported entry. Spellbook browsing, native bags, settings and leveling history already had no whole-window combat lock. Whole-window native Character/Talents behavior stays Blizzard-owned in Forever.
+
+Protected frame movement/resizing, action-bar mutations, macro edits, bag sorting/assignment and unsupported external guide callbacks retain restrictions. RUI does not bypass client protection. Settings and viewing are separate from those edits.
+
+The pasted Oct13 report includes: Details comparison code requesting absent header column 2; RUI expiring buffs querying restricted auras outside combat; and Oct10 native cooldown failures with action fields tainted by RUI. The first is inside Details' private comparison initialization; RUI appears only as error recorder. No third-party patch was installed. The aura bug is guarded by C_Secrets.ShouldAurasBeSecret before full/incremental queries, with query-failure fallback and no secret arithmetic. Restricted updates discard cached icons; showing newly restricted buffs remains unavailable in this custom indicator. Native party aura containers are separate and unchanged.
+
+Native cooldown taint origin is still not proven. Failure-only provenance identifies tainted action fields but is not a complete origin trace. No action value reset, cooldown interception or securecall workaround was applied. A fresh post-reload error and client taint log remain necessary if it recurs.
+
+Validation covers native map-toggle identity, in-combat tab visibility without native Show/reanchor writes, atlas navigation, authored chapter changes, local selection/deferred waypoints and outside-combat restricted aura queries. Mocks do not prove in-client taint clearance.

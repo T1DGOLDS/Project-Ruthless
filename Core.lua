@@ -28,6 +28,7 @@ local defaults = {
     general = {
         windowScale = 1.00,
         windowOpacity = 1.00,
+        partyGrouped = false,
     },
     character = {
         replaceBlizzard = false,
@@ -40,6 +41,7 @@ local defaults = {
         showOffSpec = true,
         highlightMissing = true,
         macroAutocomplete = true,
+        autoUpdateRanks = true,
         pinnedSpells = {},
         macroBackups = {},
         state = {
@@ -65,6 +67,7 @@ local defaults = {
         showTrivial = true,
         showAccountCompleted = false,
     },
+    questWorkspace = { guideSource = "RUI", autoHandIn = false, prepWestfall = false, enabled = false, showArrow = true, opacity = .52, locked = false },
     errorLog = {
         enabled = true,
         entries = {},
@@ -118,9 +121,12 @@ function AUI:ApplyWindowSettings()
         if module and module.frame then module.frame:SetScale(scale); module.frame:SetAlpha(alpha) end
     end
     if self.modules.Talents then self.modules.Talents:ApplySettings() end
+    local editor=self.modules.LayoutEditor
+    if editor and ProjectRuthlessCharDB and ProjectRuthlessCharDB.layoutEditor then for id,value in pairs(ProjectRuthlessCharDB.layoutEditor.elements or {})do editor:Apply(id,value)end end
 end
 
 function AUI:SettingsChanged(section)
+    if self.isForever then self:RefreshBackgrounds();if self.modules.ForeverHUD then self.modules.ForeverHUD:ApplySettings()end end
     self:ApplyWindowSettings()
     local module=self.modules[section]
     if module and module.ApplySettings then module:ApplySettings() end
@@ -133,17 +139,118 @@ function AUI:CreateButton(parent)
     local _,class=UnitClass("player")
     local color=class and RAID_CLASS_COLORS[class]
     local r,g,b=color and color.r or 0.5,color and color.g or 0.35,color and color.b or 0.94
-    button:SetBackdropColor(0.035,0.039,0.052,0.98)
+    if self.isForever then self:PaintBackground(button,"Options",.035,.039,.052)else button:SetBackdropColor(0.035,0.039,0.052,0.98)end
     button:SetBackdropBorderColor(0.16,0.17,0.21,1)
     local label=button:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
     label:SetPoint("LEFT",5,0); label:SetPoint("RIGHT",-5,0); label:SetJustifyH("CENTER")
     label:SetTextColor(r,g,b,1); button:SetFontString(label); button.label=label
-    button:HookScript("OnEnter",function(self) if self:IsEnabled() then self:SetBackdropColor(0.075,0.065,0.09,1); self:SetBackdropBorderColor(r,g,b,0.9) end end)
-    button:HookScript("OnLeave",function(self) self:SetBackdropColor(0.035,0.039,0.052,0.98); self:SetBackdropBorderColor(0.16,0.17,0.21,1) end)
+    button:HookScript("OnEnter",function(self) if self:IsEnabled() then self:SetBackdropColor(0.075,0.065,0.09,AUI.isForever and AUI:BackgroundOpacity("Options")or 1); self:SetBackdropBorderColor(r,g,b,0.9) end end)
+    button:HookScript("OnLeave",function(self) self:SetBackdropColor(0.035,0.039,0.052,AUI.isForever and AUI:BackgroundOpacity("Options")or .98); self:SetBackdropBorderColor(0.16,0.17,0.21,1) end)
     button:HookScript("OnDisable",function() label:SetTextColor(0.40,0.42,0.48,1) end)
     button:HookScript("OnEnable",function() label:SetTextColor(r,g,b,1) end)
     return button
 end
+
+-- Demand-driven runtime helpers.
+-- Shared appearance tokens keep map, tracker and options on the same palette.
+AUI.Theme={window={.025,.028,.035,.98},sidebar={.035,.039,.052,.99},surface={.065,.070,.090,.96},border={.16,.17,.21,.9},text={.91,.92,.96,1},muted={.52,.55,.64,1}}
+function AUI:AccentColor()
+    local _,class=UnitClass("player");local c=class and RAID_CLASS_COLORS[class]
+    return c and c.r or .5,c and c.g or .35,c and c.b or .94
+end
+-- Background-only opacity. Owned backdrops are registered once, never whole frames.
+AUI.backgrounds=setmetatable({},{__mode="k"})
+AUI.backgroundGroups={{"Quest","Quest tracker"},{"Player","Player frame"},{"Target","Target frame"},{"Party","Party frame"},{"Chat","Chat"},{"ActionBars","Action bars"},{"XP","XP / reputation bars"},{"Micro","Micro menu"},{"BagButtons","Bag buttons"},{"Backpack","Open bags"},{"Meters","Damage meters"},{"Map","Map and quest log"},{"Spellbook","Spellbook"},{"Cast","Cast / attack timers"},{"Options","Settings and edit mode"},{"Professions","Professions"}}
+function AUI:BackgroundOpacity(key)
+    local db=ProjectRuthlessDB or {};local settings=db.general or {}
+    local value=key and settings["background"..key]
+    if type(value)~="number"or value<0 then value=settings.backgroundOpacity end
+    if type(value)~="number"then value=math.max(.72,(db.questWorkspace or {}).opacity or .52)end
+    return math.max(0,math.min(1,value))
+end
+function AUI:PaintBackground(frame,key,r,g,b,texture)
+    self.backgrounds[frame]={key=key,r=r,g=g,b=b,texture=texture}
+    local alpha=self:BackgroundOpacity(key)
+    if texture then frame:SetColorTexture(r,g,b,alpha)else frame:SetBackdropColor(r,g,b,alpha)end
+end
+function AUI:RefreshBackgrounds()
+    for frame,style in pairs(self.backgrounds)do
+        local alpha=self:BackgroundOpacity(style.key)
+        if style.texture then frame:SetColorTexture(style.r,style.g,style.b,alpha)else frame:SetBackdropColor(style.r,style.g,style.b,alpha)end
+    end
+    local details=Details or _detalhes
+    if self.isForever and type(details)=="table"and type(details.GetAllInstances)=="function"then
+        local ok,instances=pcall(details.GetAllInstances,details)
+        if ok and type(instances)=="table"then for _,instance in ipairs(instances)do if type(instance.SetBackgroundAlpha)=="function"then instance:SetBackgroundAlpha(0)end end end
+    end
+end
+function AUI:StyleSurface(frame,role,opacity,key)
+    local c=self.Theme[role or "window"] or self.Theme.window
+    if self.isForever then self:PaintBackground(frame,key or "Options",c[1],c[2],c[3])
+    else frame:SetBackdropColor(c[1],c[2],c[3],opacity or c[4])end
+end
+-- One native interval timer per visible consumer; no Lua dispatch at frame rate.
+function AUI:BindInterval(view,interval,callback)
+    local timer
+    local function stop()if timer then timer:Cancel();timer=nil end end
+    local function start()
+        stop()
+        if not view:IsVisible() then return end
+        timer=C_Timer.NewTicker(interval,function()
+            if not view:IsVisible() then stop();return end
+            callback()
+        end)
+    end
+    view:HookScript("OnShow",start);view:HookScript("OnHide",stop)
+    if view:IsVisible()then start()end
+    return stop
+end
+-- Keyed render work resumes after combat, using current state rather than stale inputs.
+function AUI:AfterCombat(key,callback)
+    if not InCombatLockdown()then callback();return end
+    self.combatWork=self.combatWork or {};self.combatWork[key]=callback
+    if not self.combatEvents then
+        self.combatEvents=CreateFrame("Frame")
+        self.combatEvents:SetScript("OnEvent",function(frame)
+            frame:UnregisterEvent("PLAYER_REGEN_ENABLED")
+            local pending=self.combatWork;self.combatWork={}
+            for _,fn in pairs(pending)do xpcall(fn,geterrorhandler())end
+        end)
+    end
+    self.combatEvents:RegisterEvent("PLAYER_REGEN_ENABLED")
+end
+local function IsViewVisible(view)
+    if not view then return false end
+    if view.IsVisible then local visible=view:IsVisible();if visible~=nil then return visible end end
+    return view:IsShown()
+end
+function AUI:QueueRefresh(owner,method)
+    method=method or "Refresh"
+    owner.refreshQueue=owner.refreshQueue or {}
+    if owner.refreshQueue[method] then return end
+    owner.refreshQueue[method]=true
+    C_Timer.After(0,function()
+        owner.refreshQueue[method]=nil
+        local view=owner.panel or owner.dashboard or owner.frame
+        if IsViewVisible(view)then owner[method](owner)end
+    end)
+end
+
+function AUI:BindVisibleEvents(view,events,names)
+    if events.boundView==view then return end
+    events.boundView=view
+    local function activate()
+        for _,name in ipairs(names)do
+            if name:match("^UNIT_") then events:RegisterUnitEvent(name,"player")else events:RegisterEvent(name)end
+        end
+    end
+    view:HookScript("OnShow",activate)
+    view:HookScript("OnHide",function()for _,name in ipairs(names)do events:UnregisterEvent(name)end end)
+    if IsViewVisible(view)then activate()end
+end
+-- End demand-driven runtime helpers.
+for _,group in ipairs(AUI.backgroundGroups)do defaults.general["background"..group[1]]=-1 end
+
 
 function AUI:CreateSmoothScrollFrame(parent)
     local scroll = CreateFrame("ScrollFrame", nil, parent)
@@ -190,11 +297,18 @@ function AUI:CreateSmoothScrollFrame(parent)
         track:SetShown(range > 0)
     end
 
+    local Animate
+    local function StartAnimation() scroll:SetScript("OnUpdate",Animate)end
+    scroll:HookScript("OnHide",function()scroll:SetScript("OnUpdate",nil)end)
+    scroll:HookScript("OnShow",function()scroll:ScrollTo(scroll.targetScroll,true);scroll.UpdateThumb()end)
+    thumb:HookScript("OnDragStart",StartAnimation)
+    thumb:HookScript("OnDragStop",StartAnimation)
     scroll:SetScript("OnMouseWheel", function(self, delta)
         local range = self:GetVerticalScrollRange() or 0
         self.targetScroll = math.max(0, math.min(range, (self.targetScroll or self:GetVerticalScroll()) - delta * self.scrollStep))
+        StartAnimation()
     end)
-    scroll:SetScript("OnUpdate", function(self, elapsed)
+    Animate=function(self, elapsed)
         local range = self:GetVerticalScrollRange() or 0
         if thumb.dragging and range > 0 then
             local _, cursorY = GetCursorPosition()
@@ -210,11 +324,15 @@ function AUI:CreateSmoothScrollFrame(parent)
         if math.abs(self.targetScroll-current)>0.05 then self:SetVerticalScroll(nextValue)
         elseif current~=self.targetScroll then self:SetVerticalScroll(self.targetScroll) end
         UpdateThumb()
-    end)
+        if not thumb.dragging and math.abs(self.targetScroll-self:GetVerticalScroll())<=.05 then self:SetScript("OnUpdate",nil)end
+    end
+    scroll:HookScript("OnSizeChanged",UpdateThumb)
+    scroll:HookScript("OnScrollRangeChanged",UpdateThumb)
+    scroll:HookScript("OnVerticalScroll",UpdateThumb)
     scroll.UpdateThumb = UpdateThumb
     function scroll:ScrollTo(value, immediate)
         self.targetScroll=math.max(0,math.min(self:GetVerticalScrollRange() or 0,value or 0))
-        if immediate then self:SetVerticalScroll(self.targetScroll) end
+        if immediate then self:SetVerticalScroll(self.targetScroll);UpdateThumb();self:SetScript("OnUpdate",nil)else StartAnimation()end
     end
     return scroll
 end
@@ -296,6 +414,20 @@ function AUI:ShowStatus()
     ))
 end
 
+function AUI:ShowPerformance()
+    local profiler=C_AddOnProfiler
+    local metrics=Enum and Enum.AddOnProfilerMetric
+    if not profiler or not profiler.GetAddOnMetric or not metrics or profiler.IsEnabled and not profiler.IsEnabled()then self:Print("CPU metrics are unavailable in this client.");return end
+    local function read(metric)
+        if metric==nil then return end
+        local ok,value=pcall(profiler.GetAddOnMetric,self.name,metric)
+        if ok and type(value)=="number" and not (issecretvalue and issecretvalue(value))then return value end
+    end
+    local recent,peak=read(metrics.RecentAverageTime),read(metrics.PeakTime)
+    if recent==nil or peak==nil then self:Print("CPU metrics are unavailable right now.");return end
+    self:Print(("CPU · recent average %.3f ms/tick · session peak %.3f ms/tick"):format(recent,peak))
+end
+
 local function HandleSlashCommand(input)
     local command = strtrim(input or ""):lower()
 
@@ -307,6 +439,12 @@ local function HandleSlashCommand(input)
         end
         return
     end
+
+    if command=="edit"or command=="layout"then AUI.modules.LayoutEditor:Show();return end
+
+    if (command=="leveling"or command=="levels")and AUI.modules.LevelHistory then AUI.modules.LevelHistory:Show();return end
+
+    if command=="perf" then AUI:ShowPerformance();return end
 
     if command == "status" then
         AUI:ShowStatus()
@@ -358,7 +496,8 @@ local function HandleSlashCommand(input)
         return
     end
 
-    AUI:Print("Commands: /pr, /pr status, /pr spellbook, /pr talents, /pr achievements, /pr quests, /pr errors, /pr healthglow test, /pr tooltip on, /pr tooltip off")
+    local achievementCommand=not AUI.isForever and ", /pr achievements" or ""
+    AUI:Print("Commands: /pr, /pr status, /pr perf, /pr spellbook, /pr talents"..achievementCommand..", /pr quests, /pr errors, /pr healthglow test, /pr tooltip on, /pr tooltip off")
 end
 
 local eventFrame = CreateFrame("Frame")
@@ -366,14 +505,17 @@ eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:SetScript("OnEvent", function(_, event, loadedAddon)
     if event == "ADDON_LOADED" and loadedAddon == addonName then
+        eventFrame:UnregisterEvent("ADDON_LOADED")
         ProjectRuthlessDB = ProjectRuthlessDB or {}
         ProjectRuthlessCharDB = ProjectRuthlessCharDB or {}
         ApplyDefaults(ProjectRuthlessDB, defaults)
+        if AUI.isForever and ProjectRuthlessDB.general.backgroundOpacity==nil then ProjectRuthlessDB.general.backgroundOpacity=math.max(.72,ProjectRuthlessDB.questWorkspace.opacity or .52)end
+        if AUI.modules.LayoutEditor then AUI.modules.LayoutEditor:InitializeCharacter()end
 
         -- v0.11.0 restores Blizzard's Character frame for every existing
         -- installation. The experimental replacement can be enabled again
         -- explicitly from /pr after the user chooses to test it.
-        if not ProjectRuthlessDB.character.nativeReset110 then
+        if not AUI.isForever and not ProjectRuthlessDB.character.nativeReset110 then
             ProjectRuthlessDB.character.replaceBlizzard = false
             ProjectRuthlessDB.character.nativeReset110 = true
         end
@@ -391,6 +533,7 @@ eventFrame:SetScript("OnEvent", function(_, event, loadedAddon)
             end
         end
     elseif event == "PLAYER_LOGIN" then
+        eventFrame:UnregisterEvent("PLAYER_LOGIN")
         for _, module in pairs(AUI.modules) do
             if module.OnPlayerLogin then
                 module:OnPlayerLogin()

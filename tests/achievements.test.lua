@@ -1,6 +1,7 @@
 unpack = table.unpack
 local AUI = {modules={}}
 function AUI:RegisterModule(name, module) self.modules[name] = module end
+assert(load('local _, AUI=...\n'..RUNTIME_SOURCE))('ProjectRuthless',AUI)
 function AUI:IsFeatureSupported() return true end
 
 ProjectRuthlessDB = {enabled=true, achievements={enabled=true}}
@@ -81,11 +82,12 @@ function Frame:SetStatusBarColor(...) self.statusColor={...} end
 function Frame:SetMinMaxValues(a,b) self.minimum=a; self.maximum=b end
 function Frame:SetValue(value) self.value=value end
 function Frame:SetScript(name, callback) self.scripts[name]=callback end
-function Frame:HookScript(name, callback) self.scripts[name]=callback end
+function Frame:HookScript(name, callback)local old=self.scripts[name];self.scripts[name]=function(...)if old then old(...)end;callback(...)end end
 function Frame:RegisterEvent(event) self.events[event]=true end
+function Frame:UnregisterEvent(event)self.events[event]=nil end
 function Frame:SetShown(shown) self.shown=shown end
 function Frame:Show() self.shown=true; if self.scripts.OnShow then self.scripts.OnShow(self) end end
-function Frame:Hide() self.shown=false end
+function Frame:Hide()local changed=self.shown;self.shown=false;if changed and self.scripts.OnHide then self.scripts.OnHide(self)end end
 function Frame:IsShown() return self.shown end
 function Frame:CreateFontString() return setmetatable({scripts={},events={},shown=true},Frame) end
 function Frame:CreateTexture() return setmetatable({scripts={},events={},shown=true},Frame) end
@@ -117,3 +119,14 @@ assert(selectedAchievement == 101)
 module:ShowNativeStatistics()
 assert(not module.dashboard:IsShown() and shownSubframe == AchievementFrameStats and updatedStats)
 print("PASS: live overview values, statistic discovery, title count, recent completion filtering, category progress, and dashboard/native switching")
+
+local pending={}
+C_Timer={After=function(_,callback)pending[#pending+1]=callback end}
+module:ShowDashboard();local original=module.Refresh;local calls=0
+module.Refresh=function()calls=calls+1 end
+assert(module.dashboard.events.CRITERIA_UPDATE)
+for i=1,100 do module.dashboard.scripts.OnEvent()end
+assert(#pending==1);pending[1]();assert(calls==1)
+pending={};module.dashboard.scripts.OnEvent();module:ShowNativeStatistics();pending[1]();assert(calls==1 and module.dashboard.events.CRITERIA_UPDATE==nil)
+module.Refresh=original
+print('PASS: achievement criteria bursts coalesce; hiding drops subscriptions and queued refreshes')

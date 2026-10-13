@@ -1,0 +1,14 @@
+# Future skills — beta71
+
+The reported Warrior save had 84 trainingPrices records but no trainingOffers. The previous UI only appended trainingOffers, so those recorded future ranks disappeared. FutureTraining now recovers older prices into explicitly historical rows, merges client progression from C_SpellBook.GetCurrentLevelSpells and observed trainer offers, and excludes visible/native duplicate entries plus learned or superseded numeric ranks. It does not invent a complete class catalog, levels, prices or talent eligibility. Legacy prices may include non-class training; their tooltip identifies historical observations rather than verified class-trainer offers. Newly visiting a class trainer refreshes richer name/rank/level/price metadata.
+
+Future skills are shown beneath learned groups in All spells and can be isolated with the Future skills filter. Unknown levels/costs are explicit. Native progression is queried only on demand outside combat, twenty levels per scheduled batch, cached until spell/skill/spec data changes. Existing recorded rows remain browsable during combat. No price is required to retain a valid trainer offer. The trainer's current filter still limits which services the client exposes; RUI does not silently change it. Select unavailable services in the native trainer settings when recording all future training.
+
+Native progression can omit trainer-only ranks or return no uncached information. New characters without recorded offers may need a class trainer visit; the empty section says so. Complete future rank/level/cost coverage still requires live Forever data. Casting and dragging future or historical rows remain disabled. Historical observations do not assert current affordability or availability.
+
+
+## Beta72 — spec and learned-level order
+
+Learned and future ranks now share their native spellbook skill-line groups, sorted by learned level, then name and numeric rank. Known levels come first; missing levels remain last. Learned rows also display their recorded learned level. Native skill-line observations are retained per character so later trainer ranks of an observed ability retain its spec. Exact name/rank progression metadata enriches trainer records before deduplication; exact-rank resolved spell IDs can use native GetSpellLevelLearned. A name lookup resolving another rank never supplies that rank's level.
+
+Historical records with no native spec match stay under Training · specialization unconfirmed. There is still no complete verified Forever catalog for entirely unlearned abilities: a trainer visit can recover levels and icons, but does not itself provide a spec when the client has no skill-line association. No Classic level/spec guesses were added. Missing metadata remains an explicit data gap, rather than a fabricated ordering.

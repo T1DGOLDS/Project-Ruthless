@@ -61,13 +61,16 @@ function Titles:GetEarnedTitles(query)
     if cleanedQuery == "" or Clean("No Title"):find(cleanedQuery, 1, true) then
         results[#results + 1] = { id=0, name="No Title" }
     end
-    for titleID = 1, GetNumTitles() do
-        if IsTitleKnown(titleID) then
-            local name = DisplayTitle(titleID)
-            if cleanedQuery == "" or Clean(name):find(cleanedQuery, 1, true) then
-                results[#results + 1] = { id=titleID, name=name }
-            end
-        end
+    local player=UnitName("player")
+    if not self.earnedCache or self.earnedCachePlayer~=player then
+        self.earnedCache={};self.earnedCachePlayer=player
+        for titleID=1,GetNumTitles()do if IsTitleKnown(titleID)then
+            local name=DisplayTitle(titleID)
+            self.earnedCache[#self.earnedCache+1]={id=titleID,name=name,clean=Clean(name)}
+        end end
+    end
+    for _,entry in ipairs(self.earnedCache)do
+        if cleanedQuery=="" or entry.clean:find(cleanedQuery,1,true)then results[#results+1]=entry end
     end
     self:BuildAchievementMatches()
     local db = Settings()
@@ -216,6 +219,7 @@ function Titles:RecordNewTitle(titleID)
 end
 
 function Titles:ScanForNewTitles()
+    self.earnedCache=nil
     local db = Settings()
     local foundNew = false
     for titleID = 1, GetNumTitles() do
@@ -256,6 +260,7 @@ function Titles:StartLazyAchievementSearch(titleID)
         self:Refresh()
     end
     local function Tick()
+        if not self.provenance or not self.provenance:IsShown() or self.provenance.titleID~=titleID then self.searchJobs[titleID]=nil;return end
         local processed = 0
         while job.category <= #categories and processed < 60 do
             local categoryID = categories[job.category]
@@ -273,7 +278,7 @@ function Titles:StartLazyAchievementSearch(titleID)
                 end
             end
         end
-        if job.category > #categories then Finish(nil) else C_Timer.After(0, Tick) end
+        if job.category > #categories then Finish(nil) else C_Timer.After(.05, Tick) end
     end
     C_Timer.After(0, Tick)
 end
@@ -483,7 +488,7 @@ function Titles:RefreshRows()
 end
 
 function Titles:Refresh()
-    if not self.panel then return end
+    if not self.panel or not self.panel:IsShown()or self.panel.IsVisible and not self.panel:IsVisible()then return end
     self:RebuildFilter()
     self.panel.scroll:SetItemCount(#self.filtered)
     self.panel.favoriteButton:SetText(Settings().favoritesOnly and "Favourites" or "All titles")
@@ -500,6 +505,7 @@ function Titles:OnPlayerLogin()
     event:SetScript("OnEvent", function(_, eventName, titleID)
         if eventName == "UNIT_NAME_UPDATE" then
             self.currentTitleID = GetCurrentTitle()
+            self.earnedCache=nil
             self:Refresh()
         else
             self:ScanForNewTitles()

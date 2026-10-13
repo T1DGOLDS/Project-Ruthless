@@ -1,17 +1,30 @@
 name: Validate addon
-
-on:
-  push:
-  pull_request:
-
+on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   lua:
     runs-on: ubuntu-latest
+    env:
+      PR_WOW_SOURCE: ${{ github.workspace }}/native/Interface/AddOns
+      PR_WOW_FOREVER_SOURCE: ${{ github.workspace }}/native/Interface/AddOns
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Gethe/wow-ui-source
+          ref: a84e2b1b41d3d4137127c07e4da448aa3251d6f1
+          path: native
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run test:achievements
+      - run: npm run test:equipment
+      - run: npm run test:talents
+      - run: npm run test:macro-ranks
+      - run: npm run test:quests
+      - run: npm run test:performance
+      - run: npm run test:forever
+      - run: npm run test:layout

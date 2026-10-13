@@ -19,6 +19,8 @@ console.log('PASS: live-source PaperDoll template owns click, drag/drop, modifie
 
 const L = lauxlib.luaL_newstate();
 lualib.luaL_openlibs(L);
+lua.lua_pushstring(L,to_luastring(fs.readFileSync(path.join(root,'Core.lua'),'utf8').match(/-- Demand-driven runtime helpers\.[\s\S]*?-- End demand-driven runtime helpers\./)[0]));
+lua.lua_setglobal(L,to_luastring('RUNTIME_SOURCE'));
 lua.lua_pushstring(L, to_luastring(fs.readFileSync(path.join(root, 'Modules/CharacterV2.lua'), 'utf8')));
 lua.lua_setglobal(L, to_luastring('CHARACTER_SOURCE'));
 const test = fs.readFileSync(path.join(__dirname, 'equipment-sets.test.lua'), 'utf8');

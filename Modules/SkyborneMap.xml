@@ -1,0 +1,6 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Frame name="RUILeylinePinTemplate" mixin="RUILeylinePinMixin" virtual="true" enableMouse="true">
+        <Size x="20" y="20"/>
+        <Layers><Layer level="ARTWORK"><Texture parentKey="Icon" setAllPoints="true"/></Layer></Layers>
+    </Frame>
+</Ui>

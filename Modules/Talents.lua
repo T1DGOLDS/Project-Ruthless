@@ -312,7 +312,7 @@ function Talents:RefreshRows()
 end
 
 function Talents:Refresh()
-    if not self.active or not self.chrome then return end
+    if not self.active or not self.chrome or not self.frame:IsShown()then return end
     local tree=self.frame.TalentsFrame
     local current=C_SpecializationInfo.GetSpecialization()
     local numSpecs=GetNumSpecializations()
@@ -369,7 +369,7 @@ function Talents:Restore()
 end
 
 function Talents:ApplyLayout()
-    if self.applying or not self.frame or InCombatLockdown() then return end
+    if self.applying or not self.frame or not self.frame:IsShown()or InCombatLockdown()then return end
     self.applying=true
     local f=self.frame
     if not self:IsEnabled() or f:IsInspecting() or not f:IsTabAvailable(f.talentTabID)
@@ -406,6 +406,7 @@ function Talents:Install()
     local f=PlayerSpellsFrame
     if not f.TalentsFrame or not f.TalentsFrame.LoadSystem then return end
     self.frame=f; self.installed=true; self.saved={}
+    if self.events then AUI:BindVisibleEvents(f,self.events,self.visibleEvents)end
     for _,method in ipairs({"SetTab","UpdateTabs","SetInspecting","SetMinimized"}) do
         if f[method] then hooksecurefunc(f,method,function() self:ApplyLayout() end) end
     end
@@ -437,15 +438,17 @@ function Talents:OnPlayerLogin()
     if not AUI:IsFeatureSupported("Talents") then return end
     self:Install()
     local events=CreateFrame("Frame")
-    for _,event in ipairs({"ADDON_LOADED","PLAYER_SPECIALIZATION_CHANGED","PLAYER_REGEN_DISABLED","PLAYER_REGEN_ENABLED","TRAIT_CONFIG_LIST_UPDATED","TRAIT_CONFIG_UPDATED","DISPLAY_SIZE_CHANGED","UI_SCALE_CHANGED","UNIT_SPELLCAST_START","UNIT_SPELLCAST_STOP","UNIT_SPELLCAST_CHANNEL_START","UNIT_SPELLCAST_CHANNEL_STOP","UNIT_SPELLCAST_FAILED","UNIT_SPELLCAST_INTERRUPTED"}) do events:RegisterEvent(event) end
+    self.visibleEvents={"PLAYER_SPECIALIZATION_CHANGED","PLAYER_REGEN_DISABLED","PLAYER_REGEN_ENABLED","TRAIT_CONFIG_LIST_UPDATED","TRAIT_CONFIG_UPDATED","DISPLAY_SIZE_CHANGED","UI_SCALE_CHANGED","UNIT_SPELLCAST_START","UNIT_SPELLCAST_STOP","UNIT_SPELLCAST_CHANNEL_START","UNIT_SPELLCAST_CHANNEL_STOP","UNIT_SPELLCAST_FAILED","UNIT_SPELLCAST_INTERRUPTED"}
+    events:RegisterEvent("ADDON_LOADED")
     events:SetScript("OnEvent",function(_,event,addon)
         if event=="ADDON_LOADED" then
             if addon=="Blizzard_PlayerSpells" then self:Install() end
-        elseif self.frame then
+        elseif self.frame and self.frame:IsShown()then
             if event:find("^UNIT_") and addon~="player" then return end
             if event=="PLAYER_REGEN_ENABLED" or event=="DISPLAY_SIZE_CHANGED" or event=="UI_SCALE_CHANGED" then self:ApplyLayout() end
-            self:Refresh()
+            AUI:QueueRefresh(self)
         end
     end)
     self.events=events
+    if self.frame then AUI:BindVisibleEvents(self.frame,events,self.visibleEvents)end
 end

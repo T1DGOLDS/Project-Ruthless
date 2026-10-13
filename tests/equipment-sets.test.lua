@@ -50,6 +50,7 @@ function CreateFrame(_,name,parent,template) return setmetatable({name=name,pare
 
 local AUI = {modules={}, messages={}}
 function AUI:RegisterModule(name, module) self.modules[name]=module end
+assert(load('local _, AUI=...\n'..RUNTIME_SOURCE))('ProjectRuthless',AUI)
 function AUI:Print(message) self.messages[#self.messages+1]=message end
 function AUI:CreateButton(parent) return CreateFrame("Button",nil,parent) end
 function AUI:CreateSmoothScrollFrame(parent) return CreateFrame("ScrollFrame",nil,parent) end

@@ -29,6 +29,8 @@ end
 
 function LowHealthGlow:CreateAlphaCurve()
     local settings = GetSettings()
+    if self.alphaCurve and self.curveThreshold==settings.threshold and self.curveAlpha==settings.maxAlpha then return end
+    self.curveThreshold=settings.threshold;self.curveAlpha=settings.maxAlpha
     local curve = C_CurveUtil.CreateCurve()
     curve:SetType(Enum.LuaCurveType.Linear)
     curve:AddPoint(0, settings.maxAlpha)
@@ -42,15 +44,22 @@ function LowHealthGlow:CreateAlphaCurve()
 end
 
 function LowHealthGlow:ApplySettings()
-    self:CreateOverlay()
-    self:CreateAlphaCurve()
+    local settings=GetSettings()
+    if not settings or not settings.enabled then
+        if self.frame then self.frame:UnregisterAllEvents();self.frame:SetAlpha(0)end
+        return
+    end
+    self:CreateOverlay();self:CreateAlphaCurve()
+    self.frame:RegisterUnitEvent("UNIT_HEALTH","player");self.frame:RegisterUnitEvent("UNIT_MAXHEALTH","player")
+    for _,event in ipairs({"PLAYER_ENTERING_WORLD","PLAYER_ALIVE","PLAYER_DEAD"})do self.frame:RegisterEvent(event)end
+    self.frame:SetScript("OnEvent",function()self:Update()end)
     self:Update()
 end
 
 function LowHealthGlow:Update()
     local settings = GetSettings()
     if not settings or not settings.enabled or UnitIsDeadOrGhost("player") then
-        self.frame:SetAlpha(0)
+        if self.frame then self.frame:SetAlpha(0)end
         return
     end
 
@@ -80,11 +89,11 @@ function LowHealthGlow:HandleCommand(command)
         self:Preview()
     elseif command == "on" then
         settings.enabled = true
-        self:Update()
+        self:ApplySettings()
         AUI:Print("Low-health glow enabled.")
     elseif command == "off" then
         settings.enabled = false
-        self:Update()
+        self:ApplySettings()
         AUI:Print("Low-health glow disabled.")
     else
         AUI:Print("Health-glow commands: /pr healthglow test, /pr healthglow on, /pr healthglow off")
@@ -92,16 +101,5 @@ function LowHealthGlow:HandleCommand(command)
 end
 
 function LowHealthGlow:OnPlayerLogin()
-    self:CreateOverlay()
-    self:CreateAlphaCurve()
-    self:Update()
-
-    self.frame:RegisterUnitEvent("UNIT_HEALTH", "player")
-    self.frame:RegisterUnitEvent("UNIT_MAXHEALTH", "player")
-    self.frame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    self.frame:RegisterEvent("PLAYER_ALIVE")
-    self.frame:RegisterEvent("PLAYER_DEAD")
-    self.frame:SetScript("OnEvent", function()
-        self:Update()
-    end)
+    self:ApplySettings()
 end

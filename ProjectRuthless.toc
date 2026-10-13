@@ -2,19 +2,27 @@
 ## Title: Project Ruthless
 ## Notes: Practical interface tools that preserve familiar Blizzard workflows.
 ## Author: Andrew
-## Version: 0.13.0-beta.1
-## OptionalDeps: ElvUI, ElvUI_Options, Epithet, RaiderIO
+## Version: 0.14.0-beta.72
+## OptionalDeps: ElvUI, ElvUI_Options, Epithet, RaiderIO, ForeverWisp, AtlasLootClassic, QuestieDB, TomTom
 ## SavedVariables: ProjectRuthlessDB
 ## SavedVariablesPerCharacter: ProjectRuthlessCharDB
 
 Core.lua
+Modules\Profiles.lua
+Modules\LayoutEditor.lua
 Modules\ErrorLog.lua
 Modules\Titles.lua
 Modules\CharacterV2.lua
 Modules\Spellbook.lua
+Modules\MacroRanks.lua
 Modules\Talents.lua
 Modules\Achievements.lua
 Modules\MapQuests.lua
-Modules\Menu.lua
+Modules\AuthoredGuideData.lua
+Modules\AuthoredGuides.lua
+Modules\QuestWorkspace.lua
+Modules\QuestLocations.lua
+Modules\DungeonAtlas.lua
+Modules\MenuLoader.lua
 Modules\LowHealthGlow.lua
 Modules\ElvUICompat.lua

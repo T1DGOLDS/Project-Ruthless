@@ -9,10 +9,7 @@ end
 
 local LEFT_SLOTS = { 1, 2, 3, 15, 5, 4, 19, 9 }
 local RIGHT_SLOTS = { 10, 6, 7, 8, 11, 12, 13, 14 }
-local COLORS = {
-    surface = { 0.035, 0.039, 0.052, 0.92 }, inset = { 0.025, 0.028, 0.038, 0.78 },
-    border = { 0.16, 0.17, 0.21, 0.9 }, text = { 0.91, 0.92, 0.96, 1 }, muted = { 0.52, 0.55, 0.64, 1 },
-}
+local COLORS = {surface=AUI.Theme.sidebar,inset=AUI.Theme.window,border=AUI.Theme.border,text=AUI.Theme.text,muted=AUI.Theme.muted}
 
 local function Surface(frame, background, border)
     frame:SetBackdrop({ bgFile="Interface\\Buttons\\WHITE8X8", edgeFile="Interface\\Buttons\\WHITE8X8", edgeSize=1 })
@@ -140,17 +137,20 @@ function Character:ConfigureModel(model)
         self.camScale = Clamp((self.camScale or 1) - delta * 0.08, 0.55, 1.8)
         self:SetCamDistanceScale(self.camScale)
     end)
+    local DragUpdate
     model:SetScript("OnMouseDown", function(self, button)
         self.rotating = button == "LeftButton"
         self.panning = button == "RightButton"
         self.lastCursorX, self.lastCursorY = GetCursorPosition()
+        if self.rotating or self.panning then self:SetScript("OnUpdate",DragUpdate)end
     end)
     model:SetScript("OnMouseUp", function(self, button)
         if button == "LeftButton" then self.rotating = false end
         if button == "RightButton" then self.panning = false end
+        if not self.rotating and not self.panning then self:SetScript("OnUpdate",nil)end
     end)
-    model:SetScript("OnHide", function(self) self.rotating, self.panning = false, false end)
-    model:SetScript("OnUpdate", function(self)
+    model:SetScript("OnHide",function(self)self.rotating,self.panning=false,false;self:SetScript("OnUpdate",nil)end)
+    DragUpdate=function(self)
         if not self.rotating and not self.panning then return end
         local x, y = GetCursorPosition()
         local dx, dy = x - (self.lastCursorX or x), y - (self.lastCursorY or y)
@@ -163,7 +163,7 @@ function Character:ConfigureModel(model)
             self:SetPosition(0, self.panX, self.panZ)
         end
         self.lastCursorX, self.lastCursorY = x, y
-    end)
+    end
 end
 
 function Character:CreateStatRow(parent, index)
@@ -410,6 +410,7 @@ function Character:SelectMode(mode)
     for id, button in pairs(self.modeButtons) do
         if id == mode then button:SetBackdropColor(0.10, 0.075, 0.10, 0.96) else button:SetBackdropColor(unpack(COLORS.inset)) end
     end
+    if self.panel then self.panel:SetScript("OnUpdate",mode=="stats" and self.liveUpdate or nil)end
     self:Refresh()
 end
 
@@ -596,12 +597,14 @@ function Character:CreatePanel(parent)
     self:CreateSetsView(details)
 
     panel.details = details
-    panel:SetScript("OnShow", function() Character:Refresh() end)
-    panel:SetScript("OnUpdate", function(_, elapsed)
+    panel:SetScript("OnShow", function()Character.modelDirty=true;if RequestRatedInfo then RequestRatedInfo()end;Character:Refresh()end)
+    self.liveUpdate=function(_, elapsed)
         Character.liveElapsed = (Character.liveElapsed or 0) + elapsed
-        if Character.liveElapsed >= 0.25 then Character.liveElapsed = 0; Character:RefreshLiveStats() end
-    end)
-    self.panel = panel; self:SelectMode("stats")
+        if Character.liveElapsed >= 0.5 then Character.liveElapsed = 0; Character:RefreshLiveStats() end
+    end
+    self.panel = panel
+    if self.events then AUI:BindVisibleEvents(panel,self.events,self.visibleEvents)end
+    self:SelectMode("stats")
     return panel
 end
 
@@ -804,7 +807,7 @@ function Character:CreateWindow()
     local header=CreateFrame("Frame",nil,frame,"BackdropTemplate"); header:SetPoint("TOPLEFT",1,-1); header:SetPoint("TOPRIGHT",-1,-1); header:SetHeight(64); Surface(header,COLORS.surface,{0,0,0,0})
     header:EnableMouse(true); header:RegisterForDrag("LeftButton"); header:SetScript("OnDragStart",function() frame:StartMoving() end); header:SetScript("OnDragStop",function() frame:StopMovingOrSizing() end)
     local r,g,b=AccentColor(); local line=header:CreateTexture(nil,"ARTWORK"); line:SetColorTexture(r,g,b,1); line:SetPoint("BOTTOMLEFT"); line:SetPoint("BOTTOMRIGHT"); line:SetHeight(2)
-    local mark=Label(header,"PR","large"); mark:SetPoint("LEFT",16,0); mark:SetTextColor(r,g,b,1)
+    local mark=Label(header,"RUI","large"); mark:SetPoint("LEFT",16,0); mark:SetTextColor(r,g,b,1)
     local title=Label(header,"CHARACTER","large"); title:SetPoint("LEFT",mark,"RIGHT",16,0)
     local close=CreateFrame("Button",nil,header); close:SetSize(40,40); close:SetPoint("RIGHT",-4,0); close.label=Label(close,"×","large"); close.label:SetPoint("CENTER",0,1); close:SetScript("OnClick",function() frame:Hide() end)
     local content=CreateFrame("Frame",nil,frame); content:SetPoint("TOPLEFT",12,-76); content:SetPoint("BOTTOMRIGHT",-12,12)
@@ -863,7 +866,7 @@ function Character:ShowProgressTooltip(owner)
 end
 
 function Character:Refresh()
-    local panel=self.panel; if not panel then return end
+    local panel=self.panel; if not panel or self.frame and not self.frame:IsShown()then return end
     local playerName = UnitName("player") or "Unknown"
     local titles = AUI.modules.Titles
     local titleID = titles and titles.currentTitleID
@@ -879,9 +882,10 @@ function Character:Refresh()
     local specIndex = GetSpecialization and GetSpecialization()
     local specName = specIndex and select(2, GetSpecializationInfo(specIndex))
     panel.identity:SetText(("Level %d %s %s"):format(UnitLevel("player") or 0, specName or "", UnitClass("player") or ""))
-    panel.model:SetUnit("player")
-    ApplyWeaponState(panel.model)
-    C_Timer.After(0, function() ApplyWeaponState(panel.model) end)
+    if not self.modelReady or self.modelDirty then
+        self.modelReady=true;self.modelDirty=nil
+        panel.model:SetUnit("player");ApplyWeaponState(panel.model)
+    end
     self:RefreshGear(); self:RefreshSummary()
     local average, equipped=GetAverageItemLevel(); panel.details.itemLevel:SetText(("Equipped item level  %.1f"):format(tonumber(equipped or average) or 0))
     local qualityColor = ITEM_QUALITY_COLORS[self.dominantQuality or 1]
@@ -895,13 +899,16 @@ function Character:OnPlayerLogin()
     if not self:IsSupported() then return end
     if self.events then return end
     local events=CreateFrame("Frame")
-    for _, event in ipairs({"PLAYER_EQUIPMENT_CHANGED","EQUIPMENT_SETS_CHANGED","EQUIPMENT_SWAP_FINISHED","PLAYER_REGEN_ENABLED","UNIT_SPELLCAST_STOP","UNIT_SPELLCAST_CHANNEL_STOP","COMBAT_RATING_UPDATE","MASTERY_UPDATE","UNIT_STATS","PVP_RATED_STATS_UPDATE"}) do events:RegisterEvent(event) end
+    self.visibleEvents={"PLAYER_EQUIPMENT_CHANGED","EQUIPMENT_SETS_CHANGED","EQUIPMENT_SWAP_FINISHED","PLAYER_REGEN_ENABLED","UNIT_SPELLCAST_STOP","UNIT_SPELLCAST_CHANNEL_STOP","COMBAT_RATING_UPDATE","MASTERY_UPDATE","UNIT_STATS","PVP_RATED_STATS_UPDATE"}
     events:RegisterEvent("ADDON_LOADED")
     events:SetScript("OnEvent", function(_,event,addon)
         if event=="ADDON_LOADED" and addon=="Blizzard_UIPanels_Game" then Character:InstallReplacement()
-        elseif Character.panel and Character.panel:IsShown() then C_Timer.After(0,function() Character:Refresh() end) end
+        elseif Character.panel and Character.panel:IsShown()then
+            if event=="PLAYER_EQUIPMENT_CHANGED"then Character.modelDirty=true end
+            AUI:QueueRefresh(Character)
+        end
     end)
     self:InstallReplacement()
-    if RequestRatedInfo then RequestRatedInfo() end
     self.events=events
+    if self.panel then AUI:BindVisibleEvents(self.panel,events,self.visibleEvents)end
 end
