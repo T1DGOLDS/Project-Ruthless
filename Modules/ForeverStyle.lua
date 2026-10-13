@@ -233,11 +233,7 @@ function S:BagMenu()
     self.bagMenuInstalled=true
     Menu.ModifyMenu("MENU_CONTAINER_FRAME_COMBINED",function(_,root)
         root:CreateDivider();root:CreateTitle("RUI inventory")
-        root:CreateCheckbox("Auto-sort when opened",function()return self:BagSettings().autoSort==true end,function()local settings=self:BagSettings();settings.autoSort=not settings.autoSort;if not settings.autoSort then self.pendingBagSort=nil end end)
-        local columns=root:CreateButton("Columns")
-        for _,count in ipairs({8,10,12})do
-            columns:CreateRadio(tostring(count),function()return (self:BagSettings().columns or 10)==count end,function()self:BagSettings().columns=count;self:InventoryFrame(ContainerFrameCombinedBags)end)
-        end
+        root:CreateButton("RUI bag settings",function()AUI.modules.Menu:Show("bags")end)
     end)
 end
 function S:RestoreBackpackPosition()

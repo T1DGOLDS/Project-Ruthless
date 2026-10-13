@@ -118,7 +118,10 @@ function AUI:ApplyWindowSettings(key)
     for _,moduleName in ipairs({"Menu","Character","Spellbook"}) do
         local module=self.modules[moduleName]
         if module and module.frame then
-            if key~="windowOpacity"then module.frame:SetScale(scale)end
+            if key~="windowOpacity"then
+                local access=self.modules.Accessibility
+                module.frame:SetScale(access and access:FitWindow(module.frame,scale)or scale)
+            end
             if key~="windowScale"then module.frame:SetAlpha(alpha)end
         end
     end
@@ -146,6 +149,7 @@ function AUI:CreateButton(parent)
     local label=button:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
     label:SetPoint("LEFT",5,0); label:SetPoint("RIGHT",-5,0); label:SetJustifyH("CENTER")
     label:SetTextColor(r,g,b,1); button:SetFontString(label); button.label=label
+    if self.modules.Accessibility then self.modules.Accessibility:RegisterText(label)end
     button:HookScript("OnEnter",function(self) if self:IsEnabled() then if AUI.isForever then AUI:PaintBackground(self,"Options",.075,.065,.09)else self:SetBackdropColor(.075,.065,.09,1)end;self:SetBackdropBorderColor(r,g,b,0.9) end end)
     button:HookScript("OnLeave",function(self)if AUI.isForever then AUI:PaintBackground(self,"Options",.035,.039,.052)else self:SetBackdropColor(.035,.039,.052,.98)end;self:SetBackdropBorderColor(0.16,0.17,0.21,1)end)
     button:HookScript("OnDisable",function() label:SetTextColor(0.40,0.42,0.48,1) end)
@@ -168,6 +172,7 @@ function AUI:BackgroundOpacity(key)
     local value=key and settings["background"..key]
     if type(value)~="number"or value<0 then value=settings.backgroundOpacity end
     if type(value)~="number"then value=math.max(.72,(db.questWorkspace or {}).opacity or .52)end
+    if (db.accessibility or {}).highContrast then value=math.max(.9,value)end
     return math.max(0,math.min(1,value))
 end
 function AUI:PaintBackground(frame,key,r,g,b,texture)
@@ -305,7 +310,11 @@ function AUI:CreateSmoothScrollFrame(parent)
     end
 
     local Animate
-    local function StartAnimation() scroll:SetScript("OnUpdate",Animate)end
+    local function StartAnimation()
+        if AUI.modules.Accessibility and AUI.modules.Accessibility:ReducedMotion()and not thumb.dragging then
+            scroll:SetVerticalScroll(scroll.targetScroll);UpdateThumb();scroll:SetScript("OnUpdate",nil)
+        else scroll:SetScript("OnUpdate",Animate)end
+    end
     scroll:HookScript("OnHide",function()scroll:SetScript("OnUpdate",nil)end)
     scroll:HookScript("OnShow",function()scroll:ScrollTo(scroll.targetScroll,true);scroll.UpdateThumb()end)
     thumb:HookScript("OnDragStart",StartAnimation)
@@ -327,7 +336,8 @@ function AUI:CreateSmoothScrollFrame(parent)
         end
         self.targetScroll = math.max(0, math.min(range, self.targetScroll or 0))
         local current = self:GetVerticalScroll()
-        local nextValue = current + (self.targetScroll - current) * math.min(1, elapsed * 12)
+        local reduced=AUI.modules.Accessibility and AUI.modules.Accessibility:ReducedMotion()
+        local nextValue = reduced and self.targetScroll or current + (self.targetScroll - current) * math.min(1, elapsed * 12)
         if math.abs(self.targetScroll-current)>0.05 then self:SetVerticalScroll(nextValue)
         elseif current~=self.targetScroll then self:SetVerticalScroll(self.targetScroll) end
         UpdateThumb()
@@ -491,6 +501,7 @@ eventFrame:SetScript("OnEvent", function(_, event, loadedAddon)
         ProjectRuthlessDB = ProjectRuthlessDB or {}
         ProjectRuthlessCharDB = ProjectRuthlessCharDB or {}
         ApplyDefaults(ProjectRuthlessDB, defaults)
+        if AUI.isForever and AUI.modules.FirstRun then AUI.modules.FirstRun:InitializeCharacter()end
         if AUI.isForever and ProjectRuthlessDB.general.backgroundOpacity==nil then ProjectRuthlessDB.general.backgroundOpacity=math.max(.72,ProjectRuthlessDB.questWorkspace.opacity or .52)end
         if AUI.isForever and AUI.modules.UnifiedProfiles then AUI.modules.UnifiedProfiles:InitializeCharacter()end
         if AUI.modules.LayoutEditor then AUI.modules.LayoutEditor:InitializeCharacter()end
@@ -518,6 +529,7 @@ eventFrame:SetScript("OnEvent", function(_, event, loadedAddon)
         end
     elseif event == "PLAYER_LOGIN" then
         eventFrame:UnregisterEvent("PLAYER_LOGIN")
+        if AUI.isForever and AUI.modules.FirstRun then AUI.modules.FirstRun:CaptureNativePlacement()end
         for _, name in ipairs(AUI.moduleOrder) do
             local module=AUI.modules[name]
             if module.OnPlayerLogin then

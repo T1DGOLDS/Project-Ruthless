@@ -110,6 +110,7 @@ end
 local function Label(parent, text, font)
     local label = parent:CreateFontString(nil, "OVERLAY", font or "GameFontNormal")
     label:SetText(text or ""); label:SetTextColor(unpack(COLORS.text))
+    if AUI.modules.Accessibility then AUI.modules.Accessibility:RegisterText(label)end
     return label
 end
 
@@ -1077,7 +1078,7 @@ function Spellbook:Refresh()
                 local onBars=not item.future and not item.passive and self:GetActionBarState(item.spellID)
                 button.barMarker:SetShown(onBars and not AUI.isForever); button.pin:SetShown(item.pinned==true)
                 button.actionBarHighlight:SetShown(button.actionBarMissing)
-                if button.actionBarMissing then if not button.actionBarAnim:IsPlaying() then button.actionBarAnim:Play() end
+                if button.actionBarMissing and not (AUI.modules.Accessibility and AUI.modules.Accessibility:ReducedMotion())then if not button.actionBarAnim:IsPlaying() then button.actionBarAnim:Play() end
                 elseif button.actionBarAnim:IsPlaying() then button.actionBarAnim:Stop() end
                 if combatRestricted or item.future then button.cooldown:Clear()
                 else

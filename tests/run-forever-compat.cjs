@@ -42,7 +42,7 @@ const retailOnly=['Modules\\CharacterV2.lua','Modules\\Achievements.lua','Module
 for(const file of retailOnly) assert(!foreverFiles.includes(file),file+' must not load on Forever');
 const skyborneFiles=['Modules\\SkyborneMapData.lua','Modules\\SkyborneMap.lua','Modules\\SkyborneMap.xml'];
 for(const file of skyborneFiles)assert(foreverFiles.includes(file)&&!tocFiles(retailToc).includes(file),'Skyborne map modules belong only to Forever');
-const foundationFiles=['Modules\\UnifiedProfiles.lua','Modules\\SettingsRegistry.lua'];
+const foundationFiles=['Modules\\UnifiedProfiles.lua','Modules\\SettingsRegistry.lua','Modules\\Accessibility.lua','Modules\\FirstRun.lua'];
 for(const file of foundationFiles)assert(foreverFiles.includes(file)&&!tocFiles(retailToc).includes(file),'Stage 2 foundations belong only to Forever');
 assert.deepStrictEqual(foreverFiles.filter(file=>!foundationFiles.includes(file)&&!skyborneFiles.includes(file)&&file!==hudFile && file!=='Modules\\Diagnostics.lua' && file!=='Modules\\LevelHistory.lua' && file!=='Modules\\ForeverStyle.lua' && file!=='Modules\\ForeverExpiringBuffs.lua' && file!=='Modules\\ForeverNameplateHints.lua'),tocFiles(retailToc).filter(file=>!retailOnly.includes(file)),'Shared production files retain their order');
 assert(foreverFiles.includes('Modules\\Diagnostics.lua')&&!tocFiles(retailToc).includes('Modules\\Diagnostics.lua'),'Test recorder belongs only to Forever');

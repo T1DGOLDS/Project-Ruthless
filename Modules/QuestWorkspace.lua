@@ -13,6 +13,7 @@ end
 local function Text(parent,x,y,width,font)
     local t=parent:CreateFontString(nil,"OVERLAY",font or "GameFontNormalSmall")
     t:SetPoint("TOPLEFT",x,y); t:SetWidth(width); t:SetJustifyH("LEFT")
+    if AUI.modules.Accessibility then AUI.modules.Accessibility:RegisterText(t)end
     return t
 end
 local function Accent()
@@ -698,14 +699,18 @@ function Q:SyncMapPage()
             end
             -- OnHide closes native quest details and clears map focus. Keep its
             -- data lifecycle alive behind our opaque sidebar on custom pages.
-            log:SetAlpha(quests and 1 or 0);log:EnableMouse(quests);if not combat then log:Show()end
+            log:SetAlpha(quests and 1 or 0);log:EnableMouse(quests)
+            -- The native M toggle compares this flag with actual log visibility.
+            -- Forcing Show when questLogOpen is false turns Close into a refresh.
+            if not combat and Call(WorldMapFrame.ShouldShowQuestLogPanel,WorldMapFrame)~=false then log:Show()end
             local questsFrame=log.QuestsFrame
             local scroll=questsFrame and type(questsFrame)~="function"and questsFrame.ScrollFrame
             local search=scroll and type(scroll)~="function"and scroll.SearchBox
             if not quests and search and type(search.ClearFocus)=="function"then search:ClearFocus()end
         else
             if not combat and self.nativeLogPoints then log:ClearAllPoints();for _,point in ipairs(self.nativeLogPoints)do log:SetPoint(unpack(point))end end
-            log:SetAlpha(1);log:EnableMouse(true);if not combat then log:Show()end
+            log:SetAlpha(1);log:EnableMouse(true)
+            if not combat and Call(WorldMapFrame.ShouldShowQuestLogPanel,WorldMapFrame)~=false then log:Show()end
         end
     end
     for _,tab in ipairs(self.mapTabs or {})do
@@ -1086,7 +1091,7 @@ function Q:InstallMap()
     self.mapControls={}
     local specs={{"Track / untrack",function() if self.selected then self:ToggleTracking(self.selected); self:RenderMapPage() end end},{"Skip current",function() if self.selected then self.skipped[self.selected]=true; self:Refresh(); self:RenderMapPage() end end},{"Restore skipped",function() wipe(self.skipped); self:Refresh(); self:RenderMapPage() end},{"Quest marker settings",function() AUI.modules.Menu:Show("mapquests") end}}
     specs[5]={"Toggle direction arrow",function() local s=ProjectRuthlessDB.questWorkspace; s.showArrow=not s.showArrow; self:Navigate(); self:RenderMapPage() end}
-    specs[6]={"Change background opacity",function() local s=ProjectRuthlessDB.questWorkspace; s.opacity=s.opacity<.4 and .52 or s.opacity<.7 and .75 or .25; ProjectRuthlessDB.general.backgroundQuest=s.opacity; if AUI.RefreshBackgrounds then AUI:RefreshBackgrounds()end; self:RenderMapPage() end}
+    specs[6]={"Quest background settings",function()AUI.modules.Menu:Show("backgrounds")end}
     specs[7]={"Lock / unlock position",function() local s=ProjectRuthlessDB.questWorkspace; s.locked=not s.locked; self:RenderMapPage() end}
     specs[8]={"Previous guide step",function() self:GuideAction("back") end}
     specs[9]={"Next guide step",function() self:GuideAction("next") end}
@@ -1097,7 +1102,7 @@ function Q:InstallMap()
         local button=p and p.chapter
         if button then Call(Call(button.GetScript,button,"OnClick"),button,"LeftButton") end
     end}
-    specs[12]={"Choose guide source",function()self:CycleGuideSource();self:RenderMapPage()end}
+    specs[12]={"Guide provider settings",function()AUI.modules.Menu:Show("mapquests")end}
     specs[13]={"Auto hand-in: toggle",function()local s=ProjectRuthlessDB.questWorkspace;s.autoHandIn=not s.autoHandIn;self:RenderMapPage()end}
     specs[14]={"Prepare for Westfall: toggle",function()local s=ProjectRuthlessDB.questWorkspace;s.prepWestfall=not s.prepWestfall;self:RenderContext();self:RenderMapPage()end}
     specs[15]={"Prepare for displayed zone: toggle",function()
@@ -1379,6 +1384,7 @@ function Q:CreateWorkspace()
     local saved=ProjectRuthlessCharDB.questPanelPosition
     if saved then f:ClearAllPoints(); f:SetPoint(saved.point,UIParent,saved.relativePoint,saved.x,saved.y) end
     self.frame=f
+    if AUI.modules.FirstRun then AUI.modules.FirstRun:PlaceReplacement("quests",f)end
     local editor=AUI.modules.LayoutEditor
     if editor then editor:Attach("quests","Quest tracker",f)end
     local heading=Text(f,56,-10,224,"GameFontNormal"); heading:SetText("Quests"); heading:SetTextColor(r,g,b)

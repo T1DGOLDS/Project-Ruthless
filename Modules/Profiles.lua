@@ -13,6 +13,7 @@ local spec={
 }
 spec.general.backgroundOpacity={0,1}
 spec.errorLog={enabled=true,maxEntries={10,200}}
+spec.accessibility={textScale={1,1.5},reducedMotion=true,highContrast=true,animatedPortraits=true}
 for _,key in ipairs({"Quest","Player","Target","Party","Chat","ActionBars","XP","Micro","BagButtons","Backpack","Meters","Map","Spellbook","Cast","Options","Professions"})do spec.general["background"..key]={-1,1}end
 for _,channel in ipairs({"R","G","B"})do
  spec.general["color"..channel]={0,1}

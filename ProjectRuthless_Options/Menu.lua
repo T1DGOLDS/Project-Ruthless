@@ -22,6 +22,7 @@ local function AddLabel(parent, text, anchor, relativeTo, relativePoint, x, y, f
     label:SetPoint(anchor, relativeTo or parent, relativePoint or anchor, x or 0, y or 0)
     label:SetText(text)
     label:SetTextColor(unpack(COLORS.text))
+    if AUI.modules.Accessibility then AUI.modules.Accessibility:RegisterText(label)end
     return label
 end
 
@@ -39,6 +40,7 @@ function Menu:CreateCheckbox(parent,label,description,y,getter,setter,section,ke
     button.tick=button.box:CreateTexture(nil,"ARTWORK"); button.tick:SetAtlas("common-icon-checkmark"); button.tick:SetSize(14,14); button.tick:SetPoint("CENTER")
     button.label=AddLabel(button,label,"TOPLEFT",button,"TOPLEFT",42,-8,"GameFontNormal")
     button.description=AddLabel(button,description,"TOPLEFT",button,"TOPLEFT",42,-27,"GameFontNormalSmall"); button.description:SetTextColor(unpack(COLORS.muted))
+    button.description:SetWidth(556)
     button.getter=getter; button.setter=setter
     button.RefreshValue=function(self) local checked=self.getter(); self.tick:SetShown(checked); local r,g,b=GetAccentColor(); self.box:SetBackdropBorderColor(checked and r or COLORS.border[1],checked and g or COLORS.border[2],checked and b or COLORS.border[3],1) end
     button:SetScript("OnClick",function(self) self.setter(not self.getter()); AUI:SettingsChanged(section,key); Menu:Refresh() end)
@@ -54,6 +56,7 @@ function Menu:CreateSlider(parent,label,description,y,minimum,maximum,step,forma
     holder.label=AddLabel(holder,label,"TOPLEFT",holder,"TOPLEFT",12,-9,"GameFontNormal"); holder.value=AddLabel(holder,"","TOPRIGHT",holder,"TOPRIGHT",-12,-9,"GameFontNormal")
     holder.description=AddLabel(holder,description,"TOPLEFT",holder,"TOPLEFT",12,-29,"GameFontNormalSmall"); holder.description:SetTextColor(unpack(COLORS.muted))
     local slider=CreateFrame("Slider",nil,holder,"BackdropTemplate"); slider:SetPoint("BOTTOMLEFT",12,10); slider:SetSize(586,10); slider:SetOrientation("HORIZONTAL"); slider:SetMinMaxValues(minimum,maximum); slider:SetValueStep(step); slider:SetObeyStepOnDrag(true); ApplyBackdrop(slider,{0.018,0.021,0.029,1})
+    holder.ruiSlider=slider;holder.ruiStep=step
     slider:SetThumbTexture("Interface\\Buttons\\WHITE8X8")
     local thumb=slider:GetThumbTexture(); thumb:SetSize(14,18)
     local r,g,b=GetAccentColor(); thumb:SetVertexColor(r,g,b,1)
@@ -143,7 +146,7 @@ end
 function Menu:CreateGeneralPanel(parent)
     local panel=self:CreateOptionsPanel(parent,"CORE SETTINGS",AUI.isForever and "Appearance"or "General","Shared presentation settings for every Project Ruthless window.")
     self:CreateSlider(panel,"Window scale","Scale Ruthless windows; Talents also fits within your screen.",-116,0.75,1.25,0.01,function(v)return ("%d%%"):format(math.floor(v*100+0.5))end,function()return ProjectRuthlessDB.general.windowScale end,function(v)ProjectRuthlessDB.general.windowScale=v end,"General","windowScale")
-    self:CreateSlider(panel,"Window opacity","Fade complete Project Ruthless windows without affecting the rest of the UI.",-194,0.65,1,0.05,function(v)return ("%d%%"):format(math.floor(v*100+0.5))end,function()return ProjectRuthlessDB.general.windowOpacity end,function(v)ProjectRuthlessDB.general.windowOpacity=v end,"General","windowOpacity")
+    self:CreateSlider(panel,"Window opacity","Fades the entire window, including text and icons. Backgrounds has independent charcoal opacity.",-194,0.65,1,0.05,function(v)return ("%d%%"):format(math.floor(v*100+0.5))end,function()return ProjectRuthlessDB.general.windowOpacity end,function(v)ProjectRuthlessDB.general.windowOpacity=v end,"General","windowOpacity")
     local note=AddLabel(panel,AUI.modules.UnifiedProfiles and "Save your setup under Profiles. Each character keeps its working settings; saved profiles are available across the account."or "Settings are account-wide. Character-specific state is kept separately where it makes sense.","TOPLEFT",panel,"TOPLEFT",20,-286,"GameFontNormalSmall"); note:SetWidth(590); note:SetJustifyH("LEFT"); note:SetTextColor(unpack(COLORS.muted))
     self:CreateAction(panel,"Edit RUI layout",20,-340,180,function()AUI.modules.LayoutEditor:Show()end)
     if AUI.isForever then self:CreateAction(panel,"Background colours & opacity",208,-340,380,function()self:SelectTab("backgrounds")end)end
@@ -201,7 +204,7 @@ function Menu:CreateBackgroundColour(parent,label,key,y)
         control:SetText(("%s colour · #%02x%02x%02x%s"):format(label,math.floor(r*255+.5),math.floor(g*255+.5),math.floor(b*255+.5),key and not s["customColor"..key]and " · global"or ""))
     end
     self.optionControls[#self.optionControls+1]=button
-    self:CreateAction(parent,key and "Follow global"or "Default charcoal",418,y,210,function()
+    self:CreateAction(parent,key and ("Use global: "..label)or "Default charcoal",418,y,210,function()
         s["colorR"..suffix],s["colorG"..suffix],s["colorB"..suffix]=nil,nil,nil
         if key then s["customColor"..key]=nil end
         AUI:RefreshBackgrounds(key);Menu:Refresh()
@@ -236,6 +239,53 @@ function Menu:CreateChatOptions(parent)
     self:CreateAction(panel,"Chat background colour & opacity",18,-170,310,function()self:SelectTab("backgrounds")end)
     self:CreateAction(panel,"Move chat dock",18,-214,310,function()AUI.modules.LayoutEditor:Show()end)
     self.panels.chat=panel
+end
+
+function Menu:CreateAccessibilityOptions(parent)
+    local panel=self:CreateOptionsPanel(parent,"READABILITY & INPUT","Accessibility","RUI presentation controls and direct access to the current client's native accessibility features.")
+    local scroll=AUI:CreateSmoothScrollFrame(panel);scroll:SetPoint("TOPLEFT",0,-105);scroll:SetSize(650,395)
+    local content=CreateFrame("Frame",nil,scroll);content:SetSize(650,720);scroll:SetScrollChild(content)
+    ProjectRuthlessDB.accessibility=ProjectRuthlessDB.accessibility or {}
+    for i,definition in ipairs(AUI.modules.SettingsRegistry.definitions)do
+        if definition.page=="accessibility"then local d=definition
+            local index=d.key=="reducedMotion"and 0 or d.key=="highContrast"and 1 or 2
+            self:CreateCheckbox(content,d.label,d.description,-8-index*56,function()
+                if d.key=="animatedPortraits"then return (ProjectRuthlessDB.accessibility or {}).animatedPortraits~=false end
+                if d.key=="reducedMotion"then return AUI.modules.Accessibility:ReducedMotion()end
+                return AUI.modules.SettingsRegistry:Get(d)==true
+            end,function(v)AUI.modules.SettingsRegistry:Set(d,v)end)
+        end
+    end
+    self:CreateSlider(content,"RUI text size","Enlarge settings, spellbook and quest text. Native HUD fonts keep the game's sizing. Check long labels at larger sizes.",-182,1,1.5,.05,function(v)return ("%d%%"):format(math.floor(v*100+.5))end,function()return AUI.modules.Accessibility:TextScale()end,function(v)ProjectRuthlessDB.accessibility.textScale=v end,"Accessibility","textScale")
+    local note=AddLabel(content,"Native options retain Blizzard's behavior and are not copied into RUI profiles. Use Tab for RUI controls, Enter to activate, arrows for sliders and Page Up/Down for sections.","TOPLEFT",content,"TOPLEFT",18,-270,"GameFontNormalSmall");note:SetWidth(600);note:SetJustifyH("LEFT")
+    local access=AUI.modules.Accessibility
+    local native={
+        {"Native accessibility: general",function()return ACCESSIBILITY_GENERAL_LABEL end},
+        {"Native accessibility: interface text",function()return ACCESSIBILITY_INTERFACE_LABEL end},
+        {"Native colourblind options",function()return Settings and Settings.GetColorblindSettingsLabel and Settings.GetColorblindSettingsLabel()end},
+        {"Native audio assist",function()return ACCESSIBILITY_AUDIO_LABEL end},
+        {"Native subtitles",function()return CINEMATIC_SUBTITLES_OPTIONS_HEADER end},
+    }
+    for i,row in ipairs(native)do local entry=row;self:CreateAction(content,entry[1],18,-340-(i-1)*40,600,function()access:OpenNativeCategory(entry[2]())end)end
+    self.panels.accessibility=panel
+end
+function Menu:CreateSetupOptions(parent)
+    local panel=self:CreateOptionsPanel(parent,"WELCOME TO RUTHLESS UI","Quick setup","Start with familiar native placement and clean RUI styling. Existing layouts and account-default profiles keep their positions.")
+    local options={animatedPortraits=AUI.modules.Accessibility:AnimatedPortraits(),reducedMotion=AUI.modules.Accessibility:ReducedMotion(),highContrast=(ProjectRuthlessDB.accessibility or {}).highContrast==true,largeText=AUI.modules.Accessibility:TextScale()>1}
+    for i,row in ipairs({{"animatedPortraits","Animated portraits","Live character portraits. Reduced motion uses static portraits."},{"reducedMotion","Reduced motion","Immediate scrolling, static portraits and steady spell indicators."},{"largeText","Larger RUI text","Start with 125% text size. Change it later under Accessibility."},{"highContrast","High-contrast backgrounds","Darken RUI backgrounds while keeping text and icons clear."}})do
+        local key,label,description=row[1],row[2],row[3]
+        self:CreateCheckbox(panel,label,description,-116-(i-1)*56,function()return options[key]end,function(v)options[key]=v end)
+    end
+    local status=AddLabel(panel,"","TOPLEFT",panel,"TOPLEFT",18,-366,"GameFontNormalSmall");status:SetWidth(600);status:SetJustifyH("LEFT")
+    self:CreateAction(panel,"Finish setup",18,-420,260,function()
+        local ok,message=AUI.modules.FirstRun:Finish(options);status:SetText(message)
+        if ok then self:SelectTab("general")end
+    end)
+    self:CreateAction(panel,"Keep current choices",292,-420,320,function()
+        ProjectRuthlessCharDB.firstRun=ProjectRuthlessCharDB.firstRun or {};ProjectRuthlessCharDB.firstRun.complete=true;self:SelectTab("general")
+    end)
+    self:CreateAction(panel,"Choose an account profile",18,-462,600,function()self:SelectTab("profiles")end)
+    self.panels.setup=panel
 end
 
 function Menu:CreateCharacterOptions(parent)
@@ -393,7 +443,7 @@ function Menu:CreateTab(id, text, index)
     local r, g, b = GetAccentColor()
     local tab = CreateFrame("Button", self.frame:GetName() .. "Tab" .. index, self.sidebar)
     tab:SetID(index)
-    tab:SetSize(184, 36)
+    tab:SetSize(184, 30);tab.caption=text
     tab.label = AddLabel(tab, text, "LEFT", tab, "LEFT", 20, 0, "GameFontNormal")
     tab.label:SetTextColor(unpack(COLORS.muted))
     tab.highlight = tab:CreateTexture(nil, "BACKGROUND")
@@ -420,7 +470,8 @@ end
 function Menu:FilterTabs(query)
     query=(query or ""):lower()
     if AUI.modules.SettingsRegistry then
-        for i,tab in ipairs(self.tabs)do tab:SetShown(true);tab:ClearAllPoints();tab:SetPoint("TOPLEFT",self.sidebar,"TOPLEFT",12,-90-(i-1)*34)end
+        local spacing=#self.tabs>13 and 30 or 34
+        for i,tab in ipairs(self.tabs)do tab:SetShown(true);tab:ClearAllPoints();tab:SetPoint("TOPLEFT",self.sidebar,"TOPLEFT",12,-90-(i-1)*spacing)end
         self:SearchControls(query);return
     end
     local aliases={backgrounds="charcoal opacity transparency global individual shadows",general="scale opacity",profiles="save load import export undo",mapquests="guide dungeon quest tracker arrow waypoint supplies preparation handin",errors="diagnostics lag cpu errors",spellbook="macro ranks professions spells",health="glow warning threshold"}
@@ -546,6 +597,11 @@ function Menu:Create()
     search:SetScript("OnEditFocusGained",function()searchHint:Hide()end)
     search:SetScript("OnEditFocusLost",function(box)searchHint:SetShown(box:GetText()=="")end)
     search:SetScript("OnEscapePressed",function(box)box:SetText("");box:ClearFocus()end)
+    search:SetScript("OnEnterPressed",function(box)
+        local registry=AUI.modules.SettingsRegistry;local results=registry and registry:Search(box:GetText())or {}
+        if results[1]then self:OpenSearchResult(results[1])end
+    end)
+    search:SetScript("OnTabPressed",function(box)box:ClearFocus()end)
     search:SetScript("OnTextChanged",function(box)searchHint:SetShown(box:GetText()=="");self:FilterTabs(box:GetText())end)
     self.search=search
     self.pageBuilders={profiles="CreateProfilesPanel",general="CreateGeneralPanel",character="CreateCharacterOptions",spellbook="CreateSpellbookOptions",talents="CreateTalentsOptions",achievements="CreateAchievementsOptions",mapquests="CreateMapQuestOptions",health="CreateHealthOptions",compatibility="CreateCompatibilityOptions",errors="CreateErrorsPanel",status="CreateStatusPanel"}
@@ -557,10 +613,11 @@ function Menu:Create()
         if AUI.modules.SettingsRegistry then
             self.pageBuilders.unitframes="CreateUnitFrameOptions";self.pageBuilders.bags="CreateBagOptions";self.pageBuilders.chat="CreateChatOptions"
             self.pageBuilders.talents=nil
+            if AUI.modules.Accessibility then self.pageBuilders.accessibility="CreateAccessibilityOptions";self.pageBuilders.setup="CreateSetupOptions"end
         end
     end
     if AUI.isForever and AUI.modules.SettingsRegistry then
-        for index,section in ipairs(AUI.modules.SettingsRegistry.sections)do self:CreateTab(section.id,section.label,index)end
+        local index=0;for _,section in ipairs(AUI.modules.SettingsRegistry.sections)do if self.pageBuilders[section.id]then index=index+1;self:CreateTab(section.id,section.label,index)end end
     else
     self:CreateTab("general", "General", 1)
     if AUI.isForever then self:CreateTab("actionbars", "Action bars", 2)end
@@ -577,6 +634,7 @@ function Menu:Create()
     if AUI.isForever then self:CreateTab("backgrounds","Backgrounds",12)end
     end
     self:FilterTabs("")
+    if AUI.modules.Accessibility then AUI.modules.Accessibility:BindMenu(self)end
     AUI:ApplyWindowSettings()
 end
 
@@ -619,6 +677,7 @@ function Menu:SelectTab(id)
         tab.accent:SetShown(selected)
         tab.highlight:SetShown(selected)
         tab.label:SetTextColor(unpack(selected and COLORS.text or COLORS.muted))
+        if tab.caption then tab.label:SetText((selected and "> "or "")..tab.caption)end
     end
 
     self.selectedTab = id

@@ -1,4 +1,4 @@
-# Testing and releases — beta 74
+# Testing and releases — beta 75
 
 ## In-game testing
 
@@ -20,7 +20,9 @@ Experimental prereleases can ship with pending/failed gates disclosed in their r
 
 Compare native UI and RUI on the same hardware/settings with similar scenes. Record idle, travel, crowded nameplates, five-player combat, bag opening/sorting, map/spellbook browsing and repeated UI open/close cycles. Include stance/form changes, queued melee abilities, offhand/ranged attacks, pets, target changes and party aura transitions. Test with optional addons absent, then with likely overlapping UI addons. A loaded addon is a possible conflict, not proof of causation; RUI's diagnostics never change its settings.
 
-Fresh-install/default-layout, full accessibility, aura/cooldown editor and third-party-data independence work remain subsequent milestones. Unified profiles are implemented in beta 74 and require the live checks below. Existing native cooldown-taint reports still require live diagnosis.
+First-run/default-layout and accessibility controls are implemented in beta 75 and need the live checks below. Aura/cooldown editing and third-party-data independence remain subsequent milestones. Existing native cooldown-taint reports still require live diagnosis.
+
+Stage 3 scenarios and the duplicate-settings audit: [Settings ownership and first-run/accessibility acceptance](SETTINGS-OWNERSHIP.md).
 
 ## Stage 2 acceptance
 

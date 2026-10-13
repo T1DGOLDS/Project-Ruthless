@@ -1,3 +1,11 @@
+## 0.14.0-beta.75 — first-run setup, accessibility and settings polish
+
+- Fix M refreshing an already-open map by respecting Blizzard's native quest-panel preference. Keep the native toggle function; test its actual pinned implementation with both preferences, RUI pages and combat states.
+- Consolidate bag columns/auto-sort, guide-provider selection and quest background opacity into their owning settings pages. Context menus link to those controls. Give background reset actions unique searchable names.
+- Add a first-run setup page for new characters without an account default. Retain native starting anchors and capture replacement tracker/party/cast anchors before styling; save captured positions. Existing characters and selected account defaults retain their layouts. Setup changes have a recovery snapshot and wait for combat to finish.
+- Add reduced motion, static portraits, stronger charcoal contrast and larger settings/spellbook/quest text. Preserve native accessibility settings and link to their real categories. Add Tab/Shift-Tab control navigation, Enter/Space activation, slider arrows, PageUp/PageDown sections and search Enter. Keep typing focus in editors; fit owned windows to the available screen.
+- Include accessibility preferences in unified profiles. Local tests cover migration/isolation, static/live portraits, font sizing without compounding, keyboard operation, native map toggle and duplicate registry declarations. All six live gates remain pending; native accessibility parity, visual fit and combat safety require in-game acceptance.
+
 ## 0.14.0-beta.74 — unified profiles and settings foundations
 
 - One Forever profile service saves settings, positions/native element options, chat tabs/filters, spell pins, bag preferences, editor grid/panel position, supported native bar settings and decorative-art choices. Settings and Edit Mode share selection and a separate new-character default. Character working settings persist on normal logout/reload.

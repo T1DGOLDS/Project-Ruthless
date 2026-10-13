@@ -2,7 +2,7 @@
 
 Project Ruthless is a modular World of Warcraft interface focused on practical tools that preserve Blizzard's familiar workflows.
 
-Active development targets WoW Forever (`Interface 16001`, game type `camelot`). Beta 74 adds unified account profiles, preserved legacy saves, feature-based settings navigation, control-level search and inherited background colours. The testing recorder and six release gates remain available; live acceptance is pending.
+Active development targets WoW Forever (`Interface 16001`, game type `camelot`). Beta 75 adds first-run choices, familiar native starting anchors, accessibility controls and keyboard settings navigation. It consolidates duplicate settings and fixes the native M-key map toggle. Unified profiles, search, the testing recorder and six release gates remain available; live acceptance is pending.
 
 Install the three bundled folders: ProjectRuthless, ProjectRuthless_Options and ProjectRuthless_DungeonData. Options and dungeon data load on demand. `/pr` opens settings; `/pr record on` enables local test recording; `/pr record off` stops it; `/pr report` opens a copyable bug report. See [testing and release gates](docs/TESTING-AND-RELEASES.md).
 

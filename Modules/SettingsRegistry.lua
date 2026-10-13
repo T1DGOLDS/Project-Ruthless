@@ -9,6 +9,8 @@ R.sections={
  {id="profiles",label="Profiles"},{id="errors",label="Help & diagnostics"},
  {id="compatibility",label="Compatibility"},{id="status",label="About"},
  {id="backgrounds",label="Backgrounds"}}
+table.insert(R.sections,10,{id="accessibility",label="Accessibility"})
+table.insert(R.sections,11,{id="setup",label="Quick setup"})
 local synonyms={opacity="transparency transparent alpha fade charcoal shadow",background="colour color panel backdrop",party="group grouped member teammate",scale="size zoom",cooldown="cd timer countdown",profile="layout setup default character account",chat="tabs channels messages",bag="inventory backpack sort",health="hp life warning",spell="ability skill macro",quest="guide route journey waypoint",art="blizzard gryphon decoration trim",record="cpu performance lag spikes report bug"}
 function R:Register(page,control,label,description,y,kind)
  if not page or not control then return end
@@ -38,6 +40,7 @@ function R:Search(query)
  return results
 end
 function AUI:BackgroundColor(key,r,g,b)
+ if ProjectRuthlessDB and (ProjectRuthlessDB.accessibility or {}).highContrast then return .018,.020,.024 end
  local s=ProjectRuthlessDB and ProjectRuthlessDB.general or {}
  local suffix=key and s["customColor"..key]and key or ""
  local red,green,blue=s["colorR"..suffix],s["colorG"..suffix],s["colorB"..suffix]
@@ -51,6 +54,11 @@ R.definitions={
  {page="unitframes",key="partyGrouped",section="general",label="Shared party background",description="Use one party panel. Turn off for a compact block per character.",kind="boolean",refresh="ForeverHUD"},
  {page="bags",key="autoSort",section="ruiBags",character=true,label="Auto-sort bags when opened",description="Use Blizzard sorting when the backpack opens; waits for combat to end.",kind="boolean",refresh="ForeverStyle"},
 }
+for _,row in ipairs({
+ {"reducedMotion","Reduce RUI motion","Use immediate scrolling and static portraits; remove missing-spell pulsing."},
+ {"highContrast","High-contrast backgrounds","Use dark neutral backgrounds with at least 90% background opacity. Saved colours are retained."},
+ {"animatedPortraits","Animated portraits","Use live 3D portraits. Reduced motion overrides this choice."},
+})do R.definitions[#R.definitions+1]={page="accessibility",key=row[1],section="accessibility",label=row[2],description=row[3],kind="boolean",refresh="Accessibility"}end
 function R:Get(definition)
  local db=definition.character and ProjectRuthlessCharDB or ProjectRuthlessDB
  return (db[definition.section]or {})[definition.key]

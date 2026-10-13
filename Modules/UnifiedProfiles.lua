@@ -147,6 +147,7 @@ end
 function P:WriteSettings(text,full)
  local parsed=settings:Parse(text)
  if full then
+  ProjectRuthlessDB.accessibility={}
   for key in pairs(ProjectRuthlessDB.general)do
    if key:match("^color[RGB]")or key:match("^customColor")or key:match("^background")then ProjectRuthlessDB.general[key]=nil end
   end
@@ -220,7 +221,7 @@ function P:Apply(profile,name)
  ProjectRuthlessCharDB.activeProfile=name;editor:Store().active=name
  ProjectRuthlessCharDB.profileWorkingSettings=settings:Export()
  AUI:ApplyWindowSettings("profile");AUI:RefreshBackgrounds()
- for _,id in ipairs({"ForeverHUD","ForeverStyle","Spellbook","MapQuests","QuestWorkspace","LowHealthGlow"})do
+ for _,id in ipairs({"ForeverHUD","ForeverStyle","Spellbook","MapQuests","QuestWorkspace","LowHealthGlow","Accessibility"})do
   local module=AUI.modules[id]
   if module and type(module.ApplySettings)=="function"and not (id=="ForeverStyle"and profile.layout)then module:ApplySettings()end
  end

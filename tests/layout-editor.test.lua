@@ -569,8 +569,8 @@ style:BagSettings().autoSort=false;style:SortOnOpen(bag);assert(sorts==2)
 style:BagSettings().columns=8;style:InventoryLayout(bag);assert(bag:GetWidth()==318 and slot:GetWidth()==36)
 local menuCallback;Menu={ModifyMenu=function(tag,callback)assert(tag=='MENU_CONTAINER_FRAME_COMBINED');menuCallback=callback end}
 style:BagMenu();assert(menuCallback)
-local checked,respond;local root={CreateDivider=function()end,CreateTitle=function()end,CreateCheckbox=function(_,label,c,r)checked=c;respond=r end,CreateButton=function()return {CreateRadio=function()end}end}
-menuCallback(nil,root);assert(not checked());respond();assert(checked());respond();assert(not checked())
+local settingsShortcut;local root={CreateDivider=function()end,CreateTitle=function()end,CreateCheckbox=function()error('Bag options have one settings owner')end,CreateButton=function(_,label,callback)assert(label=='RUI bag settings');settingsShortcut=callback end}
+menuCallback(nil,root);assert(type(settingsShortcut)=='function')
 print('PASS: compact top-left inventory measures to contents; auto-sort toggles persist and run on opening only, defer in combat; native bag menu extended')
 
 local oldChar,oldAccount=ProjectRuthlessCharDB,ProjectRuthlessDB.layoutProfiles

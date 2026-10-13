@@ -56,6 +56,7 @@ function H:Register(id,label,frame)
     if id:match("^cast")and not (self.castFrames and self.castFrames[id]==frame)then return end
     if self.registered[id]or not real(frame)then return end
     local editor=AUI.modules.LayoutEditor
+    if AUI.modules.FirstRun then AUI.modules.FirstRun:PlaceReplacement(id,frame)end
     editor:Attach(id,label,frame)
     local target=editor.targets[id];if not target then return end
     target.preview=id=="chat1"or id=="castplayer"or id=="casttarget"or id=="castoffhand"or id=="party";target.hud=true
@@ -184,6 +185,7 @@ function H:StyleUnit(id,frame)
     portraitBox:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8"});portraitBox:SetBackdropColor(.025,.028,.035,0)
     local model=CreateFrame("PlayerModel",nil,portraitBox);model:SetPoint("TOPLEFT",1,-1);model:SetPoint("BOTTOMRIGHT",-1,1);model:EnableMouse(false)
     model.ruiUnit=id;frame.ruiPortrait=model
+    frame.ruiPortraitBox=portraitBox
     model:SetScript("OnShow",function()self:RefreshPortraits(id)end)
     self:RefreshPortraits(id)
     frame.ruiPortraitBox=portraitBox
@@ -471,10 +473,22 @@ function H:RefreshPortraits(unit)
         local frame=self.registered[id];local model=frame and frame.ruiPortrait
         local token=id=="party0"and "player"or id
         if model and (not unit or unit==token)then
+            local access=AUI.modules.Accessibility
+            local animated=not access or access:AnimatedPortraits()
+            local box=frame.ruiPortraitBox
+            if box and type(box)~="function"and (not frame.ruiStaticPortrait or type(frame.ruiStaticPortrait)=="function")then
+                local texture=box:CreateTexture(nil,"ARTWORK");texture:SetAllPoints();frame.ruiStaticPortrait=texture
+            end
+            local static=frame.ruiStaticPortrait
+            if static and type(static)~="function"then
+                static:SetShown(not animated)
+                if not animated and type(SetPortraitTexture)=="function"then SetPortraitTexture(static,token)end
+            end
+            if model:IsShown()~=animated then model:SetShown(animated)end
             -- Failed/restricted bindings retain the previous model unless cleared.
             -- Disable blending so rapid target changes cannot show the old face.
             model:ClearModel()
-            if type(UnitExists)~="function"or UnitExists(token)then
+            if animated and (type(UnitExists)~="function"or UnitExists(token))then
                 local ok,success=pcall(model.SetUnit,model,token,false)
                 if ok and not (issecretvalue and issecretvalue(success))and success~=false then
                     model:SetPortraitZoom(1);model:SetCamera(0)
