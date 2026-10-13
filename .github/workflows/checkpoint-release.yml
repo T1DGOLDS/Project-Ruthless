@@ -1,0 +1,44 @@
+name: Preserve beta 72 recovery package
+on:
+  push:
+    branches: [forever-beta]
+    paths: [.github/workflows/checkpoint-release.yml]
+permissions:
+  contents: write
+concurrency:
+  group: recovery-beta-72
+  cancel-in-progress: false
+jobs:
+  preserve:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 0d21f9e8f230df0e81693849f3c71bd3324c1b68
+      - name: Package the unchanged pre-refactor source
+        shell: pwsh
+        run: ./tools/package.ps1 -Version 0.14.0-beta.72
+      - name: Record archive checksum
+        shell: pwsh
+        run: |
+          $file = 'release/ProjectRuthless-0.14.0-beta.72.zip'
+          $hash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  ProjectRuthless-0.14.0-beta.72.zip" | Set-Content -LiteralPath release/SHA256SUMS.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.14.0-beta.72
+          target_commitish: 0d21f9e8f230df0e81693849f3c71bd3324c1b68
+          name: 0.14.0-beta.72 — pre-refactor recovery checkpoint
+          prerelease: true
+          make_latest: false
+          overwrite_files: false
+          fail_on_unmatched_files: true
+          files: |
+            release/ProjectRuthless-0.14.0-beta.72.zip
+            release/SHA256SUMS.txt
+          body: |
+            Preserves the unchanged Forever beta 72 source before foundation consolidation.
+
+            Source: 0d21f9e8f230df0e81693849f3c71bd3324c1b68. The source validation workflow passed for that commit; all ten local suites also passed against the pinned native input.
+
+            This ZIP is rebuilt from the saved source, so its archive checksum can differ from the original local ZIP. Runtime files and bundled assets are unchanged. Live combat, profile, accessibility, rendering and performance acceptance remain pending. This is an experimental recovery release, not production certification.
