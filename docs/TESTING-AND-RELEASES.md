@@ -1,4 +1,4 @@
-# Testing and releases — beta 75
+# Testing and releases — beta 76
 
 ## In-game testing
 
@@ -23,6 +23,8 @@ Compare native UI and RUI on the same hardware/settings with similar scenes. Rec
 First-run/default-layout and accessibility controls are implemented in beta 75 and need the live checks below. Aura/cooldown editing and third-party-data independence remain subsequent milestones. Existing native cooldown-taint reports still require live diagnosis.
 
 Stage 3 scenarios and the duplicate-settings audit: [Settings ownership and first-run/accessibility acceptance](SETTINGS-OWNERSHIP.md).
+
+Map-owned progression and the focused tracker: [coverage, ownership and live scenarios](QUEST-PROGRESSION.md).
 
 ## Stage 2 acceptance
 

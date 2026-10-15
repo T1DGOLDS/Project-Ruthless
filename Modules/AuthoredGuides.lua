@@ -163,6 +163,9 @@ function G:RenderBrowser(q,page)
         offset=math.max(120,(read(q.mapCopy.GetStringHeight,q.mapCopy)or 108)+12)
         row(state.paused and "Resume RUI guide"or "Pause RUI guide",function()self:Action("pause")end)
         row("Stop RUI guide",function()self:Action("stop")end)
+        if AUI.modules.QuestProgression then
+            row("View quests in progression",function()AUI.modules.QuestProgression:Open("route:"..active.id)end)
+        end
         for i,hub in ipairs(active.hubs)do local chapter=i;row((i==state.chapter and "› "or "")..i.." · "..hub.name.."\nLevels "..hub.min.."–"..hub.max,function()self:Start(active.id,chapter)end)end
         row("Skip current guide quest · keeps quest in log",function()self:Action("skip")end)
     else

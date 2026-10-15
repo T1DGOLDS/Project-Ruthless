@@ -1,6 +1,6 @@
 {
   "name": "project-ruthless",
-  "version": "0.14.0-beta.75",
+  "version": "0.14.0-beta.76",
   "private": true,
   "description": "Local validation tools for the Project Ruthless World of Warcraft addon",
   "scripts": {
@@ -16,7 +16,8 @@
     "test:leveling": "node tests/run-level-history.cjs",
     "test:foundation": "node tests/run-foundation.cjs",
     "test:release": "node tests/run-release-gates.cjs",
-    "test:settings": "node tests/run-settings.cjs"
+    "test:settings": "node tests/run-settings.cjs",
+    "test:progression": "node tests/run-progression.cjs"
   },
   "devDependencies": {
     "fengari": "^0.1.5",

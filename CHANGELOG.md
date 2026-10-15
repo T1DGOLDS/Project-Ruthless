@@ -1,3 +1,11 @@
+## 0.14.0-beta.76 — map-owned quest progression
+
+- Add an original RUI progression engine and an interactive map canvas with selectable quest nodes, explicit prerequisite edges, status/details, pickup areas, pan/zoom, keyboard selection, Follow and native quest-sharing actions. No Attune connection, copied code/art/data or runtime dependency.
+- Replace the map's Dungeons tab with Progression: original Deadmines preparation branch, existing faction-appropriate RUI routes, native quest groups and the current quest log. Native group/route ordering never becomes an invented prerequisite. Missing requirements/coordinates remain explicit. Full dungeon prerequisite coverage is not yet authored.
+- Use the graph automatically for the supported dungeon when no usable native floor is available; keep native dungeon maps and the existing boss/loot/reference atlas. Link route chapters and dungeon details to progression.
+- Focus the side tracker on the current guide step, its objectives and its usable quest item. Remove nearby, previous/all-quest and dungeon lists from that surface; full browsing remains in the map. Browsing nodes does not change the active guide until Follow is pressed. Progression focus stays per character and outside settings profiles.
+- Cache states by revision, coalesce quest events, reuse graph controls, limit native group retention and stop drag updates on hide. Add progression and actual workspace integration regressions. Fourteen suites validate the build; live rendering, requirements, sharing, accessibility, combat and performance gates remain pending.
+
 ## 0.14.0-beta.75 — first-run setup, accessibility and settings polish
 
 - Fix M refreshing an already-open map by respecting Blizzard's native quest-panel preference. Keep the native toggle function; test its actual pinned implementation with both preferences, RUI pages and combat states.

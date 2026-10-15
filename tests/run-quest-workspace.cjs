@@ -23,7 +23,7 @@ for(const [key,file]of [['AUTHORED_DATA_SOURCE','AuthoredGuideData.lua'],['AUTHO
 const dungeonSource=fs.readFileSync(path.join(root,'Modules/DungeonAtlas.lua'),'utf8');
 parser.parse(dungeonSource,{luaVersion:'5.1'});
 lua.lua_pushstring(L,to_luastring(dungeonSource));lua.lua_setglobal(L,to_luastring('DUNGEON_SOURCE'));
-if (lauxlib.luaL_dostring(L, to_luastring(fs.readFileSync(path.join(__dirname, 'quest-workspace.test.lua'), 'utf8')+'\n'+fs.readFileSync(path.join(__dirname,'map-toggle.test.lua'),'utf8'))) !== lua.LUA_OK) {
+if (lauxlib.luaL_dostring(L, to_luastring(fs.readFileSync(path.join(__dirname, 'quest-workspace.test.lua'), 'utf8')+'\n'+fs.readFileSync(path.join(__dirname,'map-toggle.test.lua'),'utf8')+'\n'+fs.readFileSync(path.join(__dirname,'quest-progression-integration.test.lua'),'utf8'))) !== lua.LUA_OK) {
   throw new Error(to_jsstring(lua.lua_tostring(L, -1)));
 }
 

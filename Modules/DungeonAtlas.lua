@@ -176,6 +176,11 @@ function D:Render(q)
                 self.selected=chosen;self.boss=nil;self.localFloor=nil;self.view="Bosses"
                 local floors=self:MapIDs(chosen.record)
                 if floors[1]then self:OpenMap(floors[1].mapID)end
+                if #floors==0 and AUI.modules.QuestProgression then
+                    for _,chain in ipairs(AUI.modules.QuestProgression:Catalog())do
+                        if chain.areaID==chosen.record.MapID then AUI.modules.QuestProgression:Open(chain.key);return end
+                    end
+                end
                 q:RenderMapPage()
             end)
         end
@@ -184,6 +189,14 @@ function D:Render(q)
         q.mapHeading:SetText(self.selected.name)
         row("‹ All dungeons",function()self.selected=nil;self.boss=nil;q:RenderMapPage()end)
         row(self.view=="Quests"and "View bosses & loot"or "View dungeon quests",function()self.view=self.view=="Quests"and "Bosses"or "Quests";self.boss=nil;q:RenderMapPage()end)
+        local progression=AUI.modules.QuestProgression
+        if progression then
+            for _,chain in ipairs(progression:Catalog())do
+                if chain.areaID==record.MapID then local key=chain.key
+                    row("Quest preparation flowchart",function()progression:Open(key)end)
+                end
+            end
+        end
         local floors=self:MapIDs(record)
         for _,floor in ipairs(floors)do local mapID=floor.mapID;row("Floor · "..(floor.name or tostring(mapID)),function()self:OpenMap(mapID);self:DrawPins()end)end
         if #floors==0 then
@@ -198,6 +211,7 @@ function D:Render(q)
                 end
             else
                 row("No bundled map for this dungeon",function()end)
+                if progression then row("Browse quest progression",function()progression:Open()end)end
             end
         end
         if self.view=="Quests"then

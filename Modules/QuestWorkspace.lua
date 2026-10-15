@@ -323,6 +323,9 @@ function Q:CycleGuideSource()
     self.manualFocus=nil;self.manualPickup=nil;self.guide=nil;self:Refresh()
 end
 function Q:ReadGuide()
+    local progression=AUI.modules.QuestProgression
+    local current=progression and progression:Guide()
+    if current then return current end
     local source=ProjectRuthlessDB.questWorkspace.guideSource
     if self.manualFocus and source~="RUI"then return end
     local authored=AUI.modules.AuthoredGuides
@@ -400,11 +403,18 @@ function Q:RenderGuide(guide)
     if guide.source=="RUI"and AUI.modules.QuestLocations then AUI.modules.QuestLocations.selectedQuest=guide.id end
     self:SyncMapObjective()
     self.summary:SetText(guide.instruction)
-    if self.objectiveCopy then self.objectiveCopy:SetText(table.concat(guide.objectives or {},"\n"))end
+    local objectives=guide.objectives or {}
+    if AUI.modules.QuestProgression and guide.id then
+        objectives={}
+        for _,objective in ipairs(Call(C_QuestLog.GetQuestObjectives,guide.id)or {})do
+            if Public(objective.text)and type(objective.text)=="string"then objectives[#objectives+1]=objective.text end
+        end
+    end
+    if self.objectiveCopy then self.objectiveCopy:SetText(table.concat(objectives,"\n"))end
     self.nearbyHeading:SetText("UP NEXT · GUIDE")
     self.empty:Hide()
     for i,row in ipairs(self.rows) do
-        local entry=guide.next[i];row.entry=nil;row:SetShown(entry~=nil)
+        local entry=not AUI.modules.QuestProgression and guide.next[i];row.entry=nil;row:SetShown(entry~=nil and entry~=false)
         if entry then row.title:SetText(self:QuestTitle(entry));row.detail:SetText(self:HighlightObjective(entry.detail)) end
     end
     return true
@@ -448,6 +458,7 @@ function Q:GuideNavigation()
     return true
 end
 function Q:GuideAction(name)
+    if self.guide and self.guide.source=="RUI progression"then AUI.modules.QuestProgression:Action(name);return end
     if self.guide and self.guide.source=="RUI"then AUI.modules.AuthoredGuides:Action(name);return end
     -- External provider callbacks may change protected state.
     if InCombatLockdown() then return end
@@ -467,11 +478,15 @@ function Q:Refresh(skipUnchanged)
     local parts={}
     for _,entry in ipairs(entries)do parts[#parts+1]=tostring(entry.id)..":"..tostring(entry.complete)..":"..tostring(entry.title)..":"..tostring(entry.detail)..":"..tostring(entry.level)..":"..tostring(entry.elite)end
     local signature=table.concat(parts,"|")
-    if skipUnchanged and signature==self.entriesSignature then self:RenderQuestItems();if self:UpdatePreparation()then self:LayoutContent()end;return end
+    if skipUnchanged and signature==self.entriesSignature and self.manualPickup==self.appliedManualPickup then self:RenderQuestItems();if AUI.modules.QuestProgression or self:UpdatePreparation()then self:LayoutContent()end;return end
     if signature~=self.entriesSignature then self.entries=entries;self.entriesSignature=signature end
+    if self.appliedManualPickup then
+        for i=#self.entries,1,-1 do if self.entries[i]==self.appliedManualPickup then table.remove(self.entries,i)end end
+        self.appliedManualPickup=nil
+    end
     if self.manualPickup then
         local accepted=false;for _,entry in ipairs(self.entries)do if entry.id==self.manualPickup.id then accepted=true end end
-        if accepted then self.manualPickup=nil else self.entries[#self.entries+1]=self.manualPickup end
+        if accepted then self.manualPickup=nil else self.entries[#self.entries+1]=self.manualPickup;self.appliedManualPickup=self.manualPickup end
     end
     local found=false
     for _,entry in ipairs(self.entries) do if entry.id==self.selected then found=true end end
@@ -498,7 +513,7 @@ function Q:Refresh(skipUnchanged)
     if self.RefreshPins then self:RefreshPins() end
     self:RenderContext()
     self:Navigate()
-    if self.mapPanel and self.mapPanel:IsShown() then self:RenderMapPage() end
+    if self.mapPanel and self.mapPanel:IsVisible() then self:RenderMapPage() end
 end
 
 function Q:Navigate()
@@ -545,8 +560,11 @@ function Q:RenderMapPage()
     local page=self.mapPage or "Quests"
     local atlas=AUI.modules.DungeonAtlas
     if atlas then atlas:Hide()end
+    local progression=AUI.modules.QuestProgression
+    if progression then progression:Hide()end
     local authored=AUI.modules.AuthoredGuides
     if authored then authored:HideBrowser()end
+    if progression and page=="Dungeons"then progression:Render(self);return end
     if authored and (page=="Library"or page=="Chapters")then authored:RenderBrowser(self,page);return end
     if page=="Dungeon atlas"and atlas then
         for _,control in ipairs(self.mapControls or {})do control:Hide()end
@@ -681,6 +699,8 @@ function Q:SelectMapPage(page)
     if page~="Quests"then self:RenderMapPage()end
 end
 function Q:SyncMapPage()
+    local progression=AUI.modules.QuestProgression
+    if progression and (self.mapPage~="Dungeons"or not ProjectRuthlessDB.questWorkspace.enabled)then progression:Hide()end
     if self.syncingMap or not self.mapPanel then return end
     local combat=InCombatLockdown()
     if combat then AUI:AfterCombat("mapPage",function()self:SyncMapPage()end)end
@@ -1053,7 +1073,10 @@ function Q:InstallMap()
     self:StyleMap()
     if self.mapPanel or not WorldMapFrame then return end
     local map=WorldMapFrame
-    map:HookScript("OnShow",function()self:StyleMap();if self.mapPage=="Dungeon atlas"then self:RenderMapPage()end end)
+    map:HookScript("OnShow",function()self:StyleMap();if self.mapPage=="Dungeon atlas"or self.mapPage=="Dungeons"then
+        local progression=AUI.modules.QuestProgression;if progression then progression:Invalidate()end
+        self:RenderMapPage()
+    end end)
     if hooksecurefunc and QuestMapFrame_ShowQuestDetails then hooksecurefunc("QuestMapFrame_ShowQuestDetails",function()self:StyleMap();self:LayoutMap()end)end
     if hooksecurefunc and QuestLogQuests_Update then hooksecurefunc("QuestLogQuests_Update",function()if map:IsShown()then self:StyleMap()end end)end
     local r,g,b=Accent()
@@ -1080,7 +1103,7 @@ function Q:InstallMap()
     end
     self.mapTabs={}
     for i,name in ipairs({"Quests","Chapters","Library","Professions","Tools","Settings","Supplies","Dungeons","Dungeon atlas"}) do
-        local tab=AUI:CreateButton(tabs); tab:SetSize(90,22); tab:SetPoint("TOPLEFT",8+((i-1)%3)*94,-8-math.floor((i-1)/3)*26); tab:SetText(name);tab.page=name;self.mapTabs[#self.mapTabs+1]=tab
+        local tab=AUI:CreateButton(tabs); tab:SetSize(90,22); tab:SetPoint("TOPLEFT",8+((i-1)%3)*94,-8-math.floor((i-1)/3)*26); tab:SetText(name=="Dungeons"and AUI.modules.QuestProgression and "Progression"or name);tab.page=name;self.mapTabs[#self.mapTabs+1]=tab
         tab:SetScript("OnClick",function()self:SelectMapPage(name)end)
     end
     self.mapHeading=Text(panel,12,-12,276,"GameFontNormalLarge"); self.mapHeading:SetTextColor(r,g,b)
@@ -1124,7 +1147,7 @@ end
 
 function Q:QuestItems()
     local ids={}
-    if self.guide then for id in pairs(self.guide.questIDs or {})do ids[id]=true end;if self.guide.id then ids[self.guide.id]=true end
+    if self.guide then if not AUI.modules.QuestProgression then for id in pairs(self.guide.questIDs or {})do ids[id]=true end end;if self.guide.id then ids[self.guide.id]=true end
     elseif self.selected then ids[self.selected]=true end
     local items={};local seen={}
     for id in pairs(ids)do
@@ -1211,6 +1234,14 @@ function Q:LayoutContent()
         self.objectiveContent:SetSize(254,fullHeight);self.objectiveCopy:SetHeight(fullHeight);y=y+visible+10
     end
     for _,row in ipairs(self.itemRows or {})do if row:IsShown()then row:ClearAllPoints();row:SetPoint("TOPLEFT",12,-y);y=y+28 end end
+    if AUI.modules.QuestProgression then
+        self.nearbyHeading:Hide();for _,row in ipairs(self.rows)do row:Hide()end
+        self.contextHeading:Hide();self.contextEmpty:Hide();for _,row in ipairs(self.contextRows)do row:Hide()end
+        self.dungeonHeading:Hide();for _,row in ipairs(self.dungeonRows)do row:Hide();if row.share then row.share:Hide()end end
+        self.dungeonPrompt:Hide();self.trackDungeonButton:Hide();self.dismissDungeonButton:Hide();self.tripButton:Hide()
+        if self.prepCopy then self.prepCopy:Hide()end
+        self.frame:SetHeight(y+12);return
+    end
     self.nearbyHeading:ClearAllPoints();self.nearbyHeading:SetPoint("TOPLEFT",12,-y);y=y+18
     for _,row in ipairs(self.rows)do if row:IsShown()then row:ClearAllPoints();row:SetPoint("TOPLEFT",12,-y);y=y+29 end end
     if self.prepCopy and self.prepCopy:IsShown()then
@@ -1294,6 +1325,10 @@ end
 
 function Q:RenderContext()
     if not self.contextRows then return end
+    if AUI.modules.QuestProgression then
+        self.returnGuide:SetShown(self.manualFocus==true or AUI.modules.QuestProgression:Store().active~=nil)
+        self:RenderQuestItems();self:LayoutContent();return
+    end
     local locations=AUI.modules.QuestLocations
     local entries,inside
     if locations then entries,inside=locations:ContextRows(self) end
@@ -1457,7 +1492,10 @@ function Q:CreateWorkspace()
     self.menuButton=AUI:CreateButton(f);self.menuButton:SetSize(48,18);self.menuButton:SetPoint("TOPRIGHT",-8,-8);self.menuButton:SetText("Menu")
     self.menuButton:SetScript("OnClick",function()self:OpenDungeonMenu()end)
     self.returnGuide=AUI:CreateButton(f);self.returnGuide:SetSize(48,18);self.returnGuide:SetPoint("TOPRIGHT",-60,-8);self.returnGuide:SetText("Guide")
-    self.returnGuide:SetScript("OnClick",function()self.manualFocus=nil;self.manualPickup=nil;self.tripArea=nil;if AUI.modules.QuestLocations then AUI.modules.QuestLocations.selectedQuest=nil end;self:Refresh()end);self.returnGuide:Hide()
+    self.returnGuide:SetScript("OnClick",function()
+        local progression=AUI.modules.QuestProgression;if progression then progression:Store().active=nil;progression:Store().quest=nil end
+        self.manualFocus=nil;self.manualPickup=nil;self.tripArea=nil;if AUI.modules.QuestLocations then AUI.modules.QuestLocations.selectedQuest=nil end;self:Refresh()
+    end);self.returnGuide:Hide()
     self.empty=Text(f,12,-92,266); self.empty:SetText("No quests displayed. Accept a quest or restore hidden quests below.")
     f:EnableMouseWheel(true); f:SetScript("OnMouseWheel",function(_,delta) self.offset=self.offset-delta; self:Refresh() end)
     local lastMap,lastX,lastY
@@ -1528,6 +1566,7 @@ function Q:OnPlayerLogin()
     self.eventNames={"QUEST_LOG_UPDATE","QUEST_ACCEPTED","QUEST_REMOVED","QUEST_TURNED_IN","QUEST_POI_UPDATE","PLAYER_ENTERING_WORLD","PLAYER_REGEN_ENABLED","ADDON_LOADED","MERCHANT_SHOW","MERCHANT_UPDATE","BAG_UPDATE_DELAYED","ZONE_CHANGED_NEW_AREA","PLAYER_LEVEL_UP","QUEST_PROGRESS","QUEST_COMPLETE","AUCTION_HOUSE_SHOW","AUCTION_HOUSE_CLOSED","GET_ITEM_INFO_RECEIVED"}
     events:SetScript("OnEvent",function(_,event)
         if not ProjectRuthlessDB.questWorkspace.enabled then return end
+        if event=="QUEST_LOG_UPDATE"or event=="QUEST_ACCEPTED"or event=="QUEST_REMOVED"or event=="QUEST_TURNED_IN"or event=="PLAYER_LEVEL_UP"or event=="ZONE_CHANGED_NEW_AREA"or event=="PLAYER_ENTERING_WORLD"then self.progressionDirty=true end
         if event=="AUCTION_HOUSE_SHOW"then self.prepAuctionOpen=true elseif event=="AUCTION_HOUSE_CLOSED"then self.prepAuctionOpen=nil end
         if event=="QUEST_PROGRESS"or event=="QUEST_COMPLETE"then self:AutoHandIn(event);return end
         if event=="PLAYER_REGEN_ENABLED" and self.pending then self:ApplySettings()end
@@ -1548,7 +1587,13 @@ function Q:OnPlayerLogin()
                 self.eventRefreshQueued=nil
                 local skipUnchanged=not self.eventRefreshForced
                 self.eventRefreshForced=nil
-                if ProjectRuthlessDB.questWorkspace.enabled then self:AnnounceQuestProgress();self:Refresh(skipUnchanged)end
+                local progression=AUI.modules.QuestProgression
+                if progression and self.progressionDirty then progression:Invalidate()end
+                self.progressionDirty=nil
+                if ProjectRuthlessDB.questWorkspace.enabled then
+                    self:AnnounceQuestProgress();self:Refresh(skipUnchanged)
+                    if progression and self.mapPanel and self.mapPanel:IsVisible()and self.mapPage=="Dungeons"and progression.renderedRevision~=progression.revision then self:RenderMapPage()end
+                end
             end)
         end
     end)
