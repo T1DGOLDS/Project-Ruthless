@@ -11,6 +11,7 @@ R.sections={
  {id="backgrounds",label="Backgrounds"}}
 table.insert(R.sections,10,{id="accessibility",label="Accessibility"})
 table.insert(R.sections,11,{id="setup",label="Quick setup"})
+table.insert(R.sections,4,{id="auras",label="Auras & cooldowns"})
 local synonyms={opacity="transparency transparent alpha fade charcoal shadow",background="colour color panel backdrop",party="group grouped member teammate",scale="size zoom",cooldown="cd timer countdown",profile="layout setup default character account",chat="tabs channels messages",bag="inventory backpack sort",health="hp life warning",spell="ability skill macro",quest="guide route journey waypoint",art="blizzard gryphon decoration trim",record="cpu performance lag spikes report bug"}
 function R:Register(page,control,label,description,y,kind)
  if not page or not control then return end

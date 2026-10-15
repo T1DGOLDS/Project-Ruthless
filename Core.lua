@@ -134,7 +134,7 @@ function AUI:SettingsChanged(section,key)
     if section=="Backgrounds"then self:RefreshBackgrounds(key);return end
     if section=="General"then self:ApplyWindowSettings(key);return end
     local module=self.modules[section]
-    if module and module.ApplySettings then module:ApplySettings() end
+    if module and module.ApplySettings then module:ApplySettings(key) end
 end
 
 -- Shared action-button treatment. Rows/tabs keep their selection-specific styling.
@@ -166,7 +166,7 @@ function AUI:AccentColor()
 end
 -- Background-only opacity. Owned backdrops are registered once, never whole frames.
 AUI.backgrounds=setmetatable({},{__mode="k"})
-AUI.backgroundGroups={{"Quest","Quest tracker"},{"Player","Player frame"},{"Target","Target frame"},{"Party","Party frame"},{"Chat","Chat"},{"ActionBars","Action bars"},{"XP","XP / reputation bars"},{"Micro","Micro menu"},{"BagButtons","Bag buttons"},{"Backpack","Open bags"},{"Meters","Damage meters"},{"Map","Map and quest log"},{"Spellbook","Spellbook"},{"Cast","Cast / attack timers"},{"Options","Settings and edit mode"},{"Professions","Professions"}}
+AUI.backgroundGroups={{"Quest","Quest tracker"},{"Player","Player frame"},{"Target","Target frame"},{"Party","Party frame"},{"Chat","Chat"},{"ActionBars","Action bars"},{"XP","XP / reputation bars"},{"Micro","Micro menu"},{"BagButtons","Bag buttons"},{"Backpack","Open bags"},{"Meters","Damage meters"},{"Map","Map and quest log"},{"Spellbook","Spellbook"},{"Cast","Cast / attack timers"},{"Options","Settings and edit mode"},{"Professions","Professions"},{"Auras","Auras & cooldowns"}}
 function AUI:BackgroundOpacity(key)
     local db=ProjectRuthlessDB or {};local settings=db.general or {}
     local value=key and settings["background"..key]

@@ -2,7 +2,7 @@
 ## Title: Project Ruthless
 ## Notes: Practical interface tools that preserve familiar Blizzard workflows.
 ## Author: Andrew
-## Version: 0.14.0-beta.76
+## Version: 0.14.0-beta.77
 ## OptionalDeps: Epithet, RaiderIO, ForeverWisp, AtlasLootClassic, QuestieDB, TomTom
 ## SavedVariables: ProjectRuthlessDB
 ## SavedVariablesPerCharacter: ProjectRuthlessCharDB

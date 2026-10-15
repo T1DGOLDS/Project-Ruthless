@@ -2,7 +2,7 @@
 
 Project Ruthless is a modular World of Warcraft interface focused on practical tools that preserve Blizzard's familiar workflows.
 
-Active development targets WoW Forever (`Interface 16001`, game type `camelot`). Beta 76 adds map-owned quest progression with clickable quest nodes, prerequisite branches and details; the side tracker focuses on the current step. The new progression engine needs no external addon. Deadmines is the first authored dungeon branch; native quest groups and existing RUI routes also appear, with unknown prerequisites identified explicitly. Existing optional location/database adapters remain elsewhere pending removal. See [progression coverage and testing](docs/QUEST-PROGRESSION.md). All six live gates remain pending.
+Active development targets WoW Forever (`Interface 16001`, game type `camelot`). Beta 77 adds stage 4's Auras & Cooldowns manager: simple native-rendered aura groups, cooldown integration, presets/previews, unified profile preferences and contextual feature explanations. See [aura controls and live checks](docs/AURAS-AND-COOLDOWNS.md). Map-owned quest progression remains available; see [coverage](docs/QUEST-PROGRESSION.md). Existing optional location/database adapters remain elsewhere pending removal. All six live gates remain pending.
 
 Install the three bundled folders: ProjectRuthless, ProjectRuthless_Options and ProjectRuthless_DungeonData. Options and dungeon data load on demand. `/pr` opens settings; `/pr record on` enables local test recording; `/pr record off` stops it; `/pr report` opens a copyable bug report. See [testing and release gates](docs/TESTING-AND-RELEASES.md).
 

@@ -1,8 +1,9 @@
 ## Interface: 120100, 16001
 ## Title: RUI Options
-## Version: 0.14.0-beta.76
+## Version: 0.14.0-beta.77
 ## Notes: Ruthless UI settings, loaded only when opened.
 ## Dependencies: ProjectRuthless
 ## LoadOnDemand: 1
 
 Menu.lua
+AuraOptions.lua

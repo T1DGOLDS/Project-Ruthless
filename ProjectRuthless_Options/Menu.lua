@@ -470,8 +470,8 @@ end
 function Menu:FilterTabs(query)
     query=(query or ""):lower()
     if AUI.modules.SettingsRegistry then
-        local spacing=#self.tabs>13 and 30 or 34
-        for i,tab in ipairs(self.tabs)do tab:SetShown(true);tab:ClearAllPoints();tab:SetPoint("TOPLEFT",self.sidebar,"TOPLEFT",12,-90-(i-1)*spacing)end
+        local spacing=#self.tabs>15 and 27 or #self.tabs>13 and 30 or 34
+        for i,tab in ipairs(self.tabs)do tab:SetShown(true);tab:SetHeight(spacing-2);tab:ClearAllPoints();tab:SetPoint("TOPLEFT",self.sidebar,"TOPLEFT",12,-90-(i-1)*spacing)end
         self:SearchControls(query);return
     end
     local aliases={backgrounds="charcoal opacity transparency global individual shadows",general="scale opacity",profiles="save load import export undo",mapquests="guide dungeon quest tracker arrow waypoint supplies preparation handin",errors="diagnostics lag cpu errors",spellbook="macro ranks professions spells",health="glow warning threshold"}
@@ -614,6 +614,7 @@ function Menu:Create()
             self.pageBuilders.unitframes="CreateUnitFrameOptions";self.pageBuilders.bags="CreateBagOptions";self.pageBuilders.chat="CreateChatOptions"
             self.pageBuilders.talents=nil
             if AUI.modules.Accessibility then self.pageBuilders.accessibility="CreateAccessibilityOptions";self.pageBuilders.setup="CreateSetupOptions"end
+            if AUI.modules.AuraManager then self.pageBuilders.auras="CreateAuraOptions"end
         end
     end
     if AUI.isForever and AUI.modules.SettingsRegistry then

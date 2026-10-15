@@ -37,4 +37,5 @@ jobs:
       - run: npm run test:foundation
       - run: npm run test:settings
       - run: npm run test:progression
+      - run: npm run test:auras
       - run: npm run test:release

@@ -87,7 +87,9 @@ function D:Checks()
         local workspace=AUI.modules.QuestWorkspace
         if not workspace or not workspace:ReadGuide()then add("WARNING","Selected guide has no readable current step. It may be stopped, unavailable or unsupported.","Map > Library > Guide source")end
     end
-    if not CustomAuraContainerGroupDefaultOptions then add("WARNING","Native party aura templates are unavailable in this client; party aura containers cannot be initialized.","Unit frames > Party auras (client capability)")end
+    if not CustomAuraContainerGroupDefaultOptions and not AUI.modules.AuraManager then add("WARNING","Native party aura templates are unavailable in this client; party aura containers cannot be initialized.","Unit frames > Party auras (client capability)")end
+    local manager=AUI.modules.AuraManager
+    if manager then for _,row in ipairs(manager:Checks())do rows[#rows+1]=row end end
     add("INFO",AUI.modules.UnifiedProfiles and "Settings and Edit Mode share account profiles. Legacy partial saves are labelled; save again to capture a complete setup."or "Settings profiles and layout profiles are separate in this client.","Profiles / Edit Mode")
     local api=C_AddOns
     if api and type(api.IsAddOnLoaded)=="function"then

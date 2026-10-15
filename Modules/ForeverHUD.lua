@@ -305,14 +305,21 @@ function H:CreatePartyAuras(row,unit)
         {filter="HARMFUL",y=-26,size=16,limit=4,candidates={excludeDispelTypes=dispelTypes}},
         {filter="HARMFUL",y=-48,size=28,limit=2,candidates={includeDispelTypes=dispelTypes}},
     }
+    local managed=AUI.modules.AuraManager and CustomAuraContainerAuraProcessingPolicy and AuraUtil and AuraUtil.AuraUpdateChangedType
+    if managed then
+        groups[2].candidates={processedAuraType=AuraUtil.AuraUpdateChangedType.Debuff}
+        groups[3].candidates={processedAuraType=AuraUtil.AuraUpdateChangedType.Dispel}
+    end
     for i,group in ipairs(groups)do
         local container=CreateFrame("AuraContainer",nil,row,"CustomAuraContainerTemplate")
+        if managed and i>1 then container:SetAuraProcessingPolicy(CustomAuraContainerAuraProcessingPolicy.ProcessAura,{ignoreBuffs=true,displayOnlyDispellableDebuffs=false})end
         container:SetFixedFrameStrata(false);container:SetPoint("TOPLEFT",row,"TOPRIGHT",6,group.y)
         container:SetFlowLayoutMaximumLineSize(72)
         container:AddAuraGroup("party",group.filter,{maxFrameCount=group.limit,candidateFilters=group.candidates,initializeFrame=function(button)initialize(button,group.filter=="HARMFUL",group.size)end,layout={elementWidth=group.size,elementHeight=group.size,elementSpacing=2}})
         container:SetUnit(unit);container:SetEnabled(true)
         row.ruiAuras[i]=container
     end
+    if AUI.modules.AuraManager then AUI.modules.AuraManager:ApplyParty()end
 end
 function H:CreatePartyPet(row,index)
     local unit=index==0 and "pet"or "partypet"..index

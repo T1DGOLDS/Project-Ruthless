@@ -14,6 +14,7 @@ function F:InitializeCharacter()
  self.useNativePlacement=fresh and not default
  if self.useNativePlacement then
   ProjectRuthlessDB.accessibility={}
+  ProjectRuthlessDB.auraManager={}
   local general=ProjectRuthlessDB.general
   general.windowScale=1;general.windowOpacity=1;general.partyGrouped=false;general.backgroundOpacity=.72
   for key in pairs(general)do

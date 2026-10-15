@@ -14,6 +14,7 @@ function B:Remember(aura)
     if aura.duration>0 and aura.expirationTime>0 then self.auras[id]=aura end
 end
 function B:Scan()
+    if AUI.modules.AuraManager and not AUI.modules.AuraManager:Settings().expiring then return end
     if restricted()or self.resting then self.needsScan=true;return end
     if not C_UnitAuras or type(C_UnitAuras.GetAuraDataByIndex)~="function"then return end
     self.needsScan=nil;self.auras={}
@@ -25,6 +26,7 @@ function B:Scan()
     self:Queue()
 end
 function B:Update(info)
+    if AUI.modules.AuraManager and not AUI.modules.AuraManager:Settings().expiring then return end
     -- Restricted aura access can continue outside combat. Never query updates then.
     -- Discard stale icons rather than advertise a cancelled buff from cached timing.
     if restricted()then self.needsScan=true;self.auras={};self:Queue();return end
@@ -47,12 +49,19 @@ function B:Queue()
 end
 function B:Render()
     if not self.frame then return end
+    local settings=AUI.modules.AuraManager and AUI.modules.AuraManager:Settings()
+    if settings and not settings.expiring then
+        for _,icon in ipairs(self.icons)do icon:Hide()end
+        if self.timer and type(self.timer.Cancel)=="function"then self.timer:Cancel()end
+        self.revision=(self.revision or 0)+1;return
+    end
+    local threshold=settings and settings.expirationThreshold or 30
     local now=GetTime();local shown={};local nextTime
     for id,aura in pairs(self.auras)do
         local remaining=aura.expirationTime-now
         if remaining<=0 then self.auras[id]=nil
-        elseif remaining<30 then shown[#shown+1]=aura;nextTime=math.min(nextTime or remaining,remaining)
-        else local threshold=remaining-30+.05;nextTime=math.min(nextTime or threshold,threshold)end
+        elseif remaining<threshold then shown[#shown+1]=aura;nextTime=math.min(nextTime or remaining,remaining)
+        else local delay=remaining-threshold+.05;nextTime=math.min(nextTime or delay,delay)end
     end
     table.sort(shown,function(a,b)if a.expirationTime==b.expirationTime then return a.auraInstanceID<b.auraInstanceID end;return a.expirationTime<b.expirationTime end)
     for i=1,math.min(#shown,24)do
@@ -71,6 +80,11 @@ function B:Render()
     if self.timer and type(self.timer.Cancel)=="function"then self.timer:Cancel()end
     self.revision=(self.revision or 0)+1;local revision=self.revision
     if nextTime then local schedule=C_Timer.NewTimer or C_Timer.After;self.timer=schedule(math.max(.05,nextTime),function()if revision==self.revision then self:Render()end end)end
+end
+function B:ApplySettings()
+    if not self.frame then return end
+    if AUI.modules.AuraManager and not AUI.modules.AuraManager:Settings().expiring then self.auras={};self:Render()
+    else self:Scan();self:Render()end
 end
 function B:OnPlayerLogin()
     if not AUI.isForever or not PlayerFrame then return end

@@ -14,10 +14,11 @@ local spec={
 spec.general.backgroundOpacity={0,1}
 spec.errorLog={enabled=true,maxEntries={10,200}}
 spec.accessibility={textScale={1,1.5},reducedMotion=true,highContrast=true,animatedPortraits=true}
-for _,key in ipairs({"Quest","Player","Target","Party","Chat","ActionBars","XP","Micro","BagButtons","Backpack","Meters","Map","Spellbook","Cast","Options","Professions"})do spec.general["background"..key]={-1,1}end
+spec.auraManager={playerBuffs=true,playerDebuffs=true,targetDebuffs=true,focus=true,focusSpell={0,10000000,integer=true},iconSize={16,48},spacing={0,12},limit={1,24,integer=true},expirationFirst=true,partyBuffs=true,partyDebuffs=true,partyDispels=true,expiring=true,expirationThreshold={5,60},styleCooldowns=true}
+for _,key in ipairs({"Quest","Player","Target","Party","Chat","ActionBars","XP","Micro","BagButtons","Backpack","Meters","Map","Spellbook","Cast","Options","Professions","Auras"})do spec.general["background"..key]={-1,1}end
 for _,channel in ipairs({"R","G","B"})do
  spec.general["color"..channel]={0,1}
- for _,key in ipairs({"Quest","Player","Target","Party","Chat","ActionBars","XP","Micro","BagButtons","Backpack","Meters","Map","Spellbook","Cast","Options","Professions"})do
+ for _,key in ipairs({"Quest","Player","Target","Party","Chat","ActionBars","XP","Micro","BagButtons","Backpack","Meters","Map","Spellbook","Cast","Options","Professions","Auras"})do
   spec.general["color"..channel..key]={0,1};spec.general["customColor"..key]=true
  end
 end
@@ -26,6 +27,7 @@ local function valid(rule,value)
  if rule==true then return type(value)=="boolean"end
  if rule.identifier then return type(value)=="string"and #value<=40 and value:match("^[%w_%-]+$")~=nil end
  if rule.values then return type(value)=="string"and rule.values[value]==true end
+ if rule.integer and (type(value)~="number"or value~=math.floor(value))then return false end
  if rule[1]==-1 and type(value)=="number"and value<0 then return value==-1 end
  return type(value)=="number"and value==value and value>=rule[1]and value<=rule[2]
 end

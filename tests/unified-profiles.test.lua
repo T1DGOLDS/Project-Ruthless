@@ -64,3 +64,18 @@ p:InitializeCharacter();assert(p:Store().entries['Layout: Same (2)'].layout.targ
 assert(p:Store().entries['Layout: Same'].layout.target.x==20)
 local after=#p:Names();p:InitializeCharacter();assert(#p:Names()==after)
 print('PASS: lossless distinct legacy migration, one settings/layout/chat save/load, native proxies, pins, colour reset, undo/recovery, complete default, character working copy, bounded non-executable import and combat no-write guard')
+do
+ local restored
+ AUI.modules.AuraManager={CaptureCooldowns=function()return {class='WARRIOR',data='native opaque payload'}end,RestoreCooldowns=function(_,snapshot)restored=snapshot;return true,'Reload native viewer' end,ApplySettings=function()end}
+ ProjectRuthlessDB.auraManager={focus=true,focusSpell=123,iconSize=32,limit=8,spacing=3}
+ assert(p:Save('Auras'));local exported=p:Export();local parsed=p:Parse(exported)
+ assert(parsed.cooldowns.data=='native opaque payload'and parsed.cooldowns.class=='WARRIOR')
+ assert(parsed.settings:find('auraManager.focusSpell=123',1,true))
+ assert(p:Apply(parsed,'Auras')and restored.data=='native opaque payload')
+ local malformed=clone(parsed);malformed.cooldowns.extra=true;assert(not p:Validate(malformed))
+ assert(not AUI.modules.Profiles:Parse('RUI_SETTINGS_1\nauraManager.focusSpell=1.5'))
+ assert(not AUI.modules.Profiles:Parse('RUI_SETTINGS_1\nauraManager.limit=8.5'))
+ assert(p:Apply({version=2,full=true,settings=old,layout=editor:Snapshot(),native={},pins={},bags={columns=10,autoSort=false}}))
+ assert(next(ProjectRuthlessDB.auraManager)==nil)
+ print('PASS: aura preferences and opaque cooldown data share unified profiles, reject invalid fields/fractional IDs and reset on legacy full-profile load')
+end

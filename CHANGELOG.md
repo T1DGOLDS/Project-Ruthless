@@ -1,3 +1,12 @@
+## 0.14.0-beta.77 — stage 4 auras, cooldowns and feature explanations
+
+- Add Auras & Cooldowns settings with simple combat/buff/minimal presets, movable player buffs/debuffs, your target debuffs and an exact-ID player focus buff. Native secure aura containers own filters, duration display, counts and expiration ordering. Additional groups default off; existing layouts remain intact.
+- Integrate native essential/utility cooldowns and tracked buff icons/bars, their spell/alert configuration, thin RUI borders and geometry-only Edit Mode movers. Never call native live cooldown refresh/render methods or inspect secured aura-instance maps. Cosmetic trim changes are reversible; native state and alerts remain authoritative.
+- Add party buff/debuff/dispel switches and native debuff/dispel classification, replacing the managed presentation's static list of all dispel types. Add an expiring-self-buff switch and public-timing threshold. No hidden timer arithmetic or general custom-code trigger engine.
+- Save aura preferences and supported native cooldown activation/layout data in unified profiles. Opaque native data is bounded and class-checked; old complete profiles reset new aura overrides. Native cached cooldown layout changes explicitly require reload. Recovery remains available.
+- Provide static sample previews, searchable settings and contextual checks for deliberate Off, missing spell setup, unavailable native capability, combat-deferred edits, restricted timing and pending reload. Include checks in the bug report; keep colour/opacity under the shared Auras background group.
+- Cache group configurations, coalesce relevant setup events, scope party/expiration edits and keep new groups free of addon per-frame polling. Add native-contract, runtime-boundary, settings, profile and party-classification regressions. Fifteen automated suites validate the build; all six live gates remain pending.
+
 ## 0.14.0-beta.76 — map-owned quest progression
 
 - Add an original RUI progression engine and an interactive map canvas with selectable quest nodes, explicit prerequisite edges, status/details, pickup areas, pan/zoom, keyboard selection, Follow and native quest-sharing actions. No Attune connection, copied code/art/data or runtime dependency.

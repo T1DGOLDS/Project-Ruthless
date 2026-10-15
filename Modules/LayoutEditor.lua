@@ -148,7 +148,7 @@ function E:Apply(id,value)
     local target=self.targets[id];local frame=target and target.frame
     if not frame or InCombatLockdown()or not value or not finite(value.x)or not finite(value.y)or not finite(value.scale or 1)or target.resize and (not finite(value.width)or not finite(value.height))then return false end
     local hud=AUI.modules.ForeverHUD;local applying=hud and hud.applying;if hud then hud.applying=true end
-    if AUI.isForever and type(value.nativeSettings)=="table"and EditModeManagerFrame and type(EditModeManagerFrame.OnSystemSettingChange)=="function"and type(frame.GetSettingValue)=="function"then
+    if not target.skipNativeSettings and AUI.isForever and type(value.nativeSettings)=="table"and EditModeManagerFrame and type(EditModeManagerFrame.OnSystemSettingChange)=="function"and type(frame.GetSettingValue)=="function"then
         for setting,v in pairs(value.nativeSettings)do
             local current=safe(frame.GetSettingValue,frame,setting)
             if current~=nil and current~=v then EditModeManagerFrame:OnSystemSettingChange(frame,setting,v)end
@@ -177,9 +177,9 @@ function E:Apply(id,value)
     if hud then hud.applying=applying end
     return true
 end
-function E:Attach(id,label,frame,resize)
+function E:Attach(id,label,frame,resize,options)
     if not frame or self.targets[id]then return end
-    self.targets[id]={label=label,frame=frame,resize=resize,default=self:Capture(frame)}
+    self.targets[id]={label=label,frame=frame,resize=resize,default=self:Capture(frame),skipNativeSettings=options and options.skipNativeSettings}
     frame:HookScript("OnShow",function()local value=self:Store().elements[id];if value then self:Apply(id,value)end end)
     local value=self:Store().elements[id];if value then self:Apply(id,value)end
     if frame.GetBackdrop and frame:GetBackdrop()then AUI:StyleSurface(frame,"window",id=="quests"and math.max(.72,ProjectRuthlessDB.questWorkspace.opacity)or nil,({quests="Quest",spells="Spellbook",map="Map"})[id]or "Options")end
@@ -452,6 +452,7 @@ end
 function E:OpenNativeSettings()
     if not AUI.isForever or InCombatLockdown()then return end
     local target=self.selected and self.targets[self.selected];local frame=target and target.frame
+    if target and target.skipNativeSettings then AUI:Print("Choose spells and alerts under Auras & cooldowns. This mover changes position and scale only.");return end
     local dialog=EditModeSystemSettingsDialog
     if not frame or type(frame.system)~="number"or not dialog or type(dialog.AttachToSystemFrame)~="function"then AUI:Print("This element uses RUI's position and size controls.");return end
     self:Checkpoint();dialog:AttachToSystemFrame(frame)

@@ -7,7 +7,7 @@ local function copy(value)
  local result={};for k,v in pairs(value)do result[k]=copy(v)end;return result
 end
 local function finite(n)return type(n)=="number"and n==n and math.abs(n)<10000 end
-local nativeRules={lockActionBars="boolean",countdownForCooldowns="boolean",PICKUPACTION="modifier"}
+local nativeRules={lockActionBars="boolean",countdownForCooldowns="boolean",PICKUPACTION="modifier",cooldownViewerEnabled="boolean"}
 for i=2,8 do nativeRules["PROXY_SHOW_ACTIONBAR_"..i]="boolean"end
 function P:CaptureNative()
  local values={}
@@ -47,13 +47,18 @@ function P:Names()
  local names={};for name in pairs(self:Store().entries)do names[#names+1]=name end;table.sort(names);return names
 end
 function P:Capture()
- return {version=2,full=true,settings=settings:Export(),layout=editor:Snapshot(),editorPrefs={gridSize=editor:Store().gridSize or 8,panelPosition=copy(editor:Store().panelPosition)},native=self:CaptureNative(),pins=copy(ProjectRuthlessDB.spellbook and ProjectRuthlessDB.spellbook.pinnedSpells or {}),bags={
+ return {version=2,full=true,settings=settings:Export(),layout=editor:Snapshot(),editorPrefs={gridSize=editor:Store().gridSize or 8,panelPosition=copy(editor:Store().panelPosition)},native=self:CaptureNative(),cooldowns=AUI.modules.AuraManager and AUI.modules.AuraManager:CaptureCooldowns(),pins=copy(ProjectRuthlessDB.spellbook and ProjectRuthlessDB.spellbook.pinnedSpells or {}),bags={
   autoSort=(ProjectRuthlessCharDB.ruiBags or {}).autoSort==true,
   columns=(ProjectRuthlessCharDB.ruiBags or {}).columns or 10}}
 end
 function P:Validate(profile)
  if type(profile)~="table"or profile.version~=2 then return false,"Unsupported profile version."end
- for key in pairs(profile)do if not ({version=true,full=true,settings=true,layout=true,bags=true,legacy=true,native=true,pins=true,editorPrefs=true})[key]then return false,"Unknown profile component."end end
+ for key in pairs(profile)do if not ({version=true,full=true,settings=true,layout=true,bags=true,legacy=true,native=true,pins=true,editorPrefs=true,cooldowns=true})[key]then return false,"Unknown profile component."end end
+ if profile.cooldowns then
+  local c=profile.cooldowns
+  if type(c)~="table"or type(c.class)~="string"or #c.class>20 or not c.class:match("^[A-Z_]+$")or type(c.data)~="string"or #c.data>65536 then return false,"Invalid native cooldown snapshot."end
+  for k in pairs(c)do if k~="class"and k~="data"then return false,"Unknown cooldown snapshot field."end end
+ end
  if profile.full~=nil and type(profile.full)~="boolean"then return false,"Invalid profile type."end
  if profile.legacy~=nil and (type(profile.legacy)~="string"or #profile.legacy>200)then return false,"Invalid migration label."end
  if profile.full and (not profile.settings or not profile.layout or not profile.bags or not profile.native or not profile.pins)then return false,"Incomplete full profile."end
@@ -148,6 +153,7 @@ function P:WriteSettings(text,full)
  local parsed=settings:Parse(text)
  if full then
   ProjectRuthlessDB.accessibility={}
+  ProjectRuthlessDB.auraManager={}
   for key in pairs(ProjectRuthlessDB.general)do
    if key:match("^color[RGB]")or key:match("^customColor")or key:match("^background")then ProjectRuthlessDB.general[key]=nil end
   end
@@ -173,6 +179,7 @@ function P:InitializeCharacter()
     if profile.bags then char.ruiBags=copy(profile.bags)end
     if profile.pins then ProjectRuthlessDB.spellbook.pinnedSpells=copy(profile.pins)end
     self.pendingNative=copy(profile.native)
+    self.pendingCooldowns=copy(profile.cooldowns)
     if profile.editorPrefs then
      char.layoutEditor=char.layoutEditor or {elements={},layouts={},accountMigrated=true}
      char.layoutEditor.gridSize=profile.editorPrefs.gridSize;char.layoutEditor.panelPosition=copy(profile.editorPrefs.panelPosition)
@@ -216,17 +223,23 @@ function P:Apply(profile,name)
   end
  end
  local missing=self:ApplyNative(profile.native)
+ local cooldownMessage
+ if profile.cooldowns and AUI.modules.AuraManager then
+  local success,message=AUI.modules.AuraManager:RestoreCooldowns(profile.cooldowns);cooldownMessage=message
+  if not success then missing=missing+1 end
+ end
  -- Persist first, then let native delegates apply supported layout/chat changes.
  if profile.layout then editor:Restore(copy(profile.layout))end
  ProjectRuthlessCharDB.activeProfile=name;editor:Store().active=name
  ProjectRuthlessCharDB.profileWorkingSettings=settings:Export()
  AUI:ApplyWindowSettings("profile");AUI:RefreshBackgrounds()
- for _,id in ipairs({"ForeverHUD","ForeverStyle","Spellbook","MapQuests","QuestWorkspace","LowHealthGlow","Accessibility"})do
+ for _,id in ipairs({"ForeverHUD","ForeverStyle","Spellbook","MapQuests","QuestWorkspace","LowHealthGlow","Accessibility","AuraManager"})do
   local module=AUI.modules[id]
   if module and type(module.ApplySettings)=="function"and not (id=="ForeverStyle"and profile.layout)then module:ApplySettings()end
  end
  if editor.name then editor.name:SetText(name or "")end
- return true,missing>0 and ("Profile applied; %d native preferences were unavailable. Check Action bars and reload outside combat."):format(missing)or profile.legacy or "Profile applied: settings, layout and chat."
+ local message=missing>0 and ("Profile applied; %d native preferences were unavailable. Check settings."):format(missing)or profile.legacy or "Profile applied: settings, layout and chat."
+ return true,cooldownMessage and (message.." "..cooldownMessage)or message
 end
 function P:Load(name)
  local profile=self:Store().entries[name]
@@ -328,6 +341,10 @@ function P:Menu(anchor,onSelected,defaultMenu)
  end)
 end
 function P:OnPlayerLogin()
+ if self.pendingCooldowns and AUI.modules.AuraManager then
+  local _,message=AUI.modules.AuraManager:RestoreCooldowns(self.pendingCooldowns);self.pendingCooldowns=nil
+  if message then AUI:Print(message)end
+ end
  if self.pendingNative then
   local missing=self:ApplyNative(self.pendingNative);self.pendingNative=nil
   if missing>0 then AUI:Print("Some default profile action-bar preferences were unavailable. Check Action bars.")end

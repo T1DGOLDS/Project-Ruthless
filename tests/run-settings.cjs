@@ -15,4 +15,4 @@ function run(test,extra='') {
 }
 run('unified-profiles.test.lua');
 run('performance.test.lua','\n'+fs.readFileSync(path.join(__dirname,'settings-ui.test.lua'),'utf8')+'\n'+fs.readFileSync(path.join(__dirname,'accessibility-setup.test.lua'),'utf8'));
-run('layout-editor.test.lua','\n'+fs.readFileSync(path.join(__dirname,'unified-layout.test.lua'),'utf8')+'\n'+fs.readFileSync(path.join(__dirname,'accessible-portraits.test.lua'),'utf8'));
+run('layout-editor.test.lua','\n'+fs.readFileSync(path.join(__dirname,'unified-layout.test.lua'),'utf8')+'\n'+fs.readFileSync(path.join(__dirname,'accessible-portraits.test.lua'),'utf8')+'\n'+fs.readFileSync(path.join(__dirname,'party-aura-manager.test.lua'),'utf8'));
