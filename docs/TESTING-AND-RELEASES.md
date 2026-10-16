@@ -1,4 +1,6 @@
-# Testing and releases — beta 78
+# Testing and releases — beta 79
+
+`/pr checks` now provides the six guided manual checks, version/build-specific notes and labelled history. [Live-check workflow and limits](LIVE-CHECKS.md). These self-reported results do not automatically change repository gates or establish the tested-source digest.
 
 Stage-five coverage changes, ownership boundaries and live scenarios: [STAGE-FIVE.md](STAGE-FIVE.md). The installed quest database is removed by request; full spawn and requirement coverage is not claimed. Recording now also includes bounded operation call/time/record aggregates. All six live gates remain pending.
 
@@ -22,7 +24,7 @@ Experimental prereleases can ship with pending/failed gates disclosed in their r
 
 Compare native UI and RUI on the same hardware/settings with similar scenes. Record idle, travel, crowded nameplates, five-player combat, bag opening/sorting, map/spellbook browsing and repeated UI open/close cycles. Include stance/form changes, queued melee abilities, offhand/ranged attacks, pets, target changes and party aura transitions. Test with optional addons absent, then with likely overlapping UI addons. A loaded addon is a possible conflict, not proof of causation; RUI's diagnostics never change its settings.
 
-First-run/default-layout and accessibility controls are implemented in beta 75 and need the live checks below. Stage 4's supported aura/cooldown integration is implemented in beta77; third-party-data independence remains a subsequent milestone. Existing native cooldown-taint reports still require live diagnosis.
+First-run/default-layout and accessibility controls were implemented in beta75, supported aura/cooldown integration in beta77 and runtime independence with disclosed quest-data gaps in beta78. All still need live acceptance. Existing native cooldown-taint reports require live diagnosis.
 
 Stage 3 scenarios and the duplicate-settings audit: [Settings ownership and first-run/accessibility acceptance](SETTINGS-OWNERSHIP.md).
 

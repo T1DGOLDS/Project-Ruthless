@@ -450,6 +450,7 @@ local function HandleSlashCommand(input)
         AUI:ShowStatus()
         return
     end
+    if command=="checks"and AUI.modules.LiveChecks then AUI.modules.LiveChecks:Show();return end
     if AUI.modules.Diagnostics and (command=="report"or command=="record"or command:match("^record "))then AUI.modules.Diagnostics:HandleCommand(command);return end
 
     if command=="talents"and AUI.isForever then AUI:Print("Use the native Talents button or keybind.");return end

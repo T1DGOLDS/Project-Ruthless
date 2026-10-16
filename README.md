@@ -2,7 +2,11 @@
 
 Ruthless UI is a standalone interface overhaul for WoW Forever (`Interface 16001`, game type `camelot`). It presents native game functions through a consistent charcoal interface, searchable settings and shared profiles.
 
-## Beta 78
+## Beta 79
+
+The release-readiness follow-up adds `/pr checks`: six guided live checks, evidence notes and version/client-specific manual results included in the bug report. Nothing passes automatically. [Workflow and limits](docs/LIVE-CHECKS.md).
+
+## Stage-five foundation
 
 Stage five removes the installed quest-database and map-library connections, external meter styling and the unused Retail talent workspace from Forever's load list. RUI now owns its supplemental map markers and reads native quest offers/waypoints. Blizzard's native damage meter supplies combat information; RUI supplies its background, borders and saved movers.
 
@@ -28,12 +32,13 @@ Existing profiles and character progress are retained. Settings and Edit Mode us
 - `M`: native map with RUI quest progression, routes and dungeon information.
 - `/pr record on` / `/pr record off`: opt-in local performance recording.
 - `/pr report`: copyable bug report with configuration checks and measured work.
+- `/pr checks`: guided live testing and self-reported outcomes.
 
 Auras & cooldowns offers simple native-rendered groups, presets, static previews and exact-ID buff focus. Native spell/alert configuration remains native. Utilities contains health feedback, native damage-meter activation and leveling history. Visual preferences live in settings; journey information lives primarily in the map.
 
 ## Validation and limits
 
-Sixteen automated suites cover the current build. All six live acceptance gates remain pending: installation, profiles, combat, information, accessibility and performance. Automated mocks do not certify native combat safety, visuals, accessibility parity or FPS improvements.
+Seventeen automated suites cover the current build. All six live acceptance gates remain pending: installation, profiles, combat, information, accessibility and performance. Automated mocks and in-game manual status buttons do not certify native combat safety, visuals, accessibility parity or FPS improvements.
 
 Native protected edits defer during combat. RUI does not calculate secret aura/cooldown/combat values. Restoring changed native cooldown configuration requires reload. Native meter categories, session selections and secondary-window preferences remain character-owned by Blizzard; profiles include activation and RUI mover positions. No other addon's settings are migrated or changed.
 

@@ -72,6 +72,12 @@ function A:OpenNativeCategory(label)
 end
 function A:ApplySettings()
  for font in pairs(self.fonts)do self:RegisterText(font)end
+    local checks=AUI.modules.LiveChecks
+    if checks and checks.frame and checks.frame:IsShown()then
+        checks.frame:SetScale(self:FitWindow(checks.frame,(ProjectRuthlessDB.general or {}).windowScale or 1));checks:Refresh()
+    end
+    local diagnostics=AUI.modules.Diagnostics
+    if diagnostics and diagnostics.frame and diagnostics.frame:IsShown()and diagnostics.LayoutReporter then diagnostics:LayoutReporter()end
  AUI:RefreshBackgrounds()
  AUI:ApplyWindowSettings("accessibility")
  local hud=AUI.modules.ForeverHUD

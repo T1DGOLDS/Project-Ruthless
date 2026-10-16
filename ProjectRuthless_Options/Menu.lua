@@ -392,6 +392,7 @@ function Menu:CreateCompatibilityOptions(parent)
     local note=AddLabel(panel,"Open a testing report for configuration checks, potential overlapping UI addons and captured errors. A loaded addon is only a possible conflict, not proof of the cause.","TOPLEFT",panel,"TOPLEFT",20,-120,"GameFontNormal")
     note:SetWidth(580);note:SetJustifyH("LEFT");note:SetTextColor(unpack(COLORS.muted))
     self:CreateAction(panel,"Review configuration",20,-214,220,function()if AUI.modules.Diagnostics then AUI.modules.Diagnostics:Show()end end)
+    if AUI.modules.LiveChecks then self:CreateAction(panel,"Live acceptance checks",20,-258,260,function()AUI.modules.LiveChecks:Show()end)end
     self.panels.compatibility=panel
 end
 
@@ -427,6 +428,7 @@ function Menu:CreateErrorsPanel(parent)
             local diagnostics=AUI.modules.Diagnostics
             diagnostics:HandleCommand(diagnostics.session and "record off"or "record on")
         end)
+        if AUI.modules.LiveChecks then self:CreateAction(panel,"Live checks",528,-244,110,function()AUI.modules.LiveChecks:Show()end)end
     end
 
     local scroll = AUI:CreateSmoothScrollFrame(panel)

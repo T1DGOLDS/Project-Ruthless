@@ -1,3 +1,10 @@
+## 0.14.0-beta.79 — release-readiness follow-up
+
+- Add `/pr checks` and settings shortcuts for the six guided live acceptance checks. Require explicit start and evidence before self-reported Pass/Fail; retain Pending and retesting. Add links to relevant settings and the bug report.
+- Keep results per character/version/client build, with three-run history and no inherited passes after updates. Preserve them across profile changes, exclude them from profile sharing and include clearly labelled manual evidence in reports. Do not change repository gates or stable-release requirements.
+- Add cumulative captured-error observations that survive grouping, trimming and Clear log. Snapshot capture/recording flags at check boundaries; do not automatically assign blame, run gameplay tests or start recording. No new background timer or test event subscriptions.
+- Use scaled labels, screen fitting, scrolling evidence and local drafts in the new window. Reflow and fit the existing bug reporter. Update testing documentation and add a seventeenth regression suite. All six live gates remain pending.
+
 ## 0.14.0-beta.78 — stage 5 independence and measured work
 
 - Remove Forever's installed quest-database/map-library connections and optional loot dependency. Use an internal provider for RUI route facts, native offers and supplied waypoints; own visual marker positioning. Explicitly disclose missing comprehensive spawn, item-source, pickup-gate and dungeon-coordinate coverage, as requested. Do not bundle an unlicensed database copy or fabricate missing information.

@@ -122,6 +122,7 @@ end
 function D:Report(notes)
     local lines={"RUI BUG REPORT", "Created: "..stamp(),"Version: "..tostring(AUI.version),"Interface: "..tostring(AUI.interfaceVersion),"Combat: "..tostring(InCombatLockdown()),"Steps / expected / actual: "..tostring(notes or ""),"","CONFIGURATION CHECKS"}
     for _,check in ipairs(self:Checks())do lines[#lines+1]=check.status..": "..check.message.." ["..check.setting.."]"end
+    if AUI.modules.LiveChecks then lines[#lines+1]="";lines[#lines+1]=AUI.modules.LiveChecks:Report()end
     lines[#lines+1]="";lines[#lines+1]="LOCAL PERFORMANCE RECORDINGS"
     lines[#lines+1]="Sampled recent CPU averages are ms/tick, not total CPU. Native peaks/counters span the application session. Frame gaps include the entire game and are not attributed to RUI."
     lines[#lines+1]="Memory is native per-addon sampled KiB; exact allocation counts are not exposed. Test recording adds overhead. No data is sent automatically."
@@ -144,14 +145,25 @@ function D:Report(notes)
     if errors and errors.GetFormattedText then lines[#lines+1]=errors:GetFormattedText()end
     return table.concat(lines,"\n")
 end
+function D:LayoutReporter()
+    if not self.frame then return end
+    local noteY=math.max(70,45+self.description:GetStringHeight()+10)
+    self.notes:ClearAllPoints();self.notes:SetPoint("TOPLEFT",20,-noteY)
+    self.reportScroll:ClearAllPoints();self.reportScroll:SetPoint("TOPLEFT",12,-noteY-42);self.reportScroll:SetPoint("BOTTOMRIGHT",-12,58)
+    local access=AUI.modules.Accessibility
+    if access then self.frame:SetScale(access:FitWindow(self.frame,(ProjectRuthlessDB.general or {}).windowScale or 1))end
+end
 function D:Show()
     if not self.frame then
         local f=CreateFrame("Frame","ProjectRuthlessBugReporter",UIParent,"BackdropTemplate");f:SetSize(700,540);f:SetPoint("CENTER");f:SetFrameStrata("DIALOG");f:SetClampedToScreen(true)
         f:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1});AUI:StyleSurface(f,"window",1,"Options");f:SetBackdropBorderColor(unpack(AUI.Theme.border))
         local title=f:CreateFontString(nil,"OVERLAY","GameFontNormalLarge");title:SetPoint("TOPLEFT",16,-14);title:SetText("RUI · Testing & bug report")
         local label=f:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall");label:SetPoint("TOPLEFT",16,-45);label:SetText("Describe the steps, expected result and actual result. Copy the report to share it.")
+        self.description=label
+        label:SetWidth(650);label:SetJustifyH("LEFT")
+        local access=AUI.modules.Accessibility;if access then access:RegisterText(title);access:RegisterText(label)end
         self.notes=CreateFrame("EditBox",nil,f,"InputBoxTemplate");self.notes:SetPoint("TOPLEFT",20,-70);self.notes:SetSize(650,26);self.notes:SetAutoFocus(false);self.notes:SetMaxLetters(1500)
-        local scroll=AUI:CreateSmoothScrollFrame(f);scroll:SetPoint("TOPLEFT",12,-112);scroll:SetPoint("BOTTOMRIGHT",-12,58)
+        local scroll=AUI:CreateSmoothScrollFrame(f);self.reportScroll=scroll;scroll:SetPoint("TOPLEFT",12,-112);scroll:SetPoint("BOTTOMRIGHT",-12,58)
         self.copy=CreateFrame("EditBox",nil,scroll);self.copy:SetMultiLine(true);self.copy:SetAutoFocus(false);self.copy:SetFontObject(ChatFontNormal);self.copy:SetWidth(640);self.copy:SetTextInsets(8,8,8,8);scroll:SetScrollChild(self.copy);AUI:ConfigureScrollingEditBox(self.copy,scroll,1)
         local function refresh()self.copy:SetText(self:Report(self.notes:GetText()));self.copy:SetCursorPosition(0)end
         for i,row in ipairs({{"Record on",function()self:Start();refresh()end},{"Record off",function()self:Stop();refresh()end},{"Refresh report",refresh},{"Select report",function()refresh();self.copy:SetFocus();self.copy:HighlightText()end},{"Close",function()f:Hide()end}})do
@@ -160,6 +172,7 @@ function D:Show()
         self.copy:SetScript("OnEscapePressed",function()f:Hide()end);self.notes:SetScript("OnEscapePressed",function()self.notes:ClearFocus()end)
         if UISpecialFrames then UISpecialFrames[#UISpecialFrames+1]="ProjectRuthlessBugReporter"end;self.frame=f
     end
+    self:LayoutReporter()
     self.copy:SetText(self:Report(self.notes:GetText()));self.copy:SetCursorPosition(0);self.frame:Show()
 end
 function D:HandleCommand(command)

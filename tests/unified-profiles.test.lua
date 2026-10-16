@@ -7,7 +7,7 @@ function AUI:ApplyWindowSettings()self.applies=(self.applies or 0)+1 end
 function AUI:RefreshBackgrounds()end;function AUI:Print(message)self.message=message end
 local function clone(v)if type(v)~='table'then return v end;local t={};for k,value in pairs(v)do t[k]=clone(value)end;return t end
 ProjectRuthlessDB={general={windowScale=1,windowOpacity=1},spellbook={pinnedSpells={['123']=true}},questWorkspace={guideSource='CustomGuide'},errorLog={enabled=true,maxEntries=50}}
-ProjectRuthlessCharDB={layoutEditor={elements={player={x=1,y=2,scale=1,width=250,height=80}}},authoredGuide={step=5},trainingOffers={private=true}}
+ProjectRuthlessCharDB={layoutEditor={elements={player={x=1,y=2,scale=1,width=250,height=80}}},authoredGuide={step=5},trainingOffers={private=true},liveChecks={runs={{version='keep-local-evidence'}}}}
 local position={x=20,y=30,width=250,height=80,scale=1,nativeSettings={[0]=true,[1]=2}}
 local chat={{id=1,name='General\ntext',size=14,r=0,g=0,b=0,a=.5,locked=true,docked=true,uninteractable=false,selected=true,messages={'SAY','GUILD'},channels={'General',1},position=position}}
 local editor={}
@@ -38,12 +38,14 @@ assert(editor:Load('Complete'));assert(ProjectRuthlessDB.general.windowScale==1 
 assert(native.damageMeterEnabled==true)
 assert(ProjectRuthlessCharDB.layoutEditor.elements.player.x==1 and native.lockActionBars==true and writes==2)
 assert(ProjectRuthlessCharDB.authoredGuide.step==5 and ProjectRuthlessCharDB.trainingOffers.private)
+assert(ProjectRuthlessCharDB.liveChecks.runs[1].version=='keep-local-evidence')
 assert(p:Restore());assert(ProjectRuthlessDB.general.windowScale==.8 and ProjectRuthlessCharDB.layoutEditor.elements.player.x==99 and native.lockActionBars==false)
 assert(native.damageMeterEnabled==false)
 assert(p:Load('Complete'));local text=p:Export();local decoded,err=p:Parse(text);assert(decoded,err)
 assert(decoded.layout.__chat[1].name=='General\ntext'and decoded.layout.player.x==1 and decoded.native.PICKUPACTION=='SHIFT')
 assert(decoded.layout.__chat[1].position.nativeSettings[0]==true and decoded.pins['123'])
 assert(not text:find('authoredGuide',1,true)and not text:find('trainingOffers',1,true))
+assert(not text:find('liveChecks',1,true))
 local before=ProjectRuthlessDB.general.windowScale;busy=true
 assert(not p:Import(text)and not p:Load('Complete')and not p:Save('Blocked'))
 assert(ProjectRuthlessDB.general.windowScale==before and not p:Store().entries.Blocked);busy=false

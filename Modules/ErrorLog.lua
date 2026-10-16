@@ -12,6 +12,17 @@ local function GetStore()
     return ProjectRuthlessDB and ProjectRuthlessDB.errorLog
 end
 
+-- A cumulative observation counter survives retention trimming and Clear log.
+-- It describes captured errors from all addons, not proven RUI failures.
+function ErrorLog:GetCapturedCount()
+    local store=GetStore();if not store then return end
+    if type(store.capturedTotal)~="number"then
+        local count=0;for _,entry in ipairs(store.entries or {})do count=count+(type(entry.count)=="number"and entry.count or 1)end
+        store.capturedTotal=count
+    end
+    return store.capturedTotal
+end
+
 local function GetSource(message, stack)
     local text = tostring(message or "") .. "\n" .. tostring(stack or "")
     local addon = text:match("[/\\]AddOns[/\\]([^/\\]+)")
@@ -68,6 +79,7 @@ function ErrorLog:Record(message)
     self.handlingError = true
 
     local ok = pcall(function()
+        local captured=self:GetCapturedCount()
         local text = tostring(message or "unknown error")
         local stack = debugstack and debugstack(3, 20, 20) or "stack unavailable"
         local entries = store.entries
@@ -86,6 +98,7 @@ function ErrorLog:Record(message)
             }
         end
 
+        store.capturedTotal=captured+1
         self:QueueNotice(GetSource(text, stack), 1)
 
         while #entries > store.maxEntries do
@@ -135,12 +148,15 @@ function ErrorLog:Install()
     local earlyCapture = _G.ProjectRuthlessEarlyCapture
     if earlyCapture and earlyCapture.entries then
         local store = GetStore()
+        local captured=self:GetCapturedCount()
         local importedBySource = {}
         for _, entry in ipairs(earlyCapture.entries) do
             store.entries[#store.entries + 1] = entry
             local source = GetSource(entry.message, entry.stack)
             importedBySource[source] = (importedBySource[source] or 0) + (entry.count or 1)
+            captured=captured+(entry.count or 1)
         end
+        store.capturedTotal=captured
         while #store.entries > store.maxEntries do
             table.remove(store.entries, 1)
         end
@@ -232,6 +248,7 @@ function ErrorLog:HandleCommand(command)
     command = strtrim(command or ""):lower()
 
     if command == "clear" then
+        self:GetCapturedCount()
         wipe(store.entries)
         AUI:Print("Lua error log cleared.")
         if AUI.modules.Menu and AUI.modules.Menu.frame and AUI.modules.Menu.frame:IsShown() then
