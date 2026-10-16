@@ -198,6 +198,7 @@ ProjectRuthlessDB.lowHealthGlow.threshold=.4;glow:ApplySettings();assert(curves=
 ProjectRuthlessDB.lowHealthGlow.enabled=false;glow:ApplySettings();assert(next(glow.frame.events)==nil and glow.frame.alpha==0)
 print('PASS: disabled glow creates no frame/texture/curve; enabling binds player events and disabling removes them')
 assert(load(QUESTWORKSPACE_SOURCE))('ProjectRuthless',AUI);assert(load(QUESTLOCATIONS_SOURCE))('ProjectRuthless',AUI)
+AUI.modules.QuestData={GetDatabase=function()return LibQuestieDB end}
 local q=AUI.modules.QuestWorkspace;local locations=AUI.modules.QuestLocations;q:OnPlayerLogin();locations:OnPlayerLogin()
 assert(not q.frame and not q.mapPanel and next(q.events.events)==nil and next(locations.events.events)==nil)
 local reads=0;LibQuestieDB={RequireContract=function()reads=reads+1;return true end};locations:ScanOffers();assert(reads==0)

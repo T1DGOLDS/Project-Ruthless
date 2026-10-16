@@ -104,6 +104,7 @@ end
 
 function AUI:RegisterModule(name, module)
     if not self.modules[name]then self.moduleOrder[#self.moduleOrder+1]=name end
+    module.ruiModuleName=name
     self.modules[name] = module
 end
 
@@ -190,11 +191,6 @@ function AUI:RefreshBackgrounds(key)
         if style.texture then frame:SetColorTexture(r,g,b,alpha)else frame:SetBackdropColor(r,g,b,alpha)end
         end
     end
-    local details=Details or _detalhes
-    if (not key or key=="Meters")and self.isForever and type(details)=="table"and type(details.GetAllInstances)=="function"then
-        local ok,instances=pcall(details.GetAllInstances,details)
-        if ok and type(instances)=="table"then for _,instance in ipairs(instances)do if type(instance.SetBackgroundAlpha)=="function"then instance:SetBackgroundAlpha(0)end end end
-    end
 end
 function AUI:StyleSurface(frame,role,opacity,key)
     local c=self.Theme[role or "window"] or self.Theme.window
@@ -244,7 +240,12 @@ function AUI:QueueRefresh(owner,method)
     C_Timer.After(0,function()
         owner.refreshQueue[method]=nil
         local view=owner.panel or owner.dashboard or owner.frame
-        if IsViewVisible(view)then owner[method](owner)end
+        if IsViewVisible(view)then
+            local diagnostics=self.modules.Diagnostics
+            local started=diagnostics and diagnostics:BeginWork()
+            owner[method](owner)
+            if started then diagnostics:EndWork((owner.ruiModuleName or "Queued").."."..method,started,1)end
+        end
     end)
 end
 
@@ -451,6 +452,7 @@ local function HandleSlashCommand(input)
     end
     if AUI.modules.Diagnostics and (command=="report"or command=="record"or command:match("^record "))then AUI.modules.Diagnostics:HandleCommand(command);return end
 
+    if command=="talents"and AUI.isForever then AUI:Print("Use the native Talents button or keybind.");return end
     if command == "talents" and AUI.modules.Talents then
         AUI.modules.Talents:Show()
         return

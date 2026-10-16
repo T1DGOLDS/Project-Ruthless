@@ -1,7 +1,6 @@
 local _,AUI=...
 local D={rows={},pins={}}
 AUI:RegisterModule("DungeonAtlas",D)
-local moduleName="AtlasLootClassic_DungeonsAndRaids"
 local function safe(fn,...)
     if type(fn)~="function"then return end
     local ok,a,b=pcall(fn,...)
@@ -96,7 +95,8 @@ function D:MapIDs(record)
     local locations=AUI.modules.QuestLocations
     if not locations then return {}end
     if not locations.mapping then locations:Build({})end
-    local map=locations.mapping and locations.mapping[record.MapID]
+    local data=AUI.modules.QuestData
+    local map=data and data.MapForArea and data:MapForArea(record.MapID,clean(record.name))or locations.mapping and locations.mapping[record.MapID]
     if not map then return {}end
     local floors=safe(C_Map.GetMapGroupMembersInfo,safe(C_Map.GetMapGroupID,map))or {}
     if #floors==0 then local info=safe(C_Map.GetMapInfo,map);floors={{mapID=map,name=info and info.name or "Dungeon floor"}}end
@@ -230,13 +230,13 @@ function D:Render(q)
                     end
                 end
             end
-            if count==0 then row("No held or eligible quests recorded",function()end)end
+            if count==0 then row("No quests recorded here · coverage incomplete",function()end)end
         elseif self.boss then
             local boss=record.items[self.boss]
             if boss.loot and boss.loot.HEROIC then row("Loot · "..(self.difficulty or "NORMAL"),function()self.difficulty=self.difficulty=="HEROIC"and "NORMAL"or "HEROIC";q:RenderMapPage()end)end
             row("‹ Boss list",function()self.boss=nil;q:RenderMapPage()end)
             row(clean(boss.name)..(#self:BossPoints(boss)==0 and " · location unrecorded"or ""),function()end)
-            local loot=safe(self.api.GetItemTable,self.api,moduleName,self.selected.key,self.boss,record.LoadDifficulty or 1)or {}
+            local loot=safe(self.api.GetItemTable,self.api,nil,self.selected.key,self.boss,record.LoadDifficulty or 1)or {}
             local count=0;local seen={}
             for _,entry in ipairs(loot)do
                 local item=entry[2]

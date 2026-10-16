@@ -1,5 +1,7 @@
 # Guide sources
 
+**Beta 78 update:** an explicitly selected supported guide engine remains the sole installed-addon integration exception. RUI's default uses its own routes/native feeds, with missing data disclosed. The external quest database and map library are no longer used. [Stage five](STAGE-FIVE.md) describes current coverage; older entries below are history.
+
 Accepted direction (2026-10-10): RUI presents walkthrough information; the user chooses the route engine. Default RUI routes, Wisp, RestedXP, Questie if a walkthrough API is available, and future providers should fit the same presentation. Do not copy guide data or silently substitute engines.
 
 Current beta60: Map & quests options has a saved Guide source cycle button for RUI default and Wisp; map Settings also offers source cycling. RUI uses the existing authored route selection. Wisp reads its existing active route. Missing Wisp reports not running and falls back to the ordinary quest list, without substituting another guide. New default settings choose RUI. Old callers without guideSource retain historical auto behavior.

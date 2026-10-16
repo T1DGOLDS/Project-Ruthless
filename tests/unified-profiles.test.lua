@@ -21,7 +21,7 @@ assert(load(PROFILES_SOURCE))('ProjectRuthless',AUI)
 local old=AUI.modules.Profiles:Export()
 ProjectRuthlessDB.settingsProfiles={Same=old}
 ProjectRuthlessDB.layoutProfiles={layouts={Same={target=clone(position)}},default='Same'}
-local native={lockActionBars=true,countdownForCooldowns=false,PICKUPACTION='SHIFT',PROXY_SHOW_ACTIONBAR_2=true};local writes=0
+local native={lockActionBars=true,countdownForCooldowns=false,PICKUPACTION='SHIFT',PROXY_SHOW_ACTIONBAR_2=true,damageMeterEnabled=true};local writes=0
 Settings={GetSetting=function(key)if native[key]==nil then return end;return {GetValue=function()return native[key]end,SetValue=function(_,v)native[key]=v;writes=writes+1 end}end}
 assert(load(UNIFIEDPROFILES_SOURCE))('ProjectRuthless',AUI)
 local p=AUI.modules.UnifiedProfiles;p:InitializeCharacter()
@@ -30,13 +30,16 @@ assert(ProjectRuthlessDB.settingsProfiles.Same==old and ProjectRuthlessDB.layout
 assert(ProjectRuthlessCharDB.layoutEditor.elements.player.x==1 and p:Store().default=='Layout: Same')
 local names=#p:Names();p:Migrate();assert(#p:Names()==names)
 assert(editor:Save('Complete'));assert(p:Store().entries.Complete.full)
+assert(p:Store().entries.Complete.native.damageMeterEnabled==true)
 assert(p:Store().entries.Complete.settings:find('guideSource=CustomGuide',1,true))
 ProjectRuthlessDB.general.windowScale=.8;ProjectRuthlessDB.general.colorR=.4;ProjectRuthlessDB.general.colorG=.5;ProjectRuthlessDB.general.colorB=.6
-ProjectRuthlessCharDB.layoutEditor.elements.player.x=99;ProjectRuthlessCharDB.ruiBags={autoSort=true,columns=8};native.lockActionBars=false
+ProjectRuthlessCharDB.layoutEditor.elements.player.x=99;ProjectRuthlessCharDB.ruiBags={autoSort=true,columns=8};native.lockActionBars=false;native.damageMeterEnabled=false
 assert(editor:Load('Complete'));assert(ProjectRuthlessDB.general.windowScale==1 and ProjectRuthlessDB.general.colorR==nil)
-assert(ProjectRuthlessCharDB.layoutEditor.elements.player.x==1 and native.lockActionBars==true and writes==1)
+assert(native.damageMeterEnabled==true)
+assert(ProjectRuthlessCharDB.layoutEditor.elements.player.x==1 and native.lockActionBars==true and writes==2)
 assert(ProjectRuthlessCharDB.authoredGuide.step==5 and ProjectRuthlessCharDB.trainingOffers.private)
 assert(p:Restore());assert(ProjectRuthlessDB.general.windowScale==.8 and ProjectRuthlessCharDB.layoutEditor.elements.player.x==99 and native.lockActionBars==false)
+assert(native.damageMeterEnabled==false)
 assert(p:Load('Complete'));local text=p:Export();local decoded,err=p:Parse(text);assert(decoded,err)
 assert(decoded.layout.__chat[1].name=='General\ntext'and decoded.layout.player.x==1 and decoded.native.PICKUPACTION=='SHIFT')
 assert(decoded.layout.__chat[1].position.nativeSettings[0]==true and decoded.pins['123'])

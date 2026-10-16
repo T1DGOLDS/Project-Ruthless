@@ -1,5 +1,7 @@
 # RUI authored guides — beta 69
 
+**Beta 78 update:** runtime eligibility/location reads now use native/RUI data. External database audits below record historical fact verification, not a runtime dependency or permission to bundle its dataset. Missing spawn/pickup-gate coverage is disclosed; see [stage five](STAGE-FIVE.md). The tracker now shows the current task, with full route browsing in the map.
+
 Open the map, select **Library**, then choose a faction guide. **Chapters** shows the full current route note, chapter selection, pause/resume, stop and skip controls. The tracker keeps a short instruction, current objective and upcoming quests. Selecting a guide clears manual quest focus; returning with Guide restores route navigation.
 
 ## Coverage

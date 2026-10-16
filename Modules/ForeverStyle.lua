@@ -1,5 +1,5 @@
 local _,AUI=...
-local S={surfaces=setmetatable({},{__mode="k"}),buttons=setmetatable({},{__mode="k"}),bars=setmetatable({},{__mode="k"}),meters=setmetatable({},{__mode="k"})}
+local S={surfaces=setmetatable({},{__mode="k"}),buttons=setmetatable({},{__mode="k"}),bars=setmetatable({},{__mode="k"})}
 AUI:RegisterModule("ForeverStyle",S)
 local WHITE="Interface\\Buttons\\WHITE8X8"
 local function usable(frame)return frame and type(frame)~="function"and type(frame.GetObjectType)=="function"and not(frame.IsForbidden and frame:IsForbidden())end
@@ -453,26 +453,6 @@ function S:Professions()
         if usable(book)and type(book.Update)=="function"then hooksecurefunc(book,"Update",function()S:Professions()end)end
     end
 end
-function S:Details()
-    local details=Details or _detalhes
-    if type(details)~="table"or type(details.GetAllInstances)~="function"then return end
-    local ok,instances=pcall(details.GetAllInstances,details)
-    if ok and type(instances)=="table"then
-        for _,instance in ipairs(instances)do
-            if usable(instance.baseframe)then
-                self:Surface(instance.baseframe,true,.78,"Meters")
-                if not self.meters[instance]then
-                    self.meters[instance]=true
-                    if type(instance.SetBackgroundColor)=="function"then instance:SetBackgroundColor(.025,.028,.035)end
-                    if type(instance.SetBackgroundAlpha)=="function"then instance:SetBackgroundAlpha(0)end
-                end
-            end
-        end
-    end
-    if not self.detailsHooked and type(details.CreateInstance)=="function"then
-        self.detailsHooked=true;hooksecurefunc(details,"CreateInstance",function()self:Queue()end)
-    end
-end
 function S:Apply()
     if not AUI.isForever then return end
     if InCombatLockdown()or self.resting then self.pending=true;return end
@@ -503,7 +483,6 @@ function S:Apply()
     end
     self:Inventory()
     self:Professions()
-    self:Details()
 end
 function S:Queue()
     if self.queued then return end
@@ -521,7 +500,7 @@ function S:OnPlayerLogin()
     events:SetScript("OnEvent",function(_,event,loaded)
         local hud=AUI.modules.ForeverHUD
         local nativeSkin=type(loaded)=="string"and (loaded:match("^Blizzard_Professions")or loaded:match("^Blizzard_SpellBook")or loaded:match("^Blizzard_PlayerSpells")or loaded:match("^Blizzard_Container"))
-        if event=="ADDON_LOADED"and hud and not hud:IsRelevantAddon(loaded)and not nativeSkin and loaded~="Details"then return end
+        if event=="ADDON_LOADED"and hud and not hud:IsRelevantAddon(loaded)and not nativeSkin then return end
         if event=="PLAYER_REGEN_DISABLED"then self.resting=true;self.revision=(self.revision or 0)+1;return end
         if event=="PLAYER_REGEN_ENABLED"then
             local revision=self.revision

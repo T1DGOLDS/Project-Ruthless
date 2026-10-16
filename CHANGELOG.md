@@ -1,3 +1,11 @@
+## 0.14.0-beta.78 — stage 5 independence and measured work
+
+- Remove Forever's installed quest-database/map-library connections and optional loot dependency. Use an internal provider for RUI route facts, native offers and supplied waypoints; own visual marker positioning. Explicitly disclose missing comprehensive spawn, item-source, pickup-gate and dungeon-coordinate coverage, as requested. Do not bundle an unlicensed database copy or fabricate missing information.
+- Remove external meter skinning/hooks and the final external action-button glow lookup. Integrate static RUI presentation and geometry-only movers with Blizzard's native damage meter; Utilities provides native activation and unified profiles capture that preference. Native categories/rows/session state remain Blizzard-owned. Stop loading the unused Retail talent workspace on Forever.
+- Coalesce marker registration and native meter creation, cache static map projections, stop minimap positioning when unused/hidden, preserve unchanged offer snapshots and skip unrelated addon-load work. Default offer discovery no longer enumerates the full catalog; disabled tooltip indexing does not materialize quest data.
+- Extend opt-in local diagnostics with bounded operation calls, record counts and mean/peak elapsed timing. No automatic recording/uploads or claimed FPS gain. Consolidate current setup/coverage documentation and add independence, native-contract, missing-data, map lifecycle, meter-boundary and measured-work checks.
+- Sixteen automated suites validate the build. All six live gates remain pending; native combat behavior, visuals, accessibility and performance still require testing.
+
 ## 0.14.0-beta.77 — stage 4 auras, cooldowns and feature explanations
 
 - Add Auras & Cooldowns settings with simple combat/buff/minimal presets, movable player buffs/debuffs, your target debuffs and an exact-ID player focus buff. Native secure aura containers own filters, duration display, counts and expiration ordering. Additional groups default off; existing layouts remain intact.

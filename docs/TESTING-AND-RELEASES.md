@@ -1,4 +1,6 @@
-# Testing and releases — beta 77
+# Testing and releases — beta 78
+
+Stage-five coverage changes, ownership boundaries and live scenarios: [STAGE-FIVE.md](STAGE-FIVE.md). The installed quest database is removed by request; full spawn and requirement coverage is not claimed. Recording now also includes bounded operation call/time/record aggregates. All six live gates remain pending.
 
 ## In-game testing
 

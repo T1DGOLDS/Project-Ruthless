@@ -9,6 +9,20 @@ local function read(fn,...)
 end
 local function stamp()return type(date)=="function"and date("%Y-%m-%d %H:%M:%S")or "unknown"end
 local function shown(value)return number(value)and ("%.3f"):format(value)or "unavailable"end
+function D:BeginWork()
+    if self.session then return read(debugprofilestop)end
+end
+function D:EndWork(key,started,units)
+    if not self.session or not number(started)then return end
+    local now=read(debugprofilestop);if not number(now)or now<started then return end
+    local work=self.session.work;local entry=work[key]
+    if not entry then
+        local count=0;for _ in pairs(work)do count=count+1 end
+        if count>=32 then return end
+        entry={count=0,totalMS=0,maxMS=0,units=0};work[key]=entry
+    end
+    local elapsed=now-started;entry.count=entry.count+1;entry.totalMS=entry.totalMS+elapsed;entry.maxMS=math.max(entry.maxMS,elapsed);entry.units=entry.units+(number(units)and units or 0)
+end
 function D:Store()
     ProjectRuthlessCharDB.developerLog=ProjectRuthlessCharDB.developerLog or {enabled=false,sessions={}}
     local store=ProjectRuthlessCharDB.developerLog;store.sessions=store.sessions or {};return store
@@ -54,7 +68,7 @@ function D:Start()
     if self.session then return end
     local store=self:Store();store.enabled=true
     local version,build,_,interface=GetBuildInfo()
-    local session={version=AUI.version,client=version,build=build,interface=interface,started=GetTime(),time=stamp(),samples={},frames=0,frameMS=0,maxFrameMS=0,framesOver50=0,framesOver100=0}
+    local session={version=AUI.version,client=version,build=build,interface=interface,started=GetTime(),time=stamp(),samples={},work={},frames=0,frameMS=0,maxFrameMS=0,framesOver50=0,framesOver100=0}
     store.sessions[#store.sessions+1]=session;while #store.sessions>5 do table.remove(store.sessions,1)end
     self.session=session;self.nextMemory=nil;self.combat=InCombatLockdown()
     if not self.events then self.events=CreateFrame("Frame")end
@@ -90,6 +104,10 @@ function D:Checks()
     if not CustomAuraContainerGroupDefaultOptions and not AUI.modules.AuraManager then add("WARNING","Native party aura templates are unavailable in this client; party aura containers cannot be initialized.","Unit frames > Party auras (client capability)")end
     local manager=AUI.modules.AuraManager
     if manager then for _,row in ipairs(manager:Checks())do rows[#rows+1]=row end end
+    local meters=AUI.modules.ForeverMeters
+    if meters then for _,row in ipairs(meters:Checks())do rows[#rows+1]=row end end
+    local data=AUI.modules.QuestData
+    if data then for _,row in ipairs(data:Checks())do rows[#rows+1]=row end end
     add("INFO",AUI.modules.UnifiedProfiles and "Settings and Edit Mode share account profiles. Legacy partial saves are labelled; save again to capture a complete setup."or "Settings profiles and layout profiles are separate in this client.","Profiles / Edit Mode")
     local api=C_AddOns
     if api and type(api.IsAddOnLoaded)=="function"then
@@ -113,6 +131,9 @@ function D:Report(notes)
         lines[#lines+1]="Mean of sampled recent RUI CPU: "..shown(mean).."; mean frame gap: "..shown(session.frames>0 and session.frameMS/session.frames).." ms; largest gap: "..shown(session.maxFrameMS).." ms; gaps >50/100ms: "..tostring(session.framesOver50).."/"..tostring(session.framesOver100)
         lines[#lines+1]="RUI main-addon CPU ticks >5/50ms during recording: "..shown(session.over5 and session.over5-session.firstOver5).."/"..shown(session.over50 and session.over50-session.firstOver50)
         lines[#lines+1]="RUI package memory first/last/peak KiB: "..shown(session.firstMemoryKB).."/"..shown(session.lastMemoryKB).."/"..shown(session.peakMemoryKB)
+        lines[#lines+1]="Measured RUI work: calls / mean ms / peak ms / processed records (includes native calls within each measured operation)."
+        local keys={};for key in pairs(session.work or {})do keys[#keys+1]=key end;table.sort(keys)
+        for _,key in ipairs(keys)do local w=session.work[key];lines[#lines+1]=key..": "..w.count.." / "..shown(w.totalMS/w.count).." / "..shown(w.maxMS).." / "..w.units end
         lines[#lines+1]="seconds,combat,recent_main_ms,options_ms,data_ms,app_session_main_peak_ms,fps,memory_KiB"
         for i=math.max(1,#session.samples-59),#session.samples do local s=session.samples[i]
             lines[#lines+1]=table.concat({shown(s.seconds),tostring(s.combat),shown(s.cpu),shown(s.optionsCPU),shown(s.dataCPU),shown(s.peak),shown(s.fps),shown(s.memoryKB)},",")

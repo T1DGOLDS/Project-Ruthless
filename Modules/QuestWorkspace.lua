@@ -381,7 +381,7 @@ function Q:ReadWispGuide()
     end
     -- Match only an exact localized name; never guess between duplicate names.
     local name=quest:gsub("|c%x%x%x%x%x%x%x%x",""):gsub("|r","")
-    local db=LibQuestieDB
+    local locations=AUI.modules.QuestLocations;local db=locations and locations:Database()
     if name~=self.guideName then
         self.guideName=name;self.guideQuestID=nil
         for _,entry in ipairs(self.entries or {}) do if entry.title==name then self.guideQuestID=entry.id;break end end
@@ -534,7 +534,8 @@ function Q:Navigate()
         if point then map,x,y=point.map,point.x,point.y;self.destination:SetText(point.name)end
     end
     local pos=playerMap and Call(C_Map.GetPlayerMapPosition,playerMap,"player")
-    if not map or not pos or not Public(x) or not Public(y) then self.distance:SetText("Another area · use Map"); return end
+    if not map or not x or not y or not Public(x)or not Public(y)then self.distance:SetText("Location not recorded · check quest details");return end
+    if not pos then self.distance:SetText("Player location unavailable");return end
     local px,py=Call(pos.GetXY,pos)
     local width,height=Call(C_Map.GetMapWorldSize,map)
     local facing=Call(GetPlayerFacing)
@@ -1564,8 +1565,9 @@ function Q:OnPlayerLogin()
     ProjectRuthlessCharDB.skippedQuestWorkspace=self.skipped
     local events=CreateFrame("Frame")
     self.eventNames={"QUEST_LOG_UPDATE","QUEST_ACCEPTED","QUEST_REMOVED","QUEST_TURNED_IN","QUEST_POI_UPDATE","PLAYER_ENTERING_WORLD","PLAYER_REGEN_ENABLED","ADDON_LOADED","MERCHANT_SHOW","MERCHANT_UPDATE","BAG_UPDATE_DELAYED","ZONE_CHANGED_NEW_AREA","PLAYER_LEVEL_UP","QUEST_PROGRESS","QUEST_COMPLETE","AUCTION_HOUSE_SHOW","AUCTION_HOUSE_CLOSED","GET_ITEM_INFO_RECEIVED"}
-    events:SetScript("OnEvent",function(_,event)
+    events:SetScript("OnEvent",function(_,event,loaded)
         if not ProjectRuthlessDB.questWorkspace.enabled then return end
+        if event=="ADDON_LOADED"and loaded~="Blizzard_WorldMap"and loaded~="Blizzard_ObjectiveTracker"and not(loaded=="ForeverWisp"and ProjectRuthlessDB.questWorkspace.guideSource=="Wisp")then return end
         if event=="QUEST_LOG_UPDATE"or event=="QUEST_ACCEPTED"or event=="QUEST_REMOVED"or event=="QUEST_TURNED_IN"or event=="PLAYER_LEVEL_UP"or event=="ZONE_CHANGED_NEW_AREA"or event=="PLAYER_ENTERING_WORLD"then self.progressionDirty=true end
         if event=="AUCTION_HOUSE_SHOW"then self.prepAuctionOpen=true elseif event=="AUCTION_HOUSE_CLOSED"then self.prepAuctionOpen=nil end
         if event=="QUEST_PROGRESS"or event=="QUEST_COMPLETE"then self:AutoHandIn(event);return end

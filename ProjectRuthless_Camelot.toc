@@ -3,8 +3,8 @@
 ## Title: Project Ruthless
 ## Notes: Ruthless UI for WoW Forever.
 ## Author: Andrew
-## Version: 0.14.0-beta.77
-## OptionalDeps: Blizzard_AuraContainer, Blizzard_CooldownViewer, ForeverWisp, AtlasLootClassic, QuestieDB, TomTom
+## Version: 0.14.0-beta.78
+## OptionalDeps: Blizzard_AuraContainer, Blizzard_CooldownViewer, Blizzard_DamageMeter, ForeverWisp
 ## SavedVariables: ProjectRuthlessDB
 ## SavedVariablesPerCharacter: ProjectRuthlessCharDB
 
@@ -19,12 +19,12 @@ Modules\AuraManager.lua
 Modules\ForeverHUD.lua
 Modules\LevelHistory.lua
 Modules\ForeverStyle.lua
+Modules\ForeverMeters.lua
 Modules\ForeverExpiringBuffs.lua
 Modules\ErrorLog.lua
 Modules\Diagnostics.lua
 Modules\Spellbook.lua
 Modules\MacroRanks.lua
-Modules\Talents.lua
 Modules\MapQuests.lua
 Modules\SkyborneMapData.lua
 Modules\SkyborneMap.lua
@@ -34,6 +34,8 @@ Modules\AuthoredGuides.lua
 Modules\QuestProgressionData.lua
 Modules\QuestProgression.lua
 Modules\QuestWorkspace.lua
+Modules\QuestData.lua
+Modules\MapPins.lua
 Modules\QuestLocations.lua
 Modules\ForeverNameplateHints.lua
 Modules\DungeonAtlas.lua

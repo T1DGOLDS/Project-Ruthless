@@ -7,7 +7,7 @@ local function copy(value)
  local result={};for k,v in pairs(value)do result[k]=copy(v)end;return result
 end
 local function finite(n)return type(n)=="number"and n==n and math.abs(n)<10000 end
-local nativeRules={lockActionBars="boolean",countdownForCooldowns="boolean",PICKUPACTION="modifier",cooldownViewerEnabled="boolean"}
+local nativeRules={lockActionBars="boolean",countdownForCooldowns="boolean",PICKUPACTION="modifier",cooldownViewerEnabled="boolean",damageMeterEnabled="boolean"}
 for i=2,8 do nativeRules["PROXY_SHOW_ACTIONBAR_"..i]="boolean"end
 function P:CaptureNative()
  local values={}
@@ -233,7 +233,7 @@ function P:Apply(profile,name)
  ProjectRuthlessCharDB.activeProfile=name;editor:Store().active=name
  ProjectRuthlessCharDB.profileWorkingSettings=settings:Export()
  AUI:ApplyWindowSettings("profile");AUI:RefreshBackgrounds()
- for _,id in ipairs({"ForeverHUD","ForeverStyle","Spellbook","MapQuests","QuestWorkspace","LowHealthGlow","Accessibility","AuraManager"})do
+ for _,id in ipairs({"ForeverHUD","ForeverStyle","Spellbook","MapQuests","QuestWorkspace","LowHealthGlow","Accessibility","AuraManager","ForeverMeters"})do
   local module=AUI.modules[id]
   if module and type(module.ApplySettings)=="function"and not (id=="ForeverStyle"and profile.layout)then module:ApplySettings()end
  end

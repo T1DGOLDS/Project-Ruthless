@@ -320,12 +320,23 @@ function Menu:CreateSpellbookOptions(parent)
 end
 
 function Menu:CreateHealthOptions(parent)
-    local panel=self:CreateOptionsPanel(parent,"COMBAT FEEDBACK","Health warning","Configure the full-screen low-health warning.")
-    self:CreateCheckbox(panel,"Enable low-health glow","Show the progressive red edge warning as health falls.",-116,function()return ProjectRuthlessDB.lowHealthGlow.enabled end,function(v)ProjectRuthlessDB.lowHealthGlow.enabled=v end,"LowHealthGlow")
-    self:CreateSlider(panel,"Starting health","The warning begins below this health percentage.",-172,0.10,0.60,0.05,function(v)return ("%d%%"):format(math.floor(v*100+0.5))end,function()return ProjectRuthlessDB.lowHealthGlow.threshold end,function(v)ProjectRuthlessDB.lowHealthGlow.threshold=v end,"LowHealthGlow")
-    self:CreateSlider(panel,"Maximum intensity","Maximum opacity reached at critically low health.",-250,0.10,0.80,0.05,function(v)return ("%d%%"):format(math.floor(v*100+0.5))end,function()return ProjectRuthlessDB.lowHealthGlow.maxAlpha end,function(v)ProjectRuthlessDB.lowHealthGlow.maxAlpha=v end,"LowHealthGlow")
-    self:CreateAction(panel,"Preview glow",18,-338,130,function() if AUI.modules.LowHealthGlow then AUI.modules.LowHealthGlow:Preview() end end)
-    if AUI.isForever then self:CreateAction(panel,"Leveling history",158,-338,200,function()AUI.modules.LevelHistory:Show()end)end
+    local panel=self:CreateOptionsPanel(parent,"COMBAT FEEDBACK","Utilities","Health warnings, native damage meters and character history.")
+    local meters=AUI.modules.ForeverMeters
+    local content,offset=panel,0
+    if meters then
+        local scroll=AUI:CreateSmoothScrollFrame(panel);scroll:SetPoint("TOPLEFT",0,-120);scroll:SetSize(650,380)
+        content=CreateFrame("Frame",nil,scroll);content:SetSize(650,610);scroll:SetScrollChild(content);offset=106
+    end
+    self:CreateCheckbox(content,"Enable low-health glow","Show the progressive red edge warning as health falls.",-116+offset,function()return ProjectRuthlessDB.lowHealthGlow.enabled end,function(v)ProjectRuthlessDB.lowHealthGlow.enabled=v end,"LowHealthGlow")
+    self:CreateSlider(content,"Starting health","The warning begins below this health percentage.",-172+offset,0.10,0.60,0.05,function(v)return ("%d%%"):format(math.floor(v*100+0.5))end,function()return ProjectRuthlessDB.lowHealthGlow.threshold end,function(v)ProjectRuthlessDB.lowHealthGlow.threshold=v end,"LowHealthGlow")
+    self:CreateSlider(content,"Maximum intensity","Maximum opacity reached at critically low health.",-250+offset,0.10,0.80,0.05,function(v)return ("%d%%"):format(math.floor(v*100+0.5))end,function()return ProjectRuthlessDB.lowHealthGlow.maxAlpha end,function(v)ProjectRuthlessDB.lowHealthGlow.maxAlpha=v end,"LowHealthGlow")
+    self:CreateAction(content,"Preview glow",18,-338+offset,130,function() if AUI.modules.LowHealthGlow then AUI.modules.LowHealthGlow:Preview() end end)
+    if AUI.isForever then self:CreateAction(content,"Leveling history",158,-338+offset,200,function()AUI.modules.LevelHistory:Show()end)end
+    if meters then
+        self:CreateCheckbox(content,"Enable native damage meter","Blizzard owns combat data, categories and row interactions. No external meter is required.",-302,function()return meters:Enabled()end,function(v)local _,message=meters:SetEnabled(v);AUI:Print(message)end)
+        self:CreateAction(content,"Move damage meters",18,-390,260,function()AUI.modules.LayoutEditor:Show()end)
+        self:CreateAction(content,"Meter background colour & opacity",18,-434,310,function()self:SelectTab("backgrounds")end)
+    end
     self.panels.health=panel
 end
 

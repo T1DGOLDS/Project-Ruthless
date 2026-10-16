@@ -491,7 +491,6 @@ function Spellbook:PulseActionBarLocations(spellID)
         C_Timer.After(2.2,function() anim:Stop(); glow:Hide(); button.__prPulse=nil end)
     end
     for _,prefix in ipairs(prefixes) do for index=1,12 do Pulse(_G[prefix..index]) end end
-    for bar=1,15 do for index=1,12 do Pulse(_G["ElvUI_Bar"..bar.."Button"..index]) end end
     if found==0 then AUI:Print("The spell is assigned, but its visible button could not be located.") end
 end
 

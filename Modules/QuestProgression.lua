@@ -229,7 +229,9 @@ function P:Render(q,focus)
   b:ClearAllPoints();b:SetPoint("TOPLEFT",0,-offset);b:SetSize(q.mapContent:GetWidth(),42);b:SetText(text);b:SetScript("OnClick",fn);b:Show();offset=offset+48;return b
  end
  if not chain then
-  self:Hide();q.mapHeading:SetText("Quest progression");q.mapCopy:SetText(self.discoveryNotice or "");if self.discoveryNotice then offset=80 end
+  self:Hide();q.mapHeading:SetText("Quest progression")
+  local notice=self.discoveryNotice or (AUI.modules.QuestData and "Native quest offers and RUI routes. Unrecorded spawn locations and pickup requirements remain unknown.")or ""
+  q.mapCopy:SetText(notice);if notice~=""then offset=math.max(80,(q.mapCopy:GetStringHeight()or 64)+16)end
   row("Browse dungeon maps, bosses & loot",function()q:SelectMapPage("Dungeon atlas")end)
   for _,entry in ipairs(self:Catalog())do local c=entry;row(c.name.."\n"..#c.nodes.." quests · "..(c.kind=="dungeon"and "Dungeon preparation"or "Quest group"),function()self.selectedQuest=nil;self:Open(c.key)end)end
   q.mapContent:SetHeight(math.max(400,offset));return

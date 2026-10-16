@@ -114,6 +114,8 @@ print('PASS: Wisp current guide, up-next, cross-zone travel arrow, explicit step
 
 assert(load(LOCATIONS_SOURCE))('ProjectRuthless',AUI)
 local locations=AUI.modules.QuestLocations
+-- The internal provider is substituted with fixture records; no addon is loaded.
+AUI.modules.QuestData={GetDatabase=function()return LibQuestieDB end}
 UnitRace=UnitRace or function()return 'Human','Human',1 end
 UnitLevel=UnitLevel or function()return 13 end
 C_QuestLog.IsQuestFlaggedCompleted=function()return false end
@@ -123,7 +125,7 @@ local records={
  Object={ [200]={name='Tools',spawns={[12]={{40,40}}}}, [201]={name='Chest',spawns={[12]={{50,50}}}} },
  Item={ [300]={npcDrops={100},objectDrops={201},itemDrops={301}}, [301]={itemDrops={300}} }
 }
-LibQuestieDB={RequireContract=function(v)return v==3 end,Support={Get=function()return {private={areaIdToUiMapId='return {[12]=2}',areaIdToUiMapIdOverride='return {[12]=1}'}}end}}
+LibQuestieDB={Support={Get=function()return {private={areaIdToUiMapId={[12]=2},areaIdToUiMapIdOverride={[12]=1}}}end}}
 for kind,data in pairs(records) do LibQuestieDB[kind]={Get=function(id,key)return data[id] and data[id][key] end} end
 local points=locations:Build({{id=20,title='Near'},{id=30,title='Done',complete=true}},20,{id=40,quest='Westfall Stew'})
 assert(#points==6 and points[1].current)
@@ -140,7 +142,7 @@ local names={};for _,p in ipairs(points)do names[p.name]=true;assert(p.x>=0 and 
 assert(names.Gnoll and names.Tools and names.Chest and names['Turn-in NPC'] and names.Verna)
 local addedWorld,addedMini,clears=0,0,0
 local pins={RemoveMinimapIcon=function()end,RemoveWorldMapIcon=function()end,RemoveAllWorldMapIcons=function()clears=clears+1 end,RemoveAllMinimapIcons=function()clears=clears+1 end,AddWorldMapIconMap=function(_,owner,icon,map,x,y)assert(map==1);addedWorld=addedWorld+1 end,AddMinimapIconMap=function()addedMini=addedMini+1 end}
-LibStub=function(name)assert(name=='HereBeDragons-Pins-2.0');return pins end
+AUI.modules.MapPins=pins
 Minimap=node()
 q.entries={{id=20,title='Near'},{id=30,title='Done',complete=true}};q.selected=20;q.guide=nil
 locations:Refresh(q,true);assert(addedWorld==1 and addedMini==1,tostring(addedWorld)..":"..tostring(addedMini))

@@ -1,5 +1,7 @@
 # Dungeon atlas — beta28
 
+**Beta 78 update:** bundled boss/loot/reference data remains independent. Native floor lookup uses unambiguous native map names; unsupported boss positions and most quest associations are unrecorded after external-database removal. [Stage five](STAGE-FIVE.md) supersedes dependency descriptions below; missing information is not guessed.
+
 Open the map's Dungeon atlas tab, select a dungeon, then choose a reference map, boss or Dungeon quests. Native maps remain preferred where valid; otherwise RUI displays its bundled square map with entrance/section selectors. Resizing preserves image proportions. Static maps have no player marker, and database coordinates are not projected onto unrelated artwork.
 
 Atlas and AtlasLoot are not runtime requirements. RUI ships 147 unchanged Atlas Classic/Burning Crusade BLP images and 38 dungeon records derived from AtlasLoot Forever 1.60.1. ProjectRuthless_DungeonData loads only on the first atlas request; images load only when selected and textures release on hide. Restart WoW once after adding this folder. The package contains three addon folders, all of which must be installed.

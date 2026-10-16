@@ -1,5 +1,7 @@
 # Quest progression — beta 76
 
+**Beta 78 update:** older external database/location adapters are now removed from the Forever runtime. Native/RUI data supplies current offers, authored route facts and supplied waypoints; comprehensive spawn/gate/dungeon associations are not bundled. [Stage five](STAGE-FIVE.md) supersedes dependency descriptions below.
+
 RUI owns this engine, interface and original progression presentation. It has no Attune bridge and does not redistribute Attune code, assets, layout or database. It uses native Forever APIs, independently authored RUI requirement facts and existing original RUI routes.
 
 ## Interaction

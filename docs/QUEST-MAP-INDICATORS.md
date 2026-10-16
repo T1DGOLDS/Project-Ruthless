@@ -1,5 +1,7 @@
 # Visual quest indicators — Forever beta46
 
+**Beta 78 update:** RUI positions supplemental markers without an installed map library. The external spawn database is removed by request; source-specific markers are omitted where verified records are absent. Native pins/blue areas remain. [Stage five](STAGE-FIVE.md) supersedes historical coverage/dependency descriptions below. Blue spawn dots remain disabled.
+
 Native blue quest areas remain owned by Blizzard. The addon does not infer boundaries from spawn points. Native map pins take priority when public waypoint metadata exists; blue recorded-location dots supplement remaining quests. Selected locations are larger; gold symbols show pickup and turn-in; uncertain pickups are faded.
 
 All added indicators are visual only: mouse-transparent, no selection, waypoint, tracking, quest-panel or movement actions. Existing native Blizzard markers retain their native behavior. Coordinate coverage uses optional QuestieDB and existing HBD Pins; no new scans or polling are introduced. The selected same-zone minimap edge arrow points to the nearest recorded selected location at refresh time, not a calculated travel route. Other-map/unknown-map direction is omitted. Native player/quest navigation remains intact.

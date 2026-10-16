@@ -7,32 +7,20 @@ local function Read(fn,...)
     if ok and not (issecretvalue and issecretvalue(value)) then return value end
 end
 function L:Database()
-    local db=LibQuestieDB
-    if db and self.databaseDB==db then return db end
-    if not db or Read(db.RequireContract,3)~=true then return end
-    self.databaseDB=db
-    return db
+    local data=AUI.modules.QuestData
+    return data and data:GetDatabase()
 end
 function L:Build(quests,selected,guide)
     local db=self:Database()
     if not db then return {} end
+    if db.Points then self.mapping=AUI.modules.QuestData.mapping;return db.Points(quests,selected,guide)end
     if self.mappingDB~=db then
         self.locationCache={}
         local zones=Read(db.Support and db.Support.Get,"ZoneDB")
-        local function decode(value)
-            if type(value)=="table" then return value end
-            -- QuestieDB support tables are packaged as serialized Lua return tables.
-            if type(value)~="string" then return {} end
-            local fn=Read(loadstring or load,value)
-            if not fn then return {} end
-            if setfenv then setfenv(fn,{}) end
-            local result=Read(fn)
-            return type(result)=="table" and result or {}
-        end
         local private=zones and zones.private or {}
         self.mapping={}
-        for area,map in pairs(decode(private.areaIdToUiMapId)) do self.mapping[area]=map end
-        for area,map in pairs(decode(private.areaIdToUiMapIdOverride)) do self.mapping[area]=map end
+        for area,map in pairs(private.areaIdToUiMapId or {}) do self.mapping[area]=map end
+        for area,map in pairs(private.areaIdToUiMapIdOverride or {}) do self.mapping[area]=map end
         self.mappingDB=db
     end
     local mapping=self.mapping
@@ -227,7 +215,7 @@ function L:Refresh(q,force)
     if not force and self.signature==signature then return end
     self.signature=signature
     if not enabled then self:Clear();return end
-    local pins=LibStub and LibStub("HereBeDragons-Pins-2.0",true)
+    local pins=AUI.modules.MapPins
     self.pins=pins
     if not pins or not self:Database() then self.signature=nil;return end
     self.points=self:Build(q.entries or {},self.selectedQuest or (q.guide and q.guide.id or q.selected),q.guide)
@@ -456,7 +444,7 @@ function L:ContextRows(q)
     return rows,inside==true
 end
 
--- QuestieDB sort categories can carry class/profession evidence even when explicit gates are absent.
+-- Known quest-sort categories can carry class/profession evidence.
 local classSortMasks={[-81]=1,[-141]=2,[-261]=4,[-162]=8,[-262]=16,[-372]=32,[-82]=64,[-161]=128,[-61]=256,[-395]=512,[-263]=1024}
 local professionSorts={[-121]=164,[-182]=165,[-181]=171,[-264]=197,[-201]=202,[-373]=755,[-371]=773,[-24]=182,[-324]=129,[-304]=185,[-101]=356,[-377]=794,[-398]=762}
 function L:Eligible(id,db,level,raceMask,classMask,preparation)
@@ -552,6 +540,7 @@ function L:InvalidateAvailability()
 end
 function L:PlayerStatus(id,db,preparation)
     if not db then return {status="uncertain",reason="Quest database unavailable"}end
+    if db.Status then return db.Status(id,preparation)end
     local character=self.characterRequirements
     if not character or character.db~=db then
         local race,class
@@ -579,6 +568,15 @@ function L:ScanOffers()
     self.scanPending=nil
     local db=self:Database()
     if not db then return end
+    if db.Offers then
+        local diagnostics=AUI.modules.Diagnostics;local started=diagnostics and diagnostics:BeginWork()
+        local offers=db.Offers()
+        local changed=self.offers==nil or #offers~=#self.offers
+        if not changed then for i,row in ipairs(offers)do local old=self.offers[i];if row.id~=old.id or row.title~=old.title or row.map~=old.map or row.x~=old.x or row.y~=old.y then changed=true;break end end end
+        if changed then self:InvalidateAvailability();self.offers=offers;self:Refresh(AUI.modules.QuestWorkspace);AUI:QueueRefresh(AUI.modules.QuestWorkspace)end
+        if started then diagnostics:EndWork("Native quest offers",started,#offers)end
+        return
+    end
     if self.scanning then self.rescanOffers=true;return end
     local level=Read(UnitLevel,"player")
     if not level then return end
@@ -659,6 +657,7 @@ end
 
 -- Index only held quests on a changed log snapshot; hovering never scans the database.
 function L:UpdateTooltipIndex(q)
+    if not ProjectRuthlessDB.questWorkspace.enabled then self.tooltipIndex={};self.tooltipEntries=nil;return end
     local db=self:Database()
     if not db or self.tooltipEntries==q.entries and self.tooltipDB==db then return end
     self.tooltipEntries=q.entries;self.tooltipDB=db
@@ -730,7 +729,7 @@ function L:OnPlayerLogin()
     local original=q.ApplySettings
     q.ApplySettings=function(workspace,...)original(workspace,...);self:SetEnabled();self:Refresh(workspace,true)end
     local events=CreateFrame("Frame")
-    self.eventNames={"ADDON_LOADED","PLAYER_ENTERING_WORLD","QUEST_ACCEPTED","QUEST_REMOVED","QUEST_TURNED_IN","PLAYER_LEVEL_UP","SKILL_LINES_CHANGED","UPDATE_FACTION","SPELLS_CHANGED","BAG_UPDATE_DELAYED","PLAYER_REGEN_DISABLED","PLAYER_REGEN_ENABLED"}
+    self.eventNames={"PLAYER_ENTERING_WORLD","QUESTLINE_UPDATE","QUEST_ACCEPTED","QUEST_REMOVED","QUEST_TURNED_IN","PLAYER_LEVEL_UP","SKILL_LINES_CHANGED","UPDATE_FACTION","SPELLS_CHANGED","BAG_UPDATE_DELAYED","PLAYER_REGEN_DISABLED","PLAYER_REGEN_ENABLED"}
     events:SetScript("OnEvent",function(_,event)
         if not ProjectRuthlessDB.questWorkspace.enabled then return end
         if event=="PLAYER_REGEN_DISABLED"then
@@ -754,7 +753,7 @@ function L:OnPlayerLogin()
         if QuestMapFrame_ShowQuestDetails then hooksecurefunc("QuestMapFrame_ShowQuestDetails",function(id)self:SelectQuest(id)end) end
         hooksecurefunc(q,"SetWaypoint",function(_,id)self:SelectQuest(id)end)
     end
-    -- HBD positions markers through zoom; refresh only when opening the map.
+    -- RUI positions visual markers; native quest pins/areas remain untouched.
     if WorldMapFrame then
         WorldMapFrame:HookScript("OnShow",function()q:SyncMapObjective();self:DrawAreas()end)
         WorldMapFrame:HookScript("OnSizeChanged",function()self:DrawSelectedArea()end)

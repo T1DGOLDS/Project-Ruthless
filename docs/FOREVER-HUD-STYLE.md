@@ -1,5 +1,7 @@
 # Forever HUD visual review — beta47
 
+**Beta 78 update:** RUI no longer reads or skins external meter windows. Native DamageMeter receives static RUI backgrounds/borders and movers; its combat data/rows remain native. [Stage five](STAGE-FIVE.md) supersedes historical Details integration notes below.
+
 Forever only. Shared dark surfaces/class accents cover native action buttons and bars, chat and tabs, XP/reputation containers, micro menu, bags and Details background/frame. Native positions, sizes, button clicks, chat font size/links, XP/rested values and meter statistics remain intact. Details row textures/colors are still owned by Details.
 
 After /reload:

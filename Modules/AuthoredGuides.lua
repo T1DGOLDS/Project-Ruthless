@@ -170,6 +170,10 @@ function G:RenderBrowser(q,page)
         row("Skip current guide quest · keeps quest in log",function()self:Action("skip")end)
     else
         q.mapHeading:SetText("RUI · 1–30 guides")
+        if AUI.modules.QuestData then
+            q.mapCopy:SetText("Ordered RUI routes with native quest offers. Missing spawn locations and pickup requirements are not inferred; check the quest giver when prompted.")
+            offset=math.max(100,(read(q.mapCopy.GetStringHeight,q.mapCopy)or 84)+16)
+        end
         local faction=read(UnitFactionGroup,"player")
         for _,route in ipairs(self:Catalog())do
             if route.faction==faction then

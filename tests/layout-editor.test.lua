@@ -322,15 +322,15 @@ print('PASS: native profession icons stay bounded in their buttons; click handle
 local actionX,chatWidth=ActionButton1.x,ChatFrame1:GetWidth()
 style:Apply()
 assert(ActionButton1.scripts.OnClick==secureClick and ActionButton1.x==actionX and ChatFrame1:GetWidth()==chatWidth)
-assert(style.surfaces[ActionButton1].mouseEnabled==false and style.surfaces[ChatFrame1]and style.surfaces[meter.baseframe])
-assert(xp.StatusBar.statusTexture=='Interface\\Buttons\\WHITE8X8'and meter.bgAlpha==0)
+assert(style.surfaces[ActionButton1].mouseEnabled==false and style.surfaces[ChatFrame1]and not style.surfaces[meter.baseframe])
+assert(xp.StatusBar.statusTexture=='Interface\\Buttons\\WHITE8X8'and meter.bgAlpha==nil)
 local function surfaceCount()local n=0;for _ in pairs(style.surfaces)do n=n+1 end;return n end
 local count=surfaceCount();style:Apply();assert(surfaceCount()==count)
 busy=true;local combatButton=frame();ActionButton2=combatButton;style:Apply();assert(style.buttons[combatButton]==nil and style.pending)
 busy=false;style.resting=true;style:Apply();assert(style.buttons[combatButton]==nil)
 style.resting=nil;style:Apply();assert(style.buttons[combatButton])
 AUI.isForever=false;ActionButton3=frame();style:Apply();assert(style.buttons[ActionButton3]==nil)
-print('PASS: Forever action/chat/XP/menu surfaces and Details backdrop preserve click scripts, values and positions; reuse surfaces and defer combat/grace; no Retail styling')
+print('PASS: Forever surfaces preserve clicks/values/positions, reuse assets and defer combat/grace; external meters remain untouched')
 
 -- Precise coordinates use the same screen units regardless of element scale.
 AUI.isForever=true;busy=false;e:Show();e.selected='quests'
