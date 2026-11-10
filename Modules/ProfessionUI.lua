@@ -53,7 +53,7 @@ function P:OpenNative()
   local index=(offset or 0)+n;local info=C_SpellBook.GetSpellBookItemInfo(index,bank)
   if info and info.name==skill.name then
    C_SpellBook.CastSpellBookItem(index,bank)
-   local book=AUI.modules.Spellbook;if book and book.frame then book.frame:Hide()end
+   if self.frame then self.frame:Hide()end
    return
   end
  end
@@ -240,9 +240,9 @@ function P:RefreshVisible()
  if self.view=="Leveling"then self:RenderLeveling()elseif self.view=="Sources"then self:RenderSources()elseif self.view=="Shopping"then self:RenderShopping()else self:RenderRecipes()end
  if self.detailAction and self.detailRevision==self.revision and(self.view=="Leveling"or self.view=="Shopping"or self.view=="Sources"and p.gathering)then self.detailAction()end
 end
-function P:CreatePanel(spellbook)
+function P:CreatePanel(parent)
  if self.panel then return end
- local panel=CreateFrame("Frame",nil,spellbook.frame);panel:SetPoint("TOPLEFT",18,-108);panel:SetPoint("BOTTOMRIGHT",-18,18);self.panel=panel;self.rows={};self.tabs={};self.view="Recipes"
+ local panel=CreateFrame("Frame",nil,parent);panel:SetPoint("TOPLEFT",18,-76);panel:SetPoint("BOTTOMRIGHT",-18,18);self.panel=panel;self.rows={};self.tabs={};self.view="Recipes"
  self.profButton=button(panel,"Profession ▾",210,26,function()self:ToggleProfessions()end);self.profButton:SetPoint("TOPLEFT")
  self.skillLabel=label(panel);self.skillLabel:SetPoint("LEFT",self.profButton,"RIGHT",8,0)
  self.native=button(panel,"Open crafting",115,26,function()self:OpenNative()end);self.native:SetPoint("TOPRIGHT")
@@ -290,12 +290,77 @@ function P:CreatePanel(spellbook)
  panel:SetScript("OnHide",function()self.choices:Hide()end)
  local selected=self:Store().selected;self.profession=self:Data().professions[selected]and selected or self:ProfessionList()[1].id
 end
-function P:ShowInSpellbook(spellbook)
- self:CreatePanel(spellbook);self.panel:Show();self:RefreshVisible()
+function P:UpdateMicroButton(button)
+ button=button or ProfessionMicroButton
+ if not button then return end
+ local shown=self.frame and self.frame:IsShown()or ProfessionsFrame and ProfessionsFrame:IsShown()
+ if shown then if button.SetPushed then button:SetPushed()end
+ elseif button.SetNormal then button:SetNormal()end
+end
+function P:ApplySettings()
+ if not self.frame then return end
+ local general=ProjectRuthlessDB.general or {};local access=AUI.modules.Accessibility
+ local scale=general.windowScale or 1
+ self.frame:SetScale(access and access:FitWindow(self.frame,scale)or scale)
+ self.frame:SetAlpha(general.windowOpacity or 1)
+end
+function P:RestorePosition()
+ local editor=AUI.modules.LayoutEditor;local value=editor and editor:Store().elements.professions
+ if not value then return end
+ if not InCombatLockdown()then editor:Apply("professions",value);return end
+ -- This is our unprotected window only. Opening it for the first time during
+ -- combat must retain its saved position without applying native frame edits.
+ local function valid(n)return type(n)=="number"and n==n and math.abs(n)<10000 end
+ if not valid(value.x)or not valid(value.y)or not valid(value.scale)then return end
+ self.frame:SetScale(math.max(.55,math.min(1.5,value.scale)))
+ local ratio=UIParent:GetEffectiveScale()/self.frame:GetEffectiveScale()
+ self.frame:ClearAllPoints();self.frame:SetPoint("CENTER",UIParent,"CENTER",value.x*ratio,value.y*ratio)
+end
+function P:CreateWindow()
+ if self.frame then return end
+ local frame=CreateFrame("Frame","ProjectRuthlessProfessionsFrame",UIParent,"BackdropTemplate")
+ frame:SetSize(700,650);frame:SetPoint("CENTER");frame:SetFrameStrata("DIALOG");frame:SetClampedToScreen(true);frame:SetMovable(true);frame:EnableMouse(true)
+ AUI:StyleSurface(frame,"window",nil,"Professions");self.frame=frame;frame:Hide()
+ local header=CreateFrame("Frame",nil,frame);header:SetPoint("TOPLEFT",1,-1);header:SetPoint("TOPRIGHT",-1,-1);header:SetHeight(58)
+ header:EnableMouse(true);header:RegisterForDrag("LeftButton")
+ header:SetScript("OnDragStart",function()frame:StartMoving()end)
+ header:SetScript("OnDragStop",function()
+  frame:StopMovingOrSizing()
+  local editor=AUI.modules.LayoutEditor;local position=editor and editor:Capture(frame)
+  if position then editor:Store().elements.professions=position end
+ end)
+ local red,green,blue=AUI:AccentColor();local line=header:CreateTexture(nil,"ARTWORK")
+ line:SetColorTexture(red,green,blue,1);line:SetPoint("BOTTOMLEFT");line:SetPoint("BOTTOMRIGHT");line:SetHeight(2)
+ local mark=label(header,"RUI","GameFontNormalLarge");mark:SetTextColor(red,green,blue,1);mark:SetPoint("LEFT",16,0)
+ local title=label(header,"PROFESSIONS","GameFontNormalLarge");title:SetPoint("LEFT",mark,"RIGHT",16,0)
+ local close=button(header,"×",32,30,function()frame:Hide()end);close:SetPoint("RIGHT",-8,0)
+ self:CreatePanel(frame);self:ApplySettings()
+ frame:SetScript("OnShow",function()self:RestorePosition();self:RefreshVisible();self:UpdateMicroButton()end)
+ frame:SetScript("OnHide",function()self.choices:Hide();self:UpdateMicroButton()end)
+ local editor=AUI.modules.LayoutEditor
+ if editor then editor:Attach("professions","Professions",frame,false,{skipNativeSettings=true})end
+ if UISpecialFrames then UISpecialFrames[#UISpecialFrames+1]="ProjectRuthlessProfessionsFrame"end
 end
 function P:Show(id)
- local book=AUI.modules.Spellbook;book:Show("professions")
+ self:CreateWindow();self.frame:Show()
  if id and self:Data().professions[id]then self:SelectProfession(id)end
+ self:RefreshVisible();self.frame:Raise()
+end
+function P:Toggle()
+ if self.frame and self.frame:IsShown()then self.frame:Hide()else self:Show()end
+end
+function P:InstallEntryPoints()
+ if not AUI.isForever then return end
+ -- Both the unchanged native key binding and micro-menu OnClick call this
+ -- book toggle. Actual profession spells and the crafting frame stay native.
+ if not self.entryInstalled and type(ToggleProfessionsBook)=="function"then
+  self.entryInstalled=true;self.originalToggleProfessionsBook=ToggleProfessionsBook
+  _G.ToggleProfessionsBook=function()self:Toggle()end
+ end
+ if not self.microHooked and ProfessionMicroButton and type(ProfessionMicroButton.UpdateMicroButton)=="function"and hooksecurefunc then
+  self.microHooked=true
+  hooksecurefunc(ProfessionMicroButton,"UpdateMicroButton",function(button)self:UpdateMicroButton(button)end)
+ end
 end
 function P:RenderMap(q)
  for _,c in ipairs(q.mapControls or {})do c:Hide()end

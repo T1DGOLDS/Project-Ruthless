@@ -127,7 +127,7 @@ function AUI:ApplyWindowSettings(key)
     local settings=ProjectRuthlessDB and ProjectRuthlessDB.general or {}
     local scale=settings.windowScale or 1
     local alpha=settings.windowOpacity or 1
-    for _,moduleName in ipairs({"Menu","Character","Spellbook"}) do
+    for _,moduleName in ipairs({"Menu","Character","Spellbook","Professions"}) do
         local module=self.modules[moduleName]
         if module and module.frame then
             if key~="windowOpacity"then

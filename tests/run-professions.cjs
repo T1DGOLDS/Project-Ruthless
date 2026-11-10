@@ -15,10 +15,19 @@ for(const p of Object.values(data.professions)){
 }
 const toc=fs.readFileSync(path.join(root,'ProjectRuthless_Camelot.toc'),'utf8');
 assert(toc.indexOf('Modules\\Professions.lua')<toc.indexOf('Modules\\ProfessionUI.lua'));
+const book=fs.readFileSync(path.join(root,'Modules/Spellbook.lua'),'utf8');
+const foreverTabs=book.match(/if AUI\.isForever then\s+self:CreateTab\(frame,"general"[\s\S]*?\n    else/)[0];
+assert(!foreverTabs.includes('"professions"'),'Forever Spellbook must contain no profession tab');
+assert(!fs.readFileSync(path.join(root,'Modules/ProfessionUI.lua'),'utf8').includes('AUI.modules.Spellbook'),'Profession window must not depend on Spellbook');
+assert(book.includes('if AUI.isForever and mode=="professions"then mode="class"end'),'Retired saved tab must migrate safely');
 const native=process.env.PR_WOW_FOREVER_SOURCE;
 if(native){
  const docs=fs.readFileSync(path.join(native,'Blizzard_APIDocumentationGenerated/TradeSkillUIDocumentation.lua'),'utf8');
  for(const method of ['GetBaseProfessionInfo','GetRecipeInfo','GetRecipeSchematic','GetRecipeOutputItemData'])assert(docs.includes(`Name = "${method}"`));
  const template=fs.readFileSync(path.join(native,'Blizzard_ProfessionsTemplates/Blizzard_Professions.lua'),'utf8');assert(template.includes('C_TradeSkillUI.GetFilteredRecipeIDs()'));
+ const bindings=fs.readFileSync(path.join(native,'Blizzard_FrameXML/Bindings_Camelot.xml'),'utf8');
+ assert(/<Binding name="TOGGLEPROFESSIONBOOK"[^>]*>\s*ToggleProfessionsBook\(\);/.test(bindings));
+ const micro=fs.readFileSync(path.join(native,'Blizzard_MicroMenu/Mainline/MainMenuBarMicroButtons.lua'),'utf8');
+ assert(/function ProfessionMicroButtonMixin:OnClick[\s\S]*?ToggleProfessionsBook\(\)/.test(micro));
 }
 if(lauxlib.luaL_dostring(L,to_luastring(fs.readFileSync(path.join(__dirname,'professions.test.lua'),'utf8')))!==lua.LUA_OK)throw Error(to_jsstring(lua.lua_tostring(L,-1)));

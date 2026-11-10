@@ -3,7 +3,7 @@
 ## Title: Project Ruthless
 ## Notes: Ruthless UI for WoW Forever.
 ## Author: Andrew
-## Version: 0.14.0-beta.102
+## Version: 0.14.0-beta.103
 ## OptionalDeps: Blizzard_AuraContainer, Blizzard_CooldownViewer, Blizzard_DamageMeter, ForeverWisp
 ## SavedVariables: ProjectRuthlessDB
 ## SavedVariablesPerCharacter: ProjectRuthlessCharDB

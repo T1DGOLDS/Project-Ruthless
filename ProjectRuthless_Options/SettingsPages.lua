@@ -324,11 +324,18 @@ override("CreateSpellbookOptions",function(self,parent)
  check("macroAutocomplete","Macro autocomplete","Suggest slash commands, conditions and learned spells while you type.")
  check("autoUpdateRanks","Automatically update macro spell ranks","Upgrade explicit old ranks when a new rank is learned. Previous macros remain in History.","MacroRanks")
  f:Action("Open Spellbook",function()AUI.modules.Spellbook:Show("class")end)
- if AUI.modules.Professions then
-  f:Section("Professions")
-  f:Action("Profession recipes, leveling and crafting profit",function()AUI.modules.Professions:Show()end,"Browse all professions, vendor recipe sources, gathering zones, materials and auction shopping plans. Sale fees and manual prices stay with this character and market.")
- end
 end)
+
+function Menu:CreateProfessionsOptions(parent)
+ local f=self:CreateFlowPage(parent,"professions","Professions","Your profession tools have their own window. Use the normal Professions shortcut or micro-menu button.")
+ f:Section("Recipes & learning")
+ f:Action("Open Professions",function()AUI.modules.Professions:Show()end,"Browse known and future recipes, profession leveling guides, vendor recipe sources and gathering zones.")
+ f:Section("Crafting value & preparation")
+ f:Action("Crafting profit and auction prices",function()local p=AUI.modules.Professions;p:Show();p:SelectView("Profit")end,"Compare materials and output values with realm auction prices. Enter sale fees and see old or missing-price warnings.")
+ f:Action("Profession shopping plans",function()local p=AUI.modules.Professions;p:Show();p:SelectView("Shopping")end,"Character plans aggregate materials and export a shopping list to auction tools. No crafting or purchases happen automatically.")
+ f:Note("Recipe observations, prices and plans stay with this character. The window has its own saved position and scale in Edit Mode. Actual crafting still uses the native controls.")
+ f:Action("Profession background",function()self:SelectTab("backgrounds")end,"Use the Professions appearance override or inherit the global background.")
+end
 override("CreateAuctionOptions",function(self,parent)
  local f=self:CreateFlowPage(parent,"auctionhouse","Auction house","Character searches and shopping lists stay with that character. RUI profiles include these feature preferences.")
  f:Section("Search & selling")

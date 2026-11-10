@@ -7,11 +7,12 @@ R.sections={
  {id="auras",label="Auras & cooldowns"},{id="spellbook",label="Spellbook & macros"},
  {id="chat",label="Chat"},{id="bags",label="Bags & inventory"},
  {id="mapquests",label="Map & quests",group="ACTIVITIES"},
+ {id="professions",label="Professions"},
  {id="auctionhouse",label="Auction house"},{id="health",label="Combat & utilities"},
  {id="profiles",label="Profiles",group="SETUP & SUPPORT"},
  {id="accessibility",label="Accessibility"},{id="errors",label="Help & diagnostics"}}
 R.childPages={backgrounds="general",setup="profiles",compatibility="errors",status="errors",errorlog="errors",features="errors"}
-R.searchPages={"general","backgrounds","unitframes","actionbars","auras","spellbook","chat","bags","mapquests","auctionhouse","health","profiles","accessibility","errors","compatibility","status","features"}
+R.searchPages={"general","backgrounds","unitframes","actionbars","auras","spellbook","chat","bags","mapquests","professions","auctionhouse","health","profiles","accessibility","errors","compatibility","status","features"}
 R.auctionControls={
  {"autoOpen","Start on RUI Tools","Open Tools when visiting an auctioneer. Turn off to start on Buy; all bottom tabs remain available."},
  {"retainHistory","Keep recent searches","Keep the last 30 character searches, including level and filter preferences."},

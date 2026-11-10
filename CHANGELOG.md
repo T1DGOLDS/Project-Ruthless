@@ -1,4 +1,10 @@
 ## 0.14.0-beta.101 — 2026-11-10
+## 0.14.0-beta.103 — 2026-11-10
+
+- Separate Professions from Spellbook: its own RUI window, native Professions shortcut/micro-menu entry, searchable settings category, background and saved Edit Mode position/scale. Spellbook no longer contains a Professions tab on Forever.
+- Preserve profession recipes, observations, manual prices and shopping plans. Migrate the retired saved Spellbook tab to class abilities. Native crafting remains intact; opening it closes only the Professions window.
+- Verify independent window lifecycle, normal/combat toggles, native entry-point contracts, unchanged profession data, settings layout/search and saved-tab migration. Manual client acceptance remains pending.
+
 ## 0.14.0-beta.102 — 2026-11-10
 
 - Add an integrated Spellbook profession workspace, also reachable from Map > Professions and searchable settings: Recipes, Leveling, Sources, Profit and Shopping. All twelve professions are represented.

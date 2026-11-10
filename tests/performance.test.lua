@@ -312,6 +312,7 @@ book.scroll=CreateFrame('ScrollFrame');book.searchBox=CreateFrame('EditBox');boo
 local macroBuilds,iconBuilds,templateBuilds,backupBuilds=0,0,0,0
 book.CreateMacroView=function(self)macroBuilds=macroBuilds+1;self.macroView=CreateFrame('Frame')end
 book:SelectMode('class');assert(macroBuilds==0)
+do local was=AUI.isForever;AUI.isForever=true;book:SelectMode('professions');assert(book.mode=='class'and ProjectRuthlessDB.spellbook.state.mode=='class','Retired profession tab must restore Spellbook to spells');AUI.isForever=was end
 book:SelectMode('macros');book:SelectMode('class');book:SelectMode('macros');assert(macroBuilds==1)
 book.CreateMacroIconPicker=function(self)iconBuilds=iconBuilds+1;self.iconPicker=CreateFrame('Frame');self.iconSearch=CreateFrame('EditBox')end
 book.RefreshMacroIconPicker=function()end

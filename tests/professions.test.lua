@@ -86,23 +86,48 @@ function W:SetScript(k,v)self.scripts[k]=v end
 function W:SetText(v)self.text=tostring(v or '')end
 function W:GetText()return self.text or ''end
 function W:GetStringHeight()return 300 end
-function W:Show()self.shown=true end
-function W:Hide()self.shown=false end
+function W:Show()local old=self.shown;self.shown=true;if not old and self.scripts.OnShow then self.scripts.OnShow(self)end end
+function W:Hide()local old=self.shown;self.shown=false;if old and self.scripts.OnHide then self.scripts.OnHide(self)end end
 function W:IsShown()return self.shown end
 function W:IsVisible()return self.shown and(not self.parent or self.parent:IsVisible())end
 function W:SetEnabled(v)self.enabled=v end
 function W:SetShown(v)self.shown=v end
-for _,m in ipairs({'SetPoint','SetAllPoints','ClearAllPoints','SetFrameLevel','SetAutoFocus','SetMaxLetters','SetJustifyH','SetTextColor','SetWordWrap','SetTexture','SetSpacing','SetVerticalScroll','SetScrollChild','SetClipsChildren','ClearFocus','RegisterEvent'})do W[m]=function()end end
+for _,m in ipairs({'SetPoint','SetAllPoints','ClearAllPoints','SetFrameLevel','SetAutoFocus','SetMaxLetters','SetJustifyH','SetTextColor','SetWordWrap','SetTexture','SetSpacing','SetVerticalScroll','SetScrollChild','SetClipsChildren','ClearFocus','RegisterEvent','SetFrameStrata','SetClampedToScreen','SetMovable','EnableMouse','RegisterForDrag','SetColorTexture','Raise','StartMoving','StopMovingOrSizing'})do W[m]=function()end end
+function W:SetScale(v)self.scale=v end
+function W:SetAlpha(v)self.alpha=v end
+function W:GetEffectiveScale()return self.scale or 1 end
+function W:SetPoint(...)self.point={...}end
 local function frame(parent)local f=setmetatable({shown=true,scripts={},parent=parent},W);frames[#frames+1]=f;return f end
 function W:CreateFontString()return frame(self)end
 function W:CreateTexture()return frame(self)end
-function CreateFrame(_,_,parent)return frame(parent)end
+function CreateFrame(_,name,parent)local f=frame(parent);f.name=name;return f end
 function A:CreateButton(parent)local b=frame(parent);b.label=frame(b);return b end
 function A:CreateSmoothScrollFrame(parent)return frame(parent)end
 function A:StyleSurface()end
-A.modules.Accessibility={RegisterText=function()end}
-assert(load(UI))('RUI',A);local book={frame=frame()};P:ShowInSpellbook(book);assert(P.profession and P.panel:IsVisible())
-local n=#frames;P:ShowInSpellbook(book);assert(#frames==n,'Reopen must reuse frames')
+function A:AccentColor()return .2,.6,1 end
+A.modules.Accessibility={RegisterText=function()end,FitWindow=function(_,_,scale)return scale end}
+UIParent=frame();UISpecialFrames={}
+local spellbook=frame(UIParent)
+A.modules.Spellbook={frame=spellbook,Show=function()error('Professions must never open Spellbook')end}
+local positions={elements={}};local attached={}
+A.modules.LayoutEditor={Attach=function(_,id,name,f)attached[id]=f end,Capture=function()return {x=18,y=42,scale=1,width=700,height=650}end,Store=function()return positions end,Apply=function(_,id,value)attached[id]:SetPoint('CENTER',UIParent,'CENTER',value.x,value.y)end}
+assert(load(UI))('RUI',A);P:Show();assert(P.profession and P.panel:IsVisible())
+assert(P.frame.name=='ProjectRuthlessProfessionsFrame'and P.frame.parent==UIParent and P.panel.parent==P.frame)
+assert(attached.professions==P.frame and #UISpecialFrames==1 and spellbook:IsShown())
+local n=#frames;P:Show();assert(#frames==n,'Reopen must reuse frames')
+P.frame:Hide();assert(spellbook:IsShown(),'Closing Professions must not close Spellbook');P:Show()
+local oldPlan=P:Store().plans;local oldPrices=P:Store().prices
+local originalCalls,hooks=0,0
+ToggleProfessionsBook=function()originalCalls=originalCalls+1 end
+ProfessionMicroButton={UpdateMicroButton=function()end,SetPushed=function(b)b.pushed=true end,SetNormal=function(b)b.pushed=false end}
+hooksecurefunc=function(_,_,callback)hooks=hooks+1;P.microCallback=callback end
+P:InstallEntryPoints();P:InstallEntryPoints();assert(hooks==1)
+ToggleProfessionsBook();assert(not P.frame:IsShown()and spellbook:IsShown())
+positions.elements.professions={x=18,y=42,scale=1,width=700,height=650}
+combat=true;ToggleProfessionsBook();assert(P.frame:IsShown()and ProfessionMicroButton.pushed and originalCalls==0)
+assert(P.frame.point[4]==18 and P.frame.point[5]==42,'Combat opening must restore the owned window position')
+ToggleProfessionsBook();assert(not P.frame:IsShown()and not ProfessionMicroButton.pushed);combat=false;P:Show()
+assert(P:Store().plans==oldPlan and P:Store().prices==oldPrices,'Moving the window must preserve character profession data')
 P:ToggleProfessions();assert(#P.profChoices==12)
 for id in pairs(facts.professions)do
  P:SelectProfession(id)
@@ -110,5 +135,9 @@ for id in pairs(facts.professions)do
 end
 P:SelectProfession(197);P:SelectView('Profit');P:SelectRecipe(r);assert(P.detail:GetText():find('Listing margin'))
 combat=true;P:OpenNative();assert(P.status:GetText():find('after combat'));combat=false
+local crafts=0;Enum={SpellBookSpellBank={Player=0}}
+C_SpellBook={GetSpellBookItemInfo=function()return {name='Tailoring'}end,CastSpellBookItem=function()crafts=crafts+1 end}
+P:OpenNative();assert(crafts==1 and not P.frame:IsShown()and spellbook:IsShown(),'Opening crafting closes only Professions')
+P:Show()
 P:SelectView('Shopping');P:RenderShopping();assert(P.export:IsShown())
 print('PASS: profession data, 12-profession UI, accounting, price provenance, binding, inventory, shopping and native/combat boundaries')

@@ -1,7 +1,7 @@
 -- Review the constructed settings, not a second copy of the layout algorithm.
 do
  local registry=AUI.modules.SettingsRegistry
- assert(#registry.sections==13)
+ assert(#registry.sections==14)
  local ids={}
  for _,section in ipairs(registry.sections)do assert(not ids[section.id]);ids[section.id]=true end
  assert(not ids.backgrounds and not ids.setup and not ids.compatibility and not ids.status)
@@ -26,8 +26,10 @@ do
  settingsMenu.pageBuilders.auras="CreateAuraOptions"
  settingsMenu.pageBuilders.auctionhouse="CreateAuctionOptions"
  settingsMenu.pageBuilders.accessibility="CreateAccessibilityOptions"
+ AUI.modules.Professions=AUI.modules.Professions or {Show=function()end,SelectView=function()end}
+ settingsMenu.pageBuilders.professions="CreateProfessionsOptions"
  assert(load(FEATUREGUIDE_SOURCE))("ProjectRuthless",AUI);settingsMenu.pageBuilders.features="CreateFeatureGuide"
- for _,id in ipairs({"auras","auctionhouse","accessibility","health","profiles","features"})do
+ for _,id in ipairs({"auras","auctionhouse","accessibility","health","profiles","features","professions"})do
   if settingsMenu.panels[id]then settingsMenu.panels[id]:Hide()end
   settingsMenu.buildingPage=id;settingsMenu[settingsMenu.pageBuilders[id]](settingsMenu,settingsMenu.content);settingsMenu.panels[id]:Hide()
  end
@@ -62,7 +64,7 @@ do
    end
   end
  end
- assert(reviewed==14 and controls>90,"Reviewed "..reviewed.." pages / "..controls.." controls")
+ assert(reviewed==15 and controls>90,"Reviewed "..reviewed.." pages / "..controls.." controls")
  textScale=1;Frame.GetStringHeight=oldMeasure;settingsMenu:ReflowPages()
  -- Cached pages must read and write the newly active profile's tables.
  local oldMap=ProjectRuthlessDB.mapQuests;local oldGeneral=ProjectRuthlessDB.general

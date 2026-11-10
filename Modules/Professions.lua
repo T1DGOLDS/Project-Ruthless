@@ -295,10 +295,14 @@ function P:QueueObserve()
  C_Timer.After(.2,function()self.observeQueued=nil;self:Observe()end)
 end
 function P:OnPlayerLogin()
+ if self.InstallEntryPoints then self:InstallEntryPoints()end
  local frame=CreateFrame("Frame");self.events=frame
- for _,e in ipairs({"TRADE_SKILL_SHOW","TRADE_SKILL_CLOSE","TRADE_SKILL_LIST_UPDATE","TRADE_SKILL_DATA_SOURCE_CHANGED","PLAYER_REGEN_ENABLED","SKILL_LINES_CHANGED","BAG_UPDATE_DELAYED","GET_ITEM_INFO_RECEIVED","ITEM_SEARCH_RESULTS_UPDATED","COMMODITY_SEARCH_RESULTS_UPDATED"})do frame:RegisterEvent(e)end
- frame:SetScript("OnEvent",function(_,event)
-  if event=="TRADE_SKILL_SHOW"then self.nativeOpen=true;self:QueueObserve()
+ for _,e in ipairs({"TRADE_SKILL_SHOW","TRADE_SKILL_CLOSE","TRADE_SKILL_LIST_UPDATE","TRADE_SKILL_DATA_SOURCE_CHANGED","PLAYER_REGEN_ENABLED","SKILL_LINES_CHANGED","BAG_UPDATE_DELAYED","GET_ITEM_INFO_RECEIVED","ITEM_SEARCH_RESULTS_UPDATED","COMMODITY_SEARCH_RESULTS_UPDATED","ADDON_LOADED"})do frame:RegisterEvent(e)end
+ frame:SetScript("OnEvent",function(_,event,addon)
+  if event=="ADDON_LOADED"then
+   if addon=="Blizzard_ProfessionsBook"or addon=="Blizzard_Professions"or addon=="Blizzard_MicroMenu"then self:InstallEntryPoints()end
+   return
+  elseif event=="TRADE_SKILL_SHOW"then self.nativeOpen=true;self:QueueObserve()
   elseif event=="TRADE_SKILL_CLOSE"then self.nativeOpen=nil;self.job=nil
   elseif event=="PLAYER_REGEN_ENABLED"then if self.pendingObserve then self.pendingObserve=nil;self:QueueObserve()end
   elseif event=="TRADE_SKILL_LIST_UPDATE"or event=="TRADE_SKILL_DATA_SOURCE_CHANGED"then if self.nativeOpen then self:QueueObserve()end

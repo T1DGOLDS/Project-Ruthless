@@ -245,10 +245,10 @@ function E:Attach(id,label,frame,resize,options)
     self.targets[id]={label=label,frame=frame,resize=resize,default=self:Capture(frame),skipNativeSettings=options and options.skipNativeSettings}
     frame:HookScript("OnShow",function()local value=self:Store().elements[id];if value then self:Apply(id,value)end end)
     local value=self:Store().elements[id];if value then self:Apply(id,value)end
-    if frame.GetBackdrop and frame:GetBackdrop()then AUI:StyleSurface(frame,"window",id=="quests"and math.max(.72,ProjectRuthlessDB.questWorkspace.opacity)or nil,({quests="Quest",spells="Spellbook",map="Map"})[id]or "Options")end
+    if frame.GetBackdrop and frame:GetBackdrop()then AUI:StyleSurface(frame,"window",id=="quests"and math.max(.72,ProjectRuthlessDB.questWorkspace.opacity)or nil,({quests="Quest",spells="Spellbook",professions="Professions",map="Map"})[id]or "Options")end
 end
 function E:Discover()
-    for _,row in ipairs({{"quests","Quest tracker","QuestWorkspace"},{"menu","Control centre","Menu"},{"character","Character","Character"},{"spells","Spellbook","Spellbook"}})do
+    for _,row in ipairs({{"quests","Quest tracker","QuestWorkspace"},{"menu","Control centre","Menu"},{"character","Character","Character"},{"spells","Spellbook","Spellbook"},{"professions","Professions","Professions"}})do
         local module=AUI.modules[row[3]];self:Attach(row[1],row[2],module and module.frame)
     end
     if AUI.modules.QuestWorkspace and AUI.modules.QuestWorkspace.mapPanel then self:Attach("map","Map and quest log",WorldMapFrame,true)end
@@ -451,7 +451,7 @@ end
 function E:Refresh()
     if not self.frame or not self.frame:IsShown()then return end
     self:Discover()
-    local ids={"quests","map","menu","spells","backpack"};if not AUI.isForever then table.insert(ids,4,"character")end;local hudIDs={}
+    local ids={"quests","map","menu","spells","professions","backpack"};if not AUI.isForever then table.insert(ids,4,"character")end;local hudIDs={}
     for id,target in pairs(self.targets)do if target.hud then hudIDs[#hudIDs+1]=id end end
     table.sort(hudIDs,function(a,b)return self.targets[a].label<self.targets[b].label end)
     for _,id in ipairs(hudIDs)do ids[#ids+1]=id end

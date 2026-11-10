@@ -1,6 +1,6 @@
-# Profession workspace — beta102
+# Profession workspace — beta103
 
-Open **Spellbook > Professions**, **Map > Professions**, or the searchable profession action in Spellbook & macros settings. The workspace shares the Spellbook window, scale, movement and appearance. The native Professions button and crafting controls remain intact.
+Open **Professions** with its normal shortcut (K by default), micro-menu button, **Map > Professions**, or **Settings > Professions**. It has its own RUI window, background group, saved position and Edit Mode scale, entirely separate from Spellbook. The native key binding and micro-menu callback reach the owned book toggle; actual crafting spells, frames and controls remain native. Opening crafting hides only the Professions window. Spellbook contains General, class abilities, Pet and Macros; its retired saved profession-tab selection returns to class abilities without changing profession records or plans.
 
 - **Recipes:** searchable skill-sorted published and observed recipes; All, Learned, Unlearned / unknown and Vendor filters. An unobserved recipe is not asserted to be available or unlearned.
 - **Leveling:** current-skill range selection, learning source, full-range material totals, average craft count and a proportional remaining estimate. Skill-up luck, perks, intermediate stock and current native difficulty can change actual quantities. Add plan uses per-craft materials and the entered number of crafts, rather than treating a full-guide material total as one recipe.
@@ -24,6 +24,6 @@ Prices, plans, observations and last profession stay with the character; manual 
 
 ## Verification and live acceptance
 
-`npm run test:professions` covers factual coverage, all twelve UI views, missing/zero prices, stock, batches/yields, fees, binding, history/market scope, intermediate/cycle handling, generated-list replacement, native observation bounds, secret containment and combat browsing/opening guards. `npm run test:profession-data` checks deterministic compilation. The new modules compile under actual Lua 5.1.
+`npm run test:professions` covers factual coverage, all twelve UI views, independent window construction/lifecycle, native key and menu routes, repeated and combat toggles, Spellbook independence, retained character data, missing/zero prices, stock, batches/yields, fees, binding, history/market scope, intermediate/cycle handling, generated-list replacement, native observation bounds, secret containment and combat browsing/opening guards. Settings/performance suites cover the separate searchable page and retired-tab migration. `npm run test:profession-data` checks deterministic compilation. The modules compile under actual Lua 5.1.
 
 Required in the current client: open a learned crafting profession, then revisit the RUI catalogue; inspect learned/unlearned recipes, native source text, quantities and tooltips. Test all five views at normal/large text sizes and in combat. Capture a fresh auction quote/full scan, set its actual sale fee and compare a multi-output craft's inputs/output manually. Check BoP and service recipes, bank stock, plan reload/export and native crafting return. These checks are pending; mocks do not establish in-client rendering, taint freedom or observed performance.

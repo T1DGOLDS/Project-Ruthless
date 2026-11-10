@@ -547,7 +547,7 @@ function Menu:FilterTabs(query)
         for i,tab in ipairs(self.tabs)do tab:SetShown(true);tab:SetHeight(spacing-2);tab:ClearAllPoints();tab:SetPoint("TOPLEFT",self.sidebar,"TOPLEFT",12,-90-(i-1)*spacing)end
         self:SearchControls(query);return
     end
-    local aliases={backgrounds="charcoal opacity transparency global individual shadows",general="scale opacity",profiles="save load import export undo",mapquests="guide dungeon quest tracker arrow waypoint supplies preparation handin",errors="diagnostics lag cpu errors",spellbook="macro ranks professions spells",health="glow warning threshold"}
+    local aliases={backgrounds="charcoal opacity transparency global individual shadows",general="scale opacity",profiles="save load import export undo",mapquests="guide dungeon quest tracker arrow waypoint supplies preparation handin",errors="diagnostics lag cpu errors",spellbook="macro ranks spells",professions="recipe craft vendor trainer gathering profit materials",health="glow warning threshold"}
     local index=0
     for _,tab in ipairs(self.tabs)do
         local text=tab.searchText.." "..(aliases[tab.panelID]or "")
@@ -693,6 +693,7 @@ function Menu:Create()
         self.pageBuilders.achievements=nil
         self.pageBuilders.actionbars="CreateActionBarOptions"
         if AUI.modules.AuctionHouse then self.pageBuilders.auctionhouse="CreateAuctionOptions"end
+        if AUI.modules.Professions then self.pageBuilders.professions="CreateProfessionsOptions"end
         self.pageBuilders.backgrounds="CreateBackgroundOptions"
         self.pageBuilders.errorlog="CreateErrorLogView"
         if AUI.modules.FeatureGuide then self.pageBuilders.features="CreateFeatureGuide"end

@@ -1055,15 +1055,6 @@ end
 
 function Spellbook:Refresh()
     if not self.frame then return end
-    local professions=AUI.isForever and AUI.modules.Professions
-    if professions and self.mode=="professions"then
-        for _,display in ipairs(self.displayFrames)do display:Hide()end
-        self.empty:Hide();professions:ShowInSpellbook(self)
-        for id,tab in pairs(self.tabs)do tab:SetAlpha(id==self.mode and 1 or .7)end
-        return
-    end
-    if professions and professions.panel then professions.panel:Hide()end
-    for _,tab in pairs(self.tabs)do tab:SetAlpha(1)end
     local combatRestricted=AUI.isForever and InCombatLockdown()
     if self.mode == "macros" then
         for _, display in ipairs(self.displayFrames) do display:Hide(); if display.actionBarAnim and display.actionBarAnim:IsPlaying() then display.actionBarAnim:Stop() end end
@@ -1148,14 +1139,13 @@ function Spellbook:Refresh()
 end
 
 function Spellbook:SelectMode(mode)
+    -- Retire beta102's shared tab without touching profession data or plans.
+    if AUI.isForever and mode=="professions"then mode="class"end
     if self.mode and self.scroll then Settings().state.scroll[self.mode]=self.scroll:GetVerticalScroll() end
     self.mode=mode; Settings().state.mode=mode
     local remembered=Settings().state.scroll[mode] or 0
     self.scroll.targetScroll=remembered; self.scroll:SetVerticalScroll(remembered)
     self.scroll:SetShown(mode ~= "macros"); self.searchBox:SetShown(mode ~= "macros"); self.filterButton:SetShown(mode ~= "macros" and mode ~= "pet"); self.pinHint:SetShown(mode ~= "macros"); if mode=="macros" and not self.macroView then self:CreateMacroView(self.frame)end; if self.macroView then self.macroView:SetShown(mode=="macros")end
-    if AUI.isForever and mode=="professions"and AUI.modules.Professions then
-        self.scroll:Hide();self.searchBox:Hide();self.filterButton:Hide();self.pinHint:Hide()
-    end
     self:Refresh()
 end
 
@@ -1490,8 +1480,7 @@ function Spellbook:Create()
     local className=UnitClass("player")
     if AUI.isForever then
         self:CreateTab(frame,"general","General",18,74);self:CreateTab(frame,"class",className or "Class",96,96)
-        self:CreateTab(frame,"pet",PET or "Pet",196,54);self:CreateTab(frame,"professions","Professions",254,96)
-        self:CreateTab(frame,"macros","Macros",354,74)
+        self:CreateTab(frame,"pet",PET or "Pet",196,54);self:CreateTab(frame,"macros","Macros",254,74)
     else
         self:CreateTab(frame,"general","General",18,90);self:CreateTab(frame,"class",className or "Class",112,110)
         self:CreateTab(frame,"professions","Professions",226,110);self:CreateTab(frame,"macros","Macros",340,90)
@@ -1538,8 +1527,8 @@ end
 
 function Spellbook:InstallMicroButton()
     -- Forever already ships separate Spellbook and Talents micro buttons. Its
-    -- Spellbook button is routed through PlayerSpellsUtil below, so leave the
-    -- Professions button and its native behavior untouched.
+    -- Spellbook button is routed through PlayerSpellsUtil below. The independent
+    -- Professions module owns its own entry points on Forever.
     if AUI.isForever then return end
     if self.microButtonInstalled or not ProfessionMicroButton then return end
     self.microButtonInstalled=true

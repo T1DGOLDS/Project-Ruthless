@@ -1,5 +1,7 @@
 # Settings consolidation — beta97
 
+Beta103 adds one dedicated Professions page under Activities (fourteen primary pages). Its recipes, leveling, profit and shopping entry points are separate from Spellbook & macros. The historical beta97 review below covered thirteen primary pages; current layout tests include the additional page at all three text scales.
+
 ## Four review passes
 
 1. Inventory and ownership: enumerate rendered controls and entry points, preserve stored values, and identify duplicate definitions and misplaced links. Seventeen primary sections become thirteen. Contextual auction settings remain integrated in that window and use the main menu's shared definitions.
