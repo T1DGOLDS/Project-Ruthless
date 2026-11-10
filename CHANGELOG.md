@@ -39,8 +39,8 @@
 ### 0.9.1 - 2026-09-07 (awaiting live acceptance)
 
 - Removed the unnecessary Talents loadout search and Blizzard's duplicate talent search/loadout controls from the compact workspace.
-- Fixed the lower-left label overlap and moved Raider.IO Talent Builds into a dedicated full-width sidebar action.
-- Restyled and repositioned the Raider.IO talent-build window with Ruthless surfaces, class-colour accents, cleaner rows, and more useful proportions.
+- Fixed the lower-left label overlap and moved external profile Talent Builds into a dedicated full-width sidebar action.
+- Restyled and repositioned the external profile talent-build window with Ruthless surfaces, class-colour accents, cleaner rows, and more useful proportions.
 
 ### 0.9.0 - 2026-09-07 (awaiting live acceptance)
 
@@ -74,7 +74,7 @@
 - Corrected model panning so right-drag moves laterally and vertically without changing camera depth.
 - Added Project Ruthless's reusable smooth scrollbar with restrained wheel speed and a class-colour thumb.
 - Coloured section headings by class and the equipped item level by the dominant quality of equipped combat gear.
-- Added an optional Progress view with live Mythic+ rating, best key, current raid progress, and Raider.IO profile details.
+- Added an optional Progress view with live Mythic+ rating, best key, current raid progress, and external profile profile details.
 - Added a clear empty state to the Equipment Sets view.
 - Moved current Mythic+, raid, and rated-PvP progress into a compact identity strip beside the character name.
 - Changed the Character heading to the class-coloured character name with level and specialization beneath it.
@@ -90,7 +90,7 @@
 - Displayed the equipped title with the character name in the class-coloured heading.
 - Moved Character out of the `/pr` control centre into a standalone replacement opened by WoW's normal Character button and keybind.
 - Rebuilt `/pr` as a functional settings centre for general presentation, Character, Spellbook, health warnings, compatibility, diagnostics, and addon information.
-- Added live window scale and opacity controls plus switches for Character details, Spellbook integration, off-spec visibility, missing-bar highlights, macro suggestions, and ElvUI tooltip compatibility.
+- Added live window scale and opacity controls plus switches for Character details, Spellbook integration, off-spec visibility, missing-bar highlights, macro suggestions, and external interface tooltip compatibility.
 - Expanded the macro editor with account and character banks, safe explicit saves, editable blank names, icon selection, drag-to-action-bar support, and autocomplete for commands, directives, conditionals, and learned spells.
 - Added persistent macro recovery history before edits, deletions, and moves; restoring always creates a new copy.
 - Added keyboard-driven categorised autocomplete, live spell/icon previews, non-blocking syntax checks, searchable macro names and bodies, and common macro templates.
@@ -108,7 +108,7 @@
 - Replaced unsupported star characters with native favourite icons and highlighted favourited rows.
 - Corrected equipped-title highlighting and removed confidence text from the provenance card.
 - Removed the premature title-state read that left equipped highlighting one selection behind.
-- Replaced the blocking full achievement scan with instant Epithet metadata integration and chunked on-demand Blizzard fallback searches.
+- Replaced the blocking full achievement scan with instant title reference metadata integration and chunked on-demand Blizzard fallback searches.
 - Replaced the removed `NEW_TITLE_EARNED` event with change detection driven by `KNOWN_TITLES_UPDATE`.
 - Installed the error handler before module initialization so startup failures are retained.
 - Normalized Blizzard's two-digit achievement years to four-digit display years.
@@ -153,4 +153,4 @@
 - Created the standalone AndrewUI addon foundation.
 - Added account-wide and per-character saved settings.
 - Added `/aui` status and safe-tooltip commands.
-- Added an ElvUI compatibility module for the Midnight tooltip-taint workaround.
+- Added an external interface compatibility module for the Midnight tooltip-taint workaround.

@@ -1,11 +1,11 @@
-# Project Ruthless
+# Ruthless UI
 
-Project Ruthless is a modular World of Warcraft interface built around practical quality-of-life tools while preserving familiar Blizzard workflows.
+Ruthless UI is a standalone interface overhaul for WoW Forever, built around familiar game controls, consistent presentation and practical tools.
 
-The first public release is led by a full macro workspace with account and character banks, searchable names and bodies, icon selection, templates, command and spell autocomplete, syntax guidance, action-bar drag support, safe moves between banks, and automatic recovery history before destructive edits.
+It includes persistent action bars, compact unit frames, configurable auras and nameplates, a Spellbook and macro workspace, a separate Professions window, quest/map tools, a dungeon journal, auction planning, a combat meter, combined bags, travel tools and shared account profiles. Searchable settings, accessibility options and in-game feature explanations help you find and understand the controls.
 
-It also includes a standalone Spellbook, a compact native-backed Talents layout, a Statistics overview, configurable low-health feedback, ElvUI compatibility, and an optional experimental Character workspace. ElvUI, Raider.IO, and Epithet integrations are optional.
+Install the three bundled folders together: ProjectRuthless, ProjectRuthless_Options and ProjectRuthless_DungeonData. Use /pr for settings and /pr edit for layout.
 
-Use `/pr` in game to open settings. The addon requires modern retail World of Warcraft.
+Experimental releases label missing source data and estimated values. Manual client checks remain pending. Protected edits wait until combat ends. Bundled material retains its required licence and source notices.
 
-Issues and feedback are welcome through the GitHub project.
+Current source, release downloads, documentation and issue reporting are on the Project Ruthless GitHub project.
