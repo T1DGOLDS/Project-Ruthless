@@ -6,7 +6,7 @@ Open the map, select **Library**, then choose a faction guide. **Chapters** show
 
 ## Coverage
 
-36 original routes and optional detours cover 20 zones and 673 quest IDs verified against the installed Forever QuestieDB. Shared zones have separate faction routes. Short detours are explicitly labelled in Library and never auto-start as a main leveling route.
+36 original routes and optional detours cover 20 zones and 673 quest IDs verified against the installed Forever quest reference. Shared zones have separate faction routes. Short detours are explicitly labelled in Library and never auto-start as a main leveling route.
 
 | Faction | Zones | Route levels |
 | --- | --- | --- |
@@ -18,7 +18,7 @@ Open the map, select **Library**, then choose a faction guide. **Chapters** show
 | Horde | Stonetalon Mountains | 15–20 |
 | Both | Ashenvale | 18–20 |
 
-Routes group pickups, objectives and turn-ins into authored hub circuits. Native quest history skips completed quests and advances completed chapters. Progress and explicit skips save per character. Skip leaves the quest in the log. Requirements are evaluated before recommending pickup; unknown requirements show a check-giver status rather than claiming availability. Optional QuestieDB supplies prerequisite and location evidence; without it, availability stays unverified. Held quests use native objective progress.
+Routes group pickups, objectives and turn-ins into authored hub circuits. Native quest history skips completed quests and advances completed chapters. Progress and explicit skips save per character. Skip leaves the quest in the log. Requirements are evaluated before recommending pickup; unknown requirements show a check-giver status rather than claiming availability. Optional quest reference supplies prerequisite and location evidence; without it, availability stays unverified. Held quests use native objective progress.
 
 No guide polling or events are added. Data tables are created on first guide use, and unchanged quest/level/provider/offer state reuses the resolved guide. Existing batched tracker events drive progression. Upcoming current/next chapter IDs feed route supply planning.
 
@@ -37,7 +37,7 @@ Select a continuation from **Map > Library**. Existing route/chapter/skips remai
 | Horde | Hillsbrad Foothills | 20–30 | Tarren Mill arrival; Hillsbrad farms; The town and mine; Final orders |
 | Horde | Thousand Needles | 23–30 | Freewind Post; Sacred fire and Grimtotem; Escorts and northern reports; Shimmering Flats |
 
-The new guides contain 212 unique quest references (206 additional unique quests across the full catalog). Identity, minimum level, faction masks and prerequisite order were checked against the installed Camelot QuestieDB 1.60.1 metadata on 2026-10-11. Original notes group pickups and travel; availability still uses the live provider, with unknown gates clearly reported. Group targets and escorts may be skipped; these are not a measured XP-complete or speedrunning itinerary.
+The new guides contain 212 unique quest references (206 additional unique quests across the full catalog). Identity, minimum level, faction masks and prerequisite order were checked against the installed Camelot quest reference 1.60.1 metadata on 2026-10-11. Original notes group pickups and travel; availability still uses the live provider, with unknown gates clearly reported. Group targets and escorts may be skipped; these are not a measured XP-complete or speedrunning itinerary.
 
 Live acceptance: use an unfinished Alliance Duskwood/Wetlands character and a Horde Hillsbrad/Thousand Needles character. Check pickups against the actual giver, advance a multi-stage chain, reload, and compare chapter/objective progress. Verify each travel loop and pacing before treating route recommendations as optimized.
 
@@ -64,7 +64,7 @@ The earlier Duskwood, Wetlands, Ashenvale, Stonetalon, Horde Hillsbrad and Horde
 
 “All zones” means outdoor questing zones with recorded non-repeatable content in this range, with a short visit rather than a fabricated full circuit where content is sparse. It does not mean every quest or every zone has ten levels of experience. Installed Forever data puts the first Arathi quests at 31 and Stranglethorn hunting at 31+, so these are not presented as 20–30 hunting circuits. Desolace’s Fish in a Bucket and Feralas’s To the Top are standalone repeatable activities, excluded from this leveling coverage. Dungeon, battleground, class and city-only errands are not separate leveling routes; cities can still be visited by a routed chain. Unrecorded Forever additions remain a data gap.
 
-Read-only metadata audit: `node tools/validate-authored-guides.cjs [path-to-QuestieDB_Camelot.toc]`. It checks every catalog fact against the installed identity/level data, faction/class restrictions and chapter ranges, and checks prerequisite order and duplicate steps for every 20+ route. It records the source version and SHA-256 in its output. On 2026-10-13 this passed against installed QuestieDB 1.0.5 for Forever 1.60.1 (interface 16001). Runtime still checks live eligibility; missing starter/event evidence is not a confirmed pickup.
+Read-only metadata audit: `node tools/validate-authored-guides.cjs [path-to-quest reference_Camelot.toc]`. It checks every catalog fact against the installed identity/level data, faction/class restrictions and chapter ranges, and checks prerequisite order and duplicate steps for every 20+ route. It records the source version and SHA-256 in its output. On 2026-10-13 this passed against installed quest reference 1.0.5 for Forever 1.60.1 (interface 16001). Runtime still checks live eligibility; missing starter/event evidence is not a confirmed pickup.
 
 Live acceptance: reload and select a new route from Library; confirm an actual giver’s pickup, objective and turn-in sequence, then reload mid-chain. Test level-20 Barrens/Redridge selection on an unconfigured character, and confirm a saved earlier guide remains selected. Check optional-detour labels, faction filtering, escort safety and real travel/pacing. Local checks do not establish XP completeness or speedrunning quality.
 
@@ -72,7 +72,7 @@ Live acceptance: reload and select a new route from Library; confirm an actual g
 
 These are first-pass authored circuits, not verified speedrunning routes or a guarantee of reaching level 30 without extra experience. They include selected verified Forever additions, not every custom quest. TBC starting zones and custom starting zones are not included. Class quests and dungeon trips remain separate optional tracking. Runtime coordinates depend on the optional quest database; missing coordinates cannot produce an accurate compass. Cross-continent navigation reports the limitation instead of inventing a bearing.
 
-All prose is original. Quest identity and level facts were checked against locally installed Forever data; no Wisp guide prose or routing was imported.
+All prose is original. Quest identity and level facts were checked against locally installed Forever data; no external guide guide prose or routing was imported.
 
 ## Live acceptance: Stormwind → Westfall → Deadmines
 
@@ -83,7 +83,7 @@ Use a level 10–20 Alliance character with unfinished Westfall content. Reload 
 3. Travel to Westfall. The current quest stays visible across zones; a bearing should appear when both positions can be resolved. Nearby quests/pickups must stay within 500 yards. Click a quest to focus it, then Guide to restore the route.
 4. Accept, loot for, complete and hand in one routed quest. Pickup changes to objective, then turn-in, then the next task. Compare with the native quest log. Unmet level/profession/prerequisite pickups must not be labelled available; uncertain data must be explicit.
 5. Hover a quest item-drop mob and check unfinished progress. Use an actual quest item outside combat: normal click should use it; modified click should link it. Complete an objective in a party: one RUI message, no duplicates on repeat events.
-6. In Dungeons, track Deadmines. Check separate held/pickup rows against actual NPC availability, then Share next in a party. Open Dungeon atlas and inspect local maps/boss/loot data with Atlas/AtlasLoot disabled. Local reference maps must not imply a known player position.
+6. In Dungeons, track Deadmines. Check separate held/pickup rows against actual NPC availability, then Share next in a party. Open Dungeon atlas and inspect local maps/boss/loot data with only the bundled RUI folders enabled. Local reference maps must not imply a known player position.
 7. Pause/resume, select a later chapter, skip a guide quest, then reload. Saved route/chapter/skips must persist and skipped quests must remain in the native log. Stop must release RUI guide ownership.
 8. Compare idle/movement/loot/accept/turn-in with /pr perf and visible FPS. Look for individual interaction hitches, not only average CPU. Local simulations cannot prove live FPS, taint, timing or pacing.
 

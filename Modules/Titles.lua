@@ -103,51 +103,7 @@ function Titles:ToggleSortMode()
 end
 
 function Titles:GetVariantLines(titleID)
-    local lines = {}
-    if not titleID or titleID == 0 then return lines end
-    local data = _G.EpithetData and _G.EpithetData.titlesByID
-    local record = data and data[titleID]
-    if not record then return lines end
-    if record.faction then
-        local foundEquivalent = false
-        for otherID, other in pairs(data) do
-            if otherID ~= titleID and other.faction and other.faction ~= record.faction
-                and record.achievement_id and other.achievement_id == record.achievement_id then
-                local label = other.faction == "Horde" and "Horde equivalent" or "Alliance equivalent"
-                lines[#lines + 1] = { label=label, value=DisplayTitle(otherID) }
-                foundEquivalent = true
-                break
-            end
-        end
-        if not foundEquivalent then
-            local wanted = FACTION_EQUIVALENTS[Clean(record.text)]
-            if wanted then
-                for otherID, other in pairs(data) do
-                    if Clean(other.text) == wanted then
-                        local label = other.faction == "Horde" and "Horde equivalent" or "Alliance equivalent"
-                        lines[#lines + 1] = { label=label, value=DisplayTitle(otherID) }
-                        foundEquivalent = true
-                        break
-                    end
-                end
-            end
-        end
-        if not foundEquivalent then
-            local otherFaction = record.faction == "Horde" and "Alliance" or "Horde"
-            lines[#lines + 1] = { label=otherFaction .. " equivalent", value="Equivalent name unavailable" }
-        end
-    end
-    if record.achievement_id then
-        for otherID, other in pairs(data) do
-            if otherID ~= titleID and other.achievement_id == record.achievement_id
-                and other.faction == record.faction and other.text ~= record.text then
-                local label = UnitSex("player") == 3 and "Male form" or "Female form"
-                lines[#lines + 1] = { label=label, value=DisplayTitle(otherID) }
-                break
-            end
-        end
-    end
-    return lines
+    return {}
 end
 
 
@@ -162,15 +118,8 @@ function Titles:ShowTitleTooltip(owner, titleID)
     end
 
     self:BuildAchievementMatches()
-    local record = _G.EpithetData and _G.EpithetData.titlesByID and _G.EpithetData.titlesByID[titleID]
     local match = self.achievementMatches[titleID]
     local dateText, source = self:GetDateInfo(titleID)
-    if record then
-        local context = record.exp and tostring(record.exp):upper() or nil
-        if record.cat then context = context and (context .. "  •  " .. record.cat) or record.cat end
-        if context then GameTooltip:AddLine(context, 0.62, 0.65, 0.72) end
-        if record.kind then GameTooltip:AddDoubleLine("Source", record.kind, 0.62,0.65,0.72, 0.9,0.9,0.95) end
-    end
     GameTooltip:AddDoubleLine("Earned", dateText, 0.62,0.65,0.72, 0.9,0.9,0.95)
     GameTooltip:AddLine(source, 0.48, 0.51, 0.58, true)
     if match and match.id then
@@ -233,17 +182,8 @@ function Titles:ScanForNewTitles()
 end
 
 function Titles:BuildAchievementMatches()
-    if self.achievementScanComplete then return end
-    self.achievementScanComplete = true
-    local data = _G.EpithetData and _G.EpithetData.titlesByID
-    if not data then return end
-    for titleID, record in pairs(data) do
-        local achievementID = record.achievement_id
-        if achievementID then
-            local _, name, _, completed, month, day, year = GetAchievementInfo(achievementID)
-            self.achievementMatches[titleID] = { id=achievementID, name=name or record.achievement, completed=completed, month=month, day=day, year=year, expansion=record.exp }
-        end
-    end
+    -- Achievement links are found through the existing native lazy search.
+    self.achievementScanComplete=true
 end
 
 function Titles:StartLazyAchievementSearch(titleID)

@@ -14,7 +14,7 @@ Generated tables do not allocate on file load. The catalogue is requested on map
 
 ## Source and coverage
 
-[Current source and notices](../Assets/QuestPickups/README.md): QuestieDB Forever revision c1b50fefb19c064edc436429bef73435d9ff4254, retrieved 2026-11-09, including static/derived and faction-specific Forever corrections. This is bundled factual reference data, with no installed-addon dependency. Full upstream GPLv3 permission, historical-contributor caveat and provenance are preserved; editable JSON and its deterministic builder ship with the data.
+[Current source and notices](../Assets/QuestPickups/README.md): quest reference Forever revision c1b50fefb19c064edc436429bef73435d9ff4254, retrieved 2026-11-09, including static/derived and faction-specific Forever corrections. This is bundled factual reference data, with no installed-addon dependency. Full upstream GPLv3 permission, historical-contributor caveat and provenance are preserved; editable JSON and its deterministic builder ship with the data.
 
 5,233 source records, 4,491 located, 48 maps. Cross-checking readable installed-client IDs leaves 4,499 with metadata and 3,957 with locations. 2,115 readable IDs lack metadata, another 542 lack recorded locations, and 92 client records were encrypted. Some IDs represent non-pickup/internal content: these counts are data gaps, not a count of missing playable quests. Native offers supplement coverage. Current game data and this source still do not prove a complete list of every server-eligible quest. Diagnostics show these counts; searching an exact quest ID with no result explains known locks or missing metadata. No fabricated pickup coordinates or eligibility.
 

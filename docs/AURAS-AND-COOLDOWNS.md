@@ -1,6 +1,6 @@
 # Stage 4: auras and cooldowns — beta 77
 
-Open `/pr` → Auras & cooldowns. This is the first supported template-based manager, not a general WeakAuras scripting engine. Additional groups start off to preserve existing layouts. The native cooldown feature retains its existing enable preference.
+Open `/pr` → Auras & cooldowns. This is the first supported template-based manager, not a general scripted aura tools scripting engine. Additional groups start off to preserve existing layouts. The native cooldown feature retains its existing enable preference.
 
 ## Supported controls
 

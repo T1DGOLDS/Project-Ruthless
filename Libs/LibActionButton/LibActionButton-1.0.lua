@@ -68,7 +68,6 @@ local Feat_PingableButton = WoWMainline
 local KeyBound = LibStub("LibKeyBound-1.0", true)
 local CBH = LibStub("CallbackHandler-1.0")
 local LBG = LibStub("LibButtonGlow-1.0", true)
-local Masque = LibStub("Masque", true)
 
 lib.eventFrame = lib.eventFrame or CreateFrame("Frame")
 lib.eventFrame:UnregisterAllEvents()
@@ -716,13 +715,7 @@ function Generic:AddToButtonFacade(group)
 	self.LBFSkinned = true
 end
 
-function Generic:AddToMasque(group)
-	if type(group) ~= "table" or type(group.AddButton) ~= "function" then
-		error("LibActionButton-1.0:AddToMasque: You need to supply a proper group to use!", 2)
-	end
-	group:AddButton(self, nil, "Action")
-	self.MasqueSkinned = true
-end
+
 
 function Generic:UpdateAlpha()
 	UpdateCooldown(self)
@@ -2017,7 +2010,7 @@ function Update(self)
 		self.icon:SetTexture(texture)
 		self.icon:Show()
 		self.rangeTimer = - 1
-		if not self.MasqueSkinned then
+		if not self.customSkinned then
 			self.SlotBackground:Hide()
 			if self.config.hideElements.border then
 				self.NormalTexture:SetTexture()
@@ -2053,7 +2046,7 @@ function Update(self)
 		else
 			self.HotKey:SetVertexColor(unpack(self.config.text.hotkey.color))
 		end
-		if not self.MasqueSkinned then
+		if not self.customSkinned then
 			self.SlotBackground:Show()
 			if self.config.hideElements.borderIfEmpty then
 				self.NormalTexture:SetTexture()
@@ -2178,10 +2171,7 @@ local function StartChargeCooldown(parent, chargeStart, chargeDuration, chargeMo
 
 	CooldownFrame_Set(parent.chargeCooldown, chargeStart, chargeDuration, true, true, chargeModRate)
 
-	-- update charge cooldown skin when masque is used
-	if Masque and Masque.UpdateCharge then
-		Masque:UpdateCharge(parent)
-	end
+
 end
 
 local function OnCooldownDone(self, requireCooldownUpdate)
@@ -2397,7 +2387,7 @@ end
 function SpellVFX_PlaySpellCastAnim(self, actionButtonCastType)
 	if not self.config.spellCastVFX then return end
 
-	-- __Swipe_Hook is to stop Masque from re-setting it
+	-- __Swipe_Hook keeps the configured swipe renderer intact
 	self.cooldown.__Swipe_Hook = true
 	self.cooldown:SetSwipeColor(0, 0, 0, 0)
 	self.cooldown.__Swipe_Hook = nil

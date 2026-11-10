@@ -8,7 +8,7 @@ local spec={
  spellbook={replaceProfessions=true,separateFromTalents=true,showOffSpec=true,highlightMissing=true,macroAutocomplete=true,autoUpdateRanks=true},
  talents={enabled=true},achievements={enabled=true},
  mapQuests={enabled=true,showLocalStories=true,showTrivial=true,showAccountCompleted=true,showSkyborne=true,showFlights=true,showInstances=true,trackHerbs=true,trackOre=true},
- questWorkspace={enabled=true,showArrow=true,locked=true,autoAccept=true,autoHandIn=true,prepWestfall=true,useWisp=true,opacity={.25,1}},
+ questWorkspace={enabled=true,showArrow=true,locked=true,autoAccept=true,autoHandIn=true,prepWestfall=true,useExternalGuide=true,opacity={.25,1}},
  lowHealthGlow={enabled=true,threshold={.05,.95},maxAlpha={0,1}}
 }
 for _,key in ipairs({"showSpiritHealers","showSpiritCoverage","flightTimer","squareMinimap"})do spec.mapQuests[key]=true end
@@ -36,6 +36,8 @@ local function valid(rule,value)
  if rule[1]==-1 and type(value)=="number"and value<0 then return value==-1 end
  return type(value)=="number"and value==value and value>=rule[1]and value<=rule[2]
 end
+-- Compatibility with previously exported RUI data only; never an integration.
+function P:IsRetiredSection(section)return section=="elvui"end
 function P:Export()
  local lines={"RUI_SETTINGS_1"}
  for section,fields in pairs(spec)do
@@ -55,9 +57,10 @@ function P:Parse(text)
   if first then if line~="RUI_SETTINGS_1"then return nil,"Unsupported settings version."end;first=false
   else
    local section,key,raw=line:match("^(%a+)%.(%a+)=(.+)$")
+   if AUI.GuideBridge then key=AUI.GuideBridge:SettingKey(section,key)end
    local rule=section and spec[section]and spec[section][key]
    -- Accept this retired field in old exports, without applying or exporting it.
-   if section=="elvui"and key=="safeTooltip"then rule=true end
+   if self:IsRetiredSection(section)and key=="safeTooltip"then rule=true end
    if not rule then return nil,"Unknown setting: "..line end
    local value;if type(rule)=="table"and (rule.values or rule.identifier)then value=raw elseif raw=="true"then value=true elseif raw=="false"then value=false else value=tonumber(raw)end
    if not valid(rule,value)then return nil,"Invalid value: "..section.."."..key end
@@ -75,7 +78,7 @@ function P:Import(text)
  -- Validate everything before writing anything. Keep one reversible pre-import snapshot.
  ProjectRuthlessDB.settingsBackup=self:Export()
  for section,values in pairs(settings)do
-  if section~="elvui"then
+  if not self:IsRetiredSection(section)then
   ProjectRuthlessDB[section]=ProjectRuthlessDB[section]or {}
   for key,value in pairs(values)do ProjectRuthlessDB[section][key]=value end
   end

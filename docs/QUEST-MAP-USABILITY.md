@@ -20,11 +20,10 @@ These preferences use `questWorkspace.guideDetail`, `guideUpcoming` and `guideOt
 
 ## Reference and data limits
 
-The public [RestedXP guide window](https://github.com/RestedXP/RXPGuides/blob/main/GuideWindow.lua) and [settings source](https://github.com/RestedXP/RXPGuides/blob/main/SettingsPanel.lua) informed the current-step/upcoming/detail separation. No RestedXP code, route steps or paid guide prose was imported. RUI remains its own guide engine and keeps deliberate optional provider selection.
 
 The existing original RUI route file contains 36 routes/detours, 673 quest metadata records and suggested ranges from 1 to 30. It contains no level-60–70 routes. Thus that higher-expansion material came from a different catalog, not this file. The atlas has its own source and filtering work.
 
-**This presentation cleanup does not establish that every route, travel instruction or prerequisite is accurate on live Forever.** Current-step instructions and recorded metadata improve the display, but the original hub/loop routing still requires quest-by-quest live validation against current public Forever records. Unknown requirements remain explicit. It would be misleading to describe this as a port of, or equivalent route-quality validation to, RestedXP's 1–20 guides.
+**This presentation cleanup does not establish that every route, travel instruction or prerequisite is accurate on live Forever.** Current-step instructions and recorded metadata improve the display, but the original hub/loop routing still requires quest-by-quest live validation against current public Forever records. Unknown requirements remain explicit. Full 1–20 route accuracy and pacing still require live validation.
 
 ## Validation
 

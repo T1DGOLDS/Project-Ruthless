@@ -111,12 +111,17 @@ function D:Checks()
     local data=AUI.modules.QuestData
     if data then for _,row in ipairs(data:Checks())do rows[#rows+1]=row end end
     add("INFO",AUI.modules.UnifiedProfiles and "Settings and Edit Mode share account profiles. Legacy partial saves are labelled; save again to capture a complete setup."or "Settings profiles and layout profiles are separate in this client.","Profiles / Edit Mode")
-    local api=C_AddOns
-    if api and type(api.IsAddOnLoaded)=="function"then
-        -- Detection only. Never load, hook, disable or rewrite these addons.
-        for _,name in ipairs({"ElvUI","EllesmereUI","EllesmereUIActionBars","EllesmereUIUnitFrames","NDui","GW2_UI","Cell","Bagnon","Leatrix_Plus","Leatrix_Maps"})do
-            local loaded=read(api.IsAddOnLoaded,name)
-            if loaded==true then add("POSSIBLE CONFLICT",name.." is loaded and may control overlapping UI features. Presence alone does not prove a conflict.","Help > Compatibility")end
+    if type(issecurevariable)=="function"then
+        -- Inspect ownership metadata on demand instead of guessing conflicts
+        -- from a list of installed product names. No native method is invoked.
+        for _,target in ipairs({{"MainActionBar","Main action bar"},{"PlayerFrame","Player frame"},{"TargetFrame","Target frame"},{"WorldMapFrame","World map"}})do
+            local frame=_G[target[1]]
+            if frame then for _,field in ipairs({"SetPoint","SetScale"})do
+                local ok,secure,owner=pcall(issecurevariable,frame,field)
+                if ok and public(secure)and public(owner)and secure==false and type(owner)=="string"and owner~=""and not owner:match("^ProjectRuthless")then
+                    add("POSSIBLE CONFLICT",target[2].." has an externally modified "..field.." method. This alone does not prove a conflict.","Help > Compatibility");break
+                end
+            end end
         end
     end
     return rows

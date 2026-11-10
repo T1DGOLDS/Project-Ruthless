@@ -66,86 +66,13 @@ local function HideTemplateTextures(button)
     end
 end
 
-function Talents:StyleRaiderButton()
-    local button=_G.RaiderIO_TalentBuildsTalentFrameShortcut
-    if not button or not self.sidebar then return end
-    if not button.ProjectRuthlessSkin then
-        button.ProjectRuthlessSkin=true
-        button.ProjectRuthlessOrigin={parent=button:GetParent(),points={},scale=button:GetScale(),width=button:GetWidth(),height=button:GetHeight()}
-        for i=1,button:GetNumPoints() do button.ProjectRuthlessOrigin.points[i]={button:GetPoint(i)} end
-        HideTemplateTextures(button)
-        local surface=CreateFrame("Frame",nil,button,"BackdropTemplate")
-        surface:SetAllPoints(); surface:SetFrameLevel(math.max(0,button:GetFrameLevel()-1)); Surface(surface)
-        local r,g,b=Accent(); surface:SetBackdropBorderColor(r,g,b,0.75)
-        surface:EnableMouse(false); button.ProjectRuthlessSurface=surface
-        if button.GetFontString and button:GetFontString() then button:GetFontString():SetTextColor(0.9,0.92,0.96) end
-        button:HookScript("OnClick",function() C_Timer.After(0,function() self:SkinRaiderWindow() end) end)
-    end
-    if button:GetParent()~=self.sidebar then button:SetParent(self.sidebar) end
-    button:ClearAllPoints(); button:SetPoint("BOTTOMLEFT",self.sidebar,"BOTTOMLEFT",12,20)
-    button:SetScale(1); button:SetSize(186,30); button:SetShown(self.active)
-    self.raiderButton=button
-end
 
-function Talents:RestoreRaiderButton()
-    local button=self.raiderButton
-    local origin=button and button.ProjectRuthlessOrigin
-    if not origin then return end
-    button:Hide(); button:SetParent(origin.parent); button:SetScale(origin.scale); button:SetSize(origin.width,origin.height)
-    button:ClearAllPoints()
-    for _,point in ipairs(origin.points) do button:SetPoint(unpack(point)) end
-    if button.UpdateVisibility then button:UpdateVisibility() end
-end
 
-function Talents:StyleRaiderRows()
-    local frame=_G.RaiderIO_TalentBuildsFrame
-    if not frame or not frame.ScrollBox or not frame.ScrollBox.ForEachFrame then return end
-    frame.ScrollBox:ForEachFrame(function(row)
-        if row.SetBackdrop then
-            row:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1})
-            row:SetBackdropColor(0.035,0.039,0.052,0.96)
-            row:SetBackdropBorderColor(0.13,0.14,0.18,1)
-        end
-    end)
-end
 
-function Talents:SkinRaiderWindow()
-    local frame=_G.RaiderIO_TalentBuildsFrame
-    if not frame then return end
-    if not frame.ProjectRuthlessSkin then
-        frame.ProjectRuthlessSkin=true
-        if frame.NineSlice then frame.NineSlice:Hide() end
-        if frame.PortraitContainer then frame.PortraitContainer:Hide() end
-        if frame.TopTileStreaks then frame.TopTileStreaks:Hide() end
-        if frame.Inset then frame.Inset:Hide() end
-        if frame.Bg then frame.Bg:SetColorTexture(0.025,0.028,0.038,0.98) end
-        local border=CreateFrame("Frame",nil,frame,"BackdropTemplate")
-        border:SetAllPoints(); border:SetFrameLevel(math.max(0,frame:GetFrameLevel()-1)); Surface(border)
-        local r,g,b=Accent(); border:SetBackdropBorderColor(r,g,b,0.8)
-        border:EnableMouse(false); frame.ProjectRuthlessBorder=border
-        if frame.TitleContainer and frame.TitleContainer.TitleText then
-            local title=frame.TitleContainer.TitleText
-            title:ClearAllPoints(); title:SetPoint("TOPLEFT",frame,"TOPLEFT",16,-12)
-            title:SetTextColor(r,g,b); title:SetJustifyH("LEFT")
-        end
-        if frame.CloseButton then
-            frame.CloseButton:ClearAllPoints(); frame.CloseButton:SetPoint("TOPRIGHT",frame,"TOPRIGHT",-7,-7)
-        end
-        frame:HookScript("OnShow",function()
-            C_Timer.After(0,function() self:SkinRaiderWindow(); self:StyleRaiderRows() end)
-        end)
-        if frame.ScrollBox.RegisterCallback and frame.ScrollBox.Event and frame.ScrollBox.Event.OnUpdate then
-            frame.ScrollBox:RegisterCallback(frame.ScrollBox.Event.OnUpdate,function() self:StyleRaiderRows() end,self)
-        end
-    end
-    frame:SetSize(660,470)
-    frame:ClearAllPoints()
-    frame:SetPoint("CENTER",self.frame.TalentsFrame,"CENTER",0,0)
-    if frame.ScrollBox and frame.ScrollBox.ClearAllPoints then
-        frame.ScrollBox:ClearAllPoints(); frame.ScrollBox:SetPoint("TOPLEFT",frame,"TOPLEFT",12,-74); frame.ScrollBox:SetPoint("BOTTOMRIGHT",frame,"BOTTOMRIGHT",-28,12)
-    end
-    self:StyleRaiderRows()
-end
+
+
+
+
 
 function Talents:SelectLoadout(id)
     if not self:IsEditable() then return end
@@ -338,8 +265,6 @@ function Talents:Refresh()
     for _,action in ipairs(self.actions) do action.button:SetEnabled(self:ActionAvailable(action.text)) end
     local id=tree.LoadSystem:GetSelectionID()
     self.edit:SetEnabled(self:IsEditable() and id~=nil and (not tree.LoadSystem.canEditCallback or tree.LoadSystem.canEditCallback(id)))
-    self:StyleRaiderButton()
-    if _G.RaiderIO_TalentBuildsFrame and _G.RaiderIO_TalentBuildsFrame:IsShown() then self:SkinRaiderWindow() end
     self:RefreshRows()
 end
 
@@ -364,7 +289,6 @@ function Talents:Restore()
         if s.restoreVisibility then object:SetShown(s.shown) end
     end
     self.saved={}; self.chrome:Hide(); self.background:Hide()
-    self:RestoreRaiderButton()
     self.frame:UpdateTabs()
 end
 

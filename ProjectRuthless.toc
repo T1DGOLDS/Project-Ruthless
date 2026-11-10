@@ -2,12 +2,12 @@
 ## Title: Project Ruthless
 ## Notes: Practical interface tools that preserve familiar Blizzard workflows.
 ## Author: Andrew
-## Version: 0.14.0-beta.103
-## OptionalDeps: Epithet, RaiderIO, ForeverWisp, AtlasLootClassic, QuestieDB, TomTom
+## Version: 0.14.0-beta.105
 ## SavedVariables: ProjectRuthlessDB
 ## SavedVariablesPerCharacter: ProjectRuthlessCharDB
 
 Core.lua
+Modules\GuideBridge.lua
 Modules\Profiles.lua
 Modules\LayoutEditor.lua
 Modules\ErrorLog.lua

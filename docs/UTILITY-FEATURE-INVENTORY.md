@@ -1,8 +1,8 @@
-# Leatrix feature inventory — 2026-10-11
+# Utility feature inventory — 2026-10-11
 
-User requested relevant Plus and Maps functionality within RUI settings. This is a read-only inventory of the installed Forever versions, not an implementation or compatibility claim. Pending user choice: independent replacement versus controls for installed addons. Do not change Leatrix saved variables behind its local runtime state or copy its implementation without checking the applicable license. RUI already owns bag layout, chat dock, unit frames, quest markers and map placement; those need a single owner rather than competing hooks.
+User requested relevant Plus and Maps functionality within RUI settings. This is a read-only inventory of the installed Forever versions, not an implementation or compatibility claim. Pending user choice: independent replacement versus controls for installed addons. Do not change utility saved variables behind its local runtime state or copy its implementation without checking the applicable license. RUI already owns bag layout, chat dock, unit frames, quest markers and map placement; those need a single owner rather than competing hooks.
 
-## Leatrix Plus 1.60.12
+## utility Plus 1.60.12
 
 144 checkbox controls found, including sub-options. Buttons, sliders and custom dialogs require their own audit.
 
@@ -153,7 +153,7 @@ User requested relevant Plus and Maps functionality within RUI settings. This is
 | Set edit mode layout | SetEditModeLayout | No |
 | Simple addon listing | SimpleAddonListing | Yes |
 
-## Leatrix Maps 1.60.14
+## utility Maps 1.60.14
 
 23 checkbox controls found, including sub-options. Buttons, sliders and custom dialogs require their own audit.
 

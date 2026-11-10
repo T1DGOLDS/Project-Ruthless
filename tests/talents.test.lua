@@ -131,33 +131,7 @@ for i=1,4 do assert(T.specButtons[i]:IsShown()) end
 specCount=2; T:Refresh(); assert(not T.specButtons[3]:IsShown() and not T.specButtons[4]:IsShown()); specCount=4
 assert(T.search==nil and #T.entries==3,"compact loadouts should not include a search field")
 assert(not tree.LoadSystem:IsShown() and not tree.SearchBox:IsShown(),"native dropdown and talent search must stay hidden")
-local nativeRaiderParent=loadSystem.Dropdown
-RaiderIO_TalentBuildsTalentFrameShortcut=CreateFrame("Button",nil,nativeRaiderParent)
-RaiderIO_TalentBuildsTalentFrameShortcut:SetPoint("BOTTOMLEFT",nativeRaiderParent,"TOPLEFT",0,16)
-RaiderIO_TalentBuildsTalentFrameShortcut:SetSize(200,25)
-RaiderIO_TalentBuildsTalentFrameShortcut.font=RaiderIO_TalentBuildsTalentFrameShortcut:CreateFontString()
-function RaiderIO_TalentBuildsTalentFrameShortcut:GetFontString() return self.font end
 T:Refresh()
-assert(RaiderIO_TalentBuildsTalentFrameShortcut:GetParent()==T.sidebar and RaiderIO_TalentBuildsTalentFrameShortcut:GetWidth()==186)
-local raiderRow=CreateFrame("Button")
-function raiderRow:SetBackdrop(value) self.backdrop=value end
-function raiderRow:SetBackdropColor(...) self.bg={...} end
-function raiderRow:SetBackdropBorderColor(...) self.border={...} end
-RaiderIO_TalentBuildsFrame=CreateFrame("Frame",nil,UIParent); RaiderIO_TalentBuildsFrame:SetSize(640,420)
-RaiderIO_TalentBuildsFrame.NineSlice=CreateFrame("Frame",nil,RaiderIO_TalentBuildsFrame)
-RaiderIO_TalentBuildsFrame.PortraitContainer=CreateFrame("Frame",nil,RaiderIO_TalentBuildsFrame)
-RaiderIO_TalentBuildsFrame.TopTileStreaks=CreateFrame("Frame",nil,RaiderIO_TalentBuildsFrame)
-RaiderIO_TalentBuildsFrame.Inset=CreateFrame("Frame",nil,RaiderIO_TalentBuildsFrame)
-RaiderIO_TalentBuildsFrame.Bg=RaiderIO_TalentBuildsFrame:CreateTexture()
-RaiderIO_TalentBuildsFrame.TitleContainer={TitleText=RaiderIO_TalentBuildsFrame:CreateFontString()}
-RaiderIO_TalentBuildsFrame.CloseButton=CreateFrame("Button",nil,RaiderIO_TalentBuildsFrame)
-RaiderIO_TalentBuildsFrame.ScrollBox=CreateFrame("Frame",nil,RaiderIO_TalentBuildsFrame)
-RaiderIO_TalentBuildsFrame.ScrollBox.Event={OnUpdate="update"}
-function RaiderIO_TalentBuildsFrame.ScrollBox:ForEachFrame(callback) callback(raiderRow) end
-function RaiderIO_TalentBuildsFrame.ScrollBox:RegisterCallback(_,callback) self.callback=callback end
-RaiderIO_TalentBuildsFrame:Show(); T:SkinRaiderWindow()
-assert(RaiderIO_TalentBuildsFrame:GetWidth()==660 and RaiderIO_TalentBuildsFrame:GetHeight()==470)
-assert(not RaiderIO_TalentBuildsFrame.NineSlice:IsShown() and raiderRow.backdrop,"Raider.IO browser must receive Ruthless chrome and rows")
 assert(writes==0 and actions==0,"search/refresh must be read-only")
 T:SelectLoadout(999); assert(writes==0)
 disabled=true; T:SelectLoadout(12); T:RunAction("New"); assert(writes==0 and actions==0)
@@ -180,7 +154,6 @@ f:SetInspecting(true)
 assert(not T.active and f:GetWidth()==1618 and f:GetHeight()==883 and tree:GetScale()==1)
 assert(f.Bg:IsShown() and f.CloseButton:IsShown() and not T.chrome:IsShown())
 assert(not tree.LoadSystem:IsShown(),"restoration must not expose native loadouts while inspecting")
-assert(RaiderIO_TalentBuildsTalentFrameShortcut:GetParent()==nativeRaiderParent,"native Raider.IO button parent must restore")
 before=writes; T:SwitchSpec(1); T:SelectLoadout(11); assert(writes==before)
 f:SetInspecting(false); assert(T.active)
 f:SetTab(3); assert(not T.active and f:GetWidth()==1618)

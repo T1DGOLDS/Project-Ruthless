@@ -700,11 +700,7 @@ function Character:RefreshSets()
     for _, button in pairs(self.setActions or {}) do button:SetEnabled(canAct) end
 end
 
-function Character:GetRaiderProfile()
-    if not (_G.RaiderIO and _G.RaiderIO.GetProfile) then return nil end
-    local ok, profile = pcall(_G.RaiderIO.GetProfile, "player")
-    return ok and profile or nil
-end
+
 
 function Character:GetPvPRatings()
     local ratings = {}
@@ -745,34 +741,8 @@ function Character:GetPvPRatings()
 end
 
 function Character:GetProgressData()
-    local profile = self:GetRaiderProfile()
-    local ratingSummary = C_PlayerInfo and C_PlayerInfo.GetPlayerMythicPlusRatingSummary and C_PlayerInfo.GetPlayerMythicPlusRatingSummary("player")
-    local mplus = ratingSummary and ratingSummary.currentSeasonScore or 0
-    local keystone = profile and profile.mythicKeystoneProfile
-    if mplus == 0 and keystone then mplus = keystone.currentScore or 0 end
-    local bestKey = keystone and keystone.maxDungeonLevel or 0
-
-    local raidEntries = {}
-    local difficultyNames = { [14]="N", [15]="H", [16]="M", [17]="LFR" }
-    local raidProfile = profile and profile.raidProfile
-    for _, raid in ipairs(raidProfile and raidProfile.raidProgress or {}) do
-        if raid.current and not raid.isMainProgress then
-            for _, group in ipairs(raid.progress or {}) do
-                if not group.obsolete and (group.kills or 0) > 0 then
-                    raidEntries[#raidEntries + 1] = {
-                        name=raid.raid.shortName or "Current raid", kills=group.kills or 0,
-                        bosses=raid.raid.bossCount or 0, difficulty=difficultyNames[group.difficulty] or tostring(group.difficulty),
-                        difficultyID=group.difficulty or 0,
-                    }
-                end
-            end
-        end
-    end
-    table.sort(raidEntries, function(a, b)
-        if a.difficultyID ~= b.difficultyID then return a.difficultyID > b.difficultyID end
-        return a.kills > b.kills
-    end)
-    return { profile=profile, mplus=mplus, bestKey=bestKey, raids=raidEntries, pvp=self:GetPvPRatings() }
+    local summary=C_PlayerInfo and C_PlayerInfo.GetPlayerMythicPlusRatingSummary and C_PlayerInfo.GetPlayerMythicPlusRatingSummary("player")
+    return {mplus=summary and summary.currentSeasonScore or 0,bestKey=0,raids={},pvp=self:GetPvPRatings()}
 end
 
 function Character:RefreshSummary()
@@ -783,10 +753,6 @@ function Character:RefreshSummary()
     local summary = self.panel.summary
     summary.mplus.value:SetText(data.mplus > 0 and (Number(data.mplus) .. (data.bestKey > 0 and "  •  +" .. data.bestKey or "")) or "Unrated")
     local r, g, b = 1, 1, 1
-    if data.mplus > 0 and _G.RaiderIO and _G.RaiderIO.GetScoreColor then
-        local ok, cr, cg, cb = pcall(_G.RaiderIO.GetScoreColor, data.mplus)
-        if ok and cr then r, g, b = cr, cg, cb end
-    end
     summary.mplus.value:SetTextColor(r, g, b, 1)
     local raid = data.raids[1]
     summary.raid.value:SetText(raid and (("%d/%d %s"):format(raid.kills, raid.bosses, raid.difficulty)) or "No progress")
@@ -861,7 +827,7 @@ function Character:ShowProgressTooltip(owner)
         GameTooltip:AddDoubleLine(bracket.name, tostring(bracket.rating), 0.7,0.7,0.75, 1,1,1)
     end
     if #data.raids == 0 and #data.pvp == 0 then GameTooltip:AddLine("No rated raid or PvP data available.", 0.55,0.55,0.62) end
-    GameTooltip:AddLine(data.profile and "Raider.IO data available" or "Raider.IO profile data unavailable", 0.45,0.6,0.9)
+    GameTooltip:AddLine("Progress uses available native records.",0.45,0.6,0.9)
     GameTooltip:Show()
 end
 

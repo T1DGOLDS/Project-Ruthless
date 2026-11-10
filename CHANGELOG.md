@@ -1,4 +1,11 @@
 ## 0.14.0-beta.101 — 2026-11-10
+## 0.14.0-beta.105 — 2026-11-10
+
+- Rewrite product descriptions and remove addon comparisons from RUI help, settings, manifests and operational documentation. Keep required library, asset and data source notices.
+- Isolate optional route-provider protocols and retired RUI import keys. The guide choice is now labelled Installed guide; existing choices and progress remain readable.
+- Retire unused third-party profile/title/skin hooks from retained legacy code. Conflict diagnostics inspect native method ownership metadata rather than a product-name list.
+- Add product-copy and legacy-import checks to CI. Current source remains standalone Forever; in-client acceptance gates remain pending.
+
 ## 0.14.0-beta.103 — 2026-11-10
 
 - Separate Professions from Spellbook: its own RUI window, native Professions shortcut/micro-menu entry, searchable settings category, background and saved Edit Mode position/scale. Spellbook no longer contains a Professions tab on Forever.
@@ -16,7 +23,7 @@
 
 - Added a centered login introduction with account-wide Don't show again, keyboard navigation, combat deferral and a permanent searchable feature guide linked from Help.
 - Expanded macro Templates into 33 explained utility/spell starters, all markers and native ping forms, explicit safe utility creation, editable spell drafts and examples for nine classes. Existing unsaved edits and combat guards remain.
-- Consolidated map Back/history and level/faction/race guide browsing; focused current-step display, one upcoming preview and opt-in full notes/other quests. Existing routes are not represented as newly verified RestedXP routes.
+- Consolidated map Back/history and level/faction/race guide browsing; focused current-step display, one upcoming preview and opt-in full notes/other quests. Existing routes are not represented as newly verified route reference routes.
 - Replaced the active mixed-expansion atlas catalog with current public Wowhead Forever journal facts: 30 published dungeon/wing records, 217 bosses, 891 boss-item links, 249 quest links and five explicit unpublished gaps. Added Overview, Maps, Bosses, Loot, Quests and Preparation navigation, source search, native/reference map choices, ability/item tooltips, quest-giver facts and known key/summon preparation. No unrelated level-70/raid catalog, copied guide prose/images or fabricated drop rates.
 - Live visual, combat and route/data validation remain separate pending acceptance gates.
 
@@ -52,7 +59,7 @@
 - Replace the unsuccessful beta94 per-ID native discovery pass with a bundled, corrected current Forever pickup catalogue. Metadata and giver positions are independent of guide selection and native map-offer omissions. Native offers retain priority and fill gaps; existing blue areas and native pins are preserved.
 - Browse zone/continent maps for eligible, unaccepted and uncompleted pickups. Add Map > Available with quest/giver/ID search, level ordering, coordinates, follow-pickup actions and Shift-click chat links. Hover markers to see co-located quest titles. Preserve multiple recorded givers and faction-dependent locations.
 - Reuse acceptance checks for level/race/class/chains/professions/reputation/items/spells. Correct explicit Skyborne 95/96 high-bit masks, exact negative grouped prerequisites and completed mutually-exclusive alternatives. Seasonal/event quests require a current game offer; unsupported requirements remain uncertain.
-- Pin QuestieDB Forever revision c1b50fefb19c064edc436429bef73435d9ff4254 (2026-11-09), including static/derived and faction-specific corrections. Ship editable factual data, deterministic builder and full upstream GPLv3 permission/provenance with its historical-contributor caveat. No installed-addon dependency or upstream UI/brand/code loader.
+- Pin quest reference Forever revision c1b50fefb19c064edc436429bef73435d9ff4254 (2026-11-09), including static/derived and faction-specific corrections. Ship editable factual data, deterministic builder and full upstream GPLv3 permission/provenance with its historical-contributor caveat. No installed-addon dependency or upstream UI/brand/code loader.
 - Keep 5,233 source quest records; 4,499 match readable installed-client IDs, of which 3,957 have recorded pickup locations. Diagnostics explicitly retain the 2,115 metadata gaps, 542 missing locations and 92 unread client records; no claim of complete server eligibility or fabricated positions.
 - Lazy materialization, map indexes, cached character/quest gates and existing coalesced events replace repeated native ID scans. Local source/index, real Westfall/native-empty, eligibility, search/focus/pooling/resize/follow, standalone and combat-cache regressions pass. Live rendering/eligibility/performance gates remain pending.
 
@@ -174,7 +181,7 @@
 
 ## 0.14.0-beta.76 — map-owned quest progression
 
-- Add an original RUI progression engine and an interactive map canvas with selectable quest nodes, explicit prerequisite edges, status/details, pickup areas, pan/zoom, keyboard selection, Follow and native quest-sharing actions. No Attune connection, copied code/art/data or runtime dependency.
+- Add an original RUI progression engine and an interactive map canvas with selectable quest nodes, explicit prerequisite edges, status/details, pickup areas, pan/zoom, keyboard selection, Follow and native quest-sharing actions. No progression reference connection, copied code/art/data or runtime dependency.
 - Replace the map's Dungeons tab with Progression: original Deadmines preparation branch, existing faction-appropriate RUI routes, native quest groups and the current quest log. Native group/route ordering never becomes an invented prerequisite. Missing requirements/coordinates remain explicit. Full dungeon prerequisite coverage is not yet authored.
 - Use the graph automatically for the supported dungeon when no usable native floor is available; keep native dungeon maps and the existing boss/loot/reference atlas. Link route chapters and dungeon details to progression.
 - Focus the side tracker on the current guide step, its objectives and its usable quest item. Remove nearby, previous/all-quest and dungeon lists from that surface; full browsing remains in the map. Browsing nodes does not change the active guide until Follow is pressed. Progression focus stays per character and outside settings profiles.
@@ -200,7 +207,7 @@
 ## 0.14.0-beta.73 — testing and release foundations
 
 - Preserve beta 72 source and a verified recovery ZIP on GitHub before runtime changes. Add six explicit live acceptance gates; stable releases require matching tested source and evidence. Validate all twelve suites before publishing, disclose experimental gate status, preserve local ZIPs and refuse asset replacement.
-- Remove active ElvUI tooltip coupling, optional dependency and settings controls. Retain read-only conflict detection and migration of retired profile fields without applying them. Previous changes made by older versions cannot be restored without knowing their original values.
+- Remove active external interface tooltip coupling, optional dependency and settings controls. Retain read-only conflict detection and migration of retired profile fields without applying them. Previous changes made by older versions cannot be restored without knowing their original values.
 - Route settings updates to the affected module, isolate background-group refreshes and window-opacity changes, and initialize modules in registration order. Remove duplicate bar discovery entries, ignore unrelated addon-load discovery/styling events and update owned unit health/power/name fields only for the relevant event. No opaque health/power arithmetic introduced.
 - Add an explicitly enabled local testing recorder and copyable bug reporter. Retain bounded CPU samples, native spike counts, whole-game frame-gap summaries, paced memory measurements and error/configuration context. Exact allocation counts are unavailable. No automatic uploads, messages, external profiler dependency or global profiling-setting changes.
 - Local checks cover recorder lifecycle, unavailable/secret metrics, bounds, attribution, retired preferences, targeted refreshes and live-release gating. In-game performance, rendering and combat safety remain pending. The full settings/search/profile/accessibility/onboarding/aura overhaul remains planned.
@@ -288,7 +295,7 @@
 
 ## 0.14.0-beta.60
 
-- Add a saved guide-source choice in Map & quests options (RUI default or Wisp) and an extensible provider reader contract. RestedXP/Questie adapters remain planned, not advertised as available.
+- Add a saved guide-source choice in Map & quests options (RUI default or external guide) and an extensible provider reader contract. route reference/quest reference adapters remain planned, not advertised as available.
 
 - Keep the tracker current objective, native selected/supertracked map quest and supplemental marker selection together. Restore selection when opening the map, defer native writes in combat and exclude pickup-only suggestions.
 
@@ -335,7 +342,7 @@
 
 ## 0.14.0-beta.51 — Native RUI bags
 
-- Give Blizzard inventory containers charcoal RUI surfaces, flat slots and clean search/close controls. Preserve native bag layout, item clicks, counts, sorting, cooldowns and quest/quality indicators. No Bagnon integration; styling defers during combat and its grace period.
+- Give Blizzard inventory containers charcoal RUI surfaces, flat slots and clean search/close controls. Preserve native bag layout, item clicks, counts, sorting, cooldowns and quest/quality indicators. No inventory reference integration; styling defers during combat and its grace period.
 
 ## 0.14.0-beta.50 — Remove spawn dots
 
@@ -386,12 +393,12 @@
 - Remove the map callback registered in Blizzard's shared Escape handler chain, following user evidence of blocked actions starting with that integration.
 - Register WorldMapFrame once with standard UISpecialFrames cleanup; native panel/target/menu ordering remains owned by Blizzard. Reload is required to discard the previous callback.
 - Quest and Forever checks pass, including no shared Escape registration and duplicate prevention. Live blocked-action elimination remains unverified.
-- RestedXP Guides is Andrew's requested quality benchmark for leveling walkthroughs through 1–20 and beyond, not an error attribution.
+- route reference Guides is Andrew's requested quality benchmark for leveling walkthroughs through 1–20 and beyond, not an error attribution.
 
 ## 0.14.0-beta.42 — restricted cast geometry
 
 - Guard cast-bar and icon widths before latency geometry arithmetic. Secret geometry keeps a thin red latency marker.
-- Layout regressions and Forever syntax/source checks pass. Live reload and fresh cast/target switching checks remain required. Submitted report contains no RestedXP stack references; no RestedXP fault attribution established.
+- Layout regressions and Forever syntax/source checks pass. Live reload and fresh cast/target switching checks remain required. Submitted report contains no route reference stack references; no route reference fault attribution established.
 
 ## 0.14.0-beta.41 — Forever cast and aura error mitigation
 
@@ -452,7 +459,7 @@
 
 - Add /pr edit and General settings entry: labelled movable RUI anchors, screen/centre alignment, grid snapping, selected-element position/scale controls and independent map dimensions.
 - Save up to 10 named character layouts, retain 20 undo actions, cancel a session or reset a selected element. Restore supported lazy-created panels; close and block editing in combat.
-- Share the Core theme with editor and Character surfaces; retain class accents. Native/ElvUI combat frames and child achievement panels remain outside editor ownership.
+- Share the Core theme with editor and Character surfaces; retain class accents. Native/external interface combat frames and child achievement panels remain outside editor ownership.
 - Layout, quest, performance, equipment and Forever checks cover the review build. Live drag, responsive rendering, scale/persistence and taint acceptance remain pending; see docs/LAYOUT-EDITOR.md.
 
 ## 0.14.0-beta.32 — shared availability and paced discovery
@@ -482,7 +489,7 @@
 
 ## 0.14.0-beta.28 — standalone dungeon reference maps and quest polish
 
-- Bundle Classic/TBC map images and demand-loaded dungeon boss/loot records; Dungeon atlas no longer requires Atlas or AtlasLoot. Unsupported native floors use RUI reference maps without invented player coordinates.
+- Bundle Classic/TBC map images and demand-loaded dungeon boss/loot records; Dungeon atlas no longer requires Atlas or loot reference. Unsupported native floors use RUI reference maps without invented player coordinates.
 - Local reference maps fit the viewport, provide recorded entrance/section selectors and release textures on hide. Package now includes ProjectRuthless_DungeonData alongside primary/options folders.
 - Quest details use dark surfaces, compact neutral text and class headers; description/reward/actions remain inside the responsive sidebar with native callbacks preserved.
 - Collect minimap markers use bags; object interactions keep cogs.
@@ -534,7 +541,7 @@
 
 ### 0.14.0-beta.22 - 2026-10-08 (dungeon atlas)
 
-- Map Dungeon atlas tab integrates the installed AtlasLoot Forever dungeon library with native dungeon floor maps.
+- Map Dungeon atlas tab integrates the installed loot reference Forever dungeon library with native dungeon floor maps.
 - Boss list, clickable recorded map locations and per-boss loot rows with item tooltips/modified-click linking.
 - Dungeon quest view shares pickup/objective/hand-in locations, native quest details and per-dungeon tracking.
 - Dungeon data loads on demand; rows/pins pool, boss locations cache and item-cache events unsubscribe when unused.
@@ -545,7 +552,7 @@
 - Database-driven supplies for held quests, active guide quests and relevant future quests in selected zones; prepare for the displayed zone through map Settings.
 - Future prerequisites may remain unmet while planning supplies; actual pickup eligibility is unchanged.
 - AH advice requires non-soulbound native binding metadata; recorded vendor supplies remain separate. Missing item metadata waits for item-cache responses.
-- Reminders show in Classic capital maps or when opening an AH; compact section caps at five items, with the full list in Supplies. Coverage depends on quest objective counts and sources in QuestieDB.
+- Reminders show in Classic capital maps or when opening an AH; compact section caps at five items, with the full list in Supplies. Coverage depends on quest objective counts and sources in quest reference.
 
 ### 0.14.0-beta.20 - 2026-10-08 (route preparation and auto hand-in)
 
@@ -603,26 +610,26 @@
 
 ### 0.14.0-beta.11 - 2026-10-08 (addon-wide performance audit)
 
-- Audited the shared core and every module against demand-driven patterns in the public EllesmereUI source. Added visible-only event binding and one-refresh-per-burst scheduling.
+- Audited the shared core and every module against demand-driven patterns in the public reference interface source. Added visible-only event binding and one-refresh-per-burst scheduling.
 - Settled scrollbars and stationary character models no longer run update handlers; macro carets use focus-bound native animation. Character, spellbook, talents and achievements drop display events while hidden.
 - Cache spell groups, action-bar membership (including false results), title names and health-glow curves with explicit invalidation. Avoid reloading the character model for unrelated stat updates.
 - Build settings pages, the macro editor, achievement dashboard and disabled quest/glow assets only when needed. Existing assets remain pooled after first use.
 - Remove world-map polling; redraw on map/size/show changes. Rebuild quest context when guide content or position changes; compass updates every 0.25 seconds and the installed-guide bridge checks every 2 seconds.
 - Quest offer scans yield every 25 IDs, cache level candidates, stop when disabled and reject obsolete scan continuations. Completed scans refresh dungeon/pickup information even while stationary.
 - Add on-demand /pr perf using native recent-average and peak CPU metrics; no background profiler loop.
-- All seven suites pass. A stationary 60-second simulation against beta 10 reduces context/layout passes from 60 to 1 and settled scrollbar callbacks from 1,200 to zero. These measure work counts, not client CPU/FPS or a comparison with EllesmereUI. See docs/PERFORMANCE-AUDIT.md.
+- All seven suites pass. A stationary 60-second simulation against beta 10 reduces context/layout passes from 60 to 1 and settled scrollbar callbacks from 1,200 to zero. These measure work counts, not client CPU/FPS or a comparison with reference interface. See docs/PERFORMANCE-AUDIT.md.
 
 ### 0.14.0-beta.10 - 2026-10-08 (tracker performance hotfix)
 
 - Cache dungeon classification until the quest/offer snapshot changes, reuse it for recommendations and tracked rows, and avoid rebuilding unchanged map search areas. Content updates once per second; compass bearings update independently ten times per second.
 - Added a permanent Menu button on the tracker opening the main map directly to dungeon track/untrack controls.
-- Guard secret spell cooldown values before checking duration, including outside combat. The separately reported Questie aura-taint stack is not attributed to Ruthless’s error recorder.
+- Guard secret spell cooldown values before checking duration, including outside combat. The separately reported quest reference aura-taint stack is not attributed to Ruthless’s error recorder.
 - Regression tests verify cached database reads, offer invalidation, update cadence and map-menu behavior. Live frame-rate recovery remains to be confirmed.
 
 ### 0.14.0-beta.9 - 2026-10-08 (usable quest items and dungeon tracking)
 
 - Quest-item clicks now call Blizzard’s native quest-item use function; shift-click retains chat linking. The current log index and item link are checked at click time.
-- Added saved per-dungeon tracking, held quests and eligible pickups under a separate Dungeons section, and a map Dungeons tab to change choices. Prompts react to quest, zone and level updates using installed QuestieDB dungeon relationships and known eligibility.
+- Added saved per-dungeon tracking, held quests and eligible pickups under a separate Dungeons section, and a map Dungeons tab to change choices. Prompts react to quest, zone and level updates using installed quest reference dungeon relationships and known eligibility.
 - Refined the tracker with a class-coloured accent, stronger contrast, aligned objective counts and an Along the way group. Removed the redundant dungeon View button from the visible layout.
 - Simulated interaction and Forever compatibility checks pass; item targeting, combat use and visual acceptance still require the running game. Database coverage and conservative eligibility filters remain limitations.
 
@@ -643,7 +650,7 @@
 
 - Added an opt-in compact, translucent quest panel under Map & quests: active objectives and turn-ins, nearby sorting, selected destination in the header, same-zone navigation arrow and distance, scrolling, and persistent skip/restore without abandoning quests.
 - Replaces Blizzard's tracker while enabled and restores it on disable. Combat defers native tracker visibility and navigation reads.
-- Available-quest database coverage, original 1–20 authored guides, prerequisite explanations and advanced map controls remain planned. Wisp and TomTom panels are not automatically changed.
+- Available-quest database coverage, original 1–20 authored guides, prerequisite explanations and advanced map controls remain planned. external guide and navigation reference panels are not automatically changed.
 
 ### 0.13.0-beta.2 - 2026-10-07 (automatic macro ranks)
 
@@ -733,8 +740,8 @@
 ### 0.9.1 - 2026-09-07 (awaiting live acceptance)
 
 - Removed the unnecessary Talents loadout search and Blizzard's duplicate talent search/loadout controls from the compact workspace.
-- Fixed the lower-left label overlap and moved Raider.IO Talent Builds into a dedicated full-width sidebar action.
-- Restyled and repositioned the Raider.IO talent-build window with Ruthless surfaces, class-colour accents, cleaner rows, and more useful proportions.
+- Fixed the lower-left label overlap and moved external profile Talent Builds into a dedicated full-width sidebar action.
+- Restyled and repositioned the external profile talent-build window with Ruthless surfaces, class-colour accents, cleaner rows, and more useful proportions.
 
 ### 0.9.0 - 2026-09-07 (awaiting live acceptance)
 
@@ -768,7 +775,7 @@
 - Corrected model panning so right-drag moves laterally and vertically without changing camera depth.
 - Added Project Ruthless's reusable smooth scrollbar with restrained wheel speed and a class-colour thumb.
 - Coloured section headings by class and the equipped item level by the dominant quality of equipped combat gear.
-- Added an optional Progress view with live Mythic+ rating, best key, current raid progress, and Raider.IO profile details.
+- Added an optional Progress view with live Mythic+ rating, best key, current raid progress, and external profile profile details.
 - Added a clear empty state to the Equipment Sets view.
 - Moved current Mythic+, raid, and rated-PvP progress into a compact identity strip beside the character name.
 - Changed the Character heading to the class-coloured character name with level and specialization beneath it.
@@ -784,7 +791,7 @@
 - Displayed the equipped title with the character name in the class-coloured heading.
 - Moved Character out of the `/pr` control centre into a standalone replacement opened by WoW's normal Character button and keybind.
 - Rebuilt `/pr` as a functional settings centre for general presentation, Character, Spellbook, health warnings, compatibility, diagnostics, and addon information.
-- Added live window scale and opacity controls plus switches for Character details, Spellbook integration, off-spec visibility, missing-bar highlights, macro suggestions, and ElvUI tooltip compatibility.
+- Added live window scale and opacity controls plus switches for Character details, Spellbook integration, off-spec visibility, missing-bar highlights, macro suggestions, and external interface tooltip compatibility.
 - Expanded the macro editor with account and character banks, safe explicit saves, editable blank names, icon selection, drag-to-action-bar support, and autocomplete for commands, directives, conditionals, and learned spells.
 - Added persistent macro recovery history before edits, deletions, and moves; restoring always creates a new copy.
 - Added keyboard-driven categorised autocomplete, live spell/icon previews, non-blocking syntax checks, searchable macro names and bodies, and common macro templates.
@@ -802,7 +809,7 @@
 - Replaced unsupported star characters with native favourite icons and highlighted favourited rows.
 - Corrected equipped-title highlighting and removed confidence text from the provenance card.
 - Removed the premature title-state read that left equipped highlighting one selection behind.
-- Replaced the blocking full achievement scan with instant Epithet metadata integration and chunked on-demand Blizzard fallback searches.
+- Replaced the blocking full achievement scan with instant title reference metadata integration and chunked on-demand Blizzard fallback searches.
 - Replaced the removed `NEW_TITLE_EARNED` event with change detection driven by `KNOWN_TITLES_UPDATE`.
 - Installed the error handler before module initialization so startup failures are retained.
 - Normalized Blizzard's two-digit achievement years to four-digit display years.
@@ -847,15 +854,15 @@
 - Created the standalone AndrewUI addon foundation.
 - Added account-wide and per-character saved settings.
 - Added `/aui` status and safe-tooltip commands.
-- Added an ElvUI compatibility module for the Midnight tooltip-taint workaround.
+- Added an external interface compatibility module for the Midnight tooltip-taint workaround.
 
 ## 0.14.0-beta.4 — Installed guides and quest database
 
-- Read the installed ForeverWisp current action, instructions, unresolved up-next rows and travel navigation into the class-coloured compact panel. Wisp retains guide content and progression. Explicit preview and step controls are available through the map Tools tab.
-- Optional QuestieDB contract 3 integration reads active quest creature/object spawns, item drop/container/vendor sources, guide pickup and completed quest turn-in locations. Uses the installed Forever zone mapping and overrides without re-projecting coordinates.
-- Optional HereBeDragons-Pins (provided by installed ForeverWisp or TomTom) draws those locations on both maps. Current quest markers are larger and class coloured; other active quests are dimmed. Marker tooltips identify recorded sources; clicks set the chosen waypoint outside combat.
+- Read the installed external guide current action, instructions, unresolved up-next rows and travel navigation into the class-coloured compact panel. external guide retains guide content and progression. Explicit preview and step controls are available through the map Tools tab.
+- Optional quest reference contract 3 integration reads active quest creature/object spawns, item drop/container/vendor sources, guide pickup and completed quest turn-in locations. Uses the installed Forever zone mapping and overrides without re-projecting coordinates.
+- Optional HereBeDragons-Pins (provided by installed external guide or navigation reference) draws those locations on both maps. Current quest markers are larger and class coloured; other active quests are dimmed. Marker tooltips identify recorded sources; clicks set the chosen waypoint outside combat.
 - Native quest navigation now supports adjacent maps on the same continent.
-- Local simulation and syntax validation only; live map rendering and Wisp integration await acceptance. This is not full Questie feature parity: available-quest eligibility, per-objective completion filtering, special extra objectives and all future supplies are not implemented. Wisp browser pages remain in Wisp's own browser, opened from the map controls.
+- Local simulation and syntax validation only; live map rendering and external guide integration await acceptance. This is not full quest reference feature parity: available-quest eligibility, per-objective completion filtering, special extra objectives and all future supplies are not implemented. external guide browser pages remain in external guide's own browser, opened from the map controls.
 
 ## 0.14.0-beta.5 — Quieter world map
 
@@ -869,22 +876,22 @@
 - Replaced search-area shading with consolidated gold world-map icons: native question marks for completed quest turn-ins, exclamation marks for pickups, backpack symbols for collection objectives and swords for kills. One recorded point represents each quest/type/zone rather than each spawn.
 - Active-quest marker clicks open Blizzard's quest details in the side log. Unaccepted quests open Ruthless pickup/source details, since they have no native quest-log entry yet.
 - Detailed minimap locations remain. Completed turn-ins get larger native gold question marks; smaller objective markers are square, correcting an unintended stretched height in beta 5.
-- Added batched QuestieDB available-quest scanning with level, race/class, active/completed, prerequisite, exclusion and parent checks. Unverified profession/reputation/special requirements are excluded rather than guessed. Native map offer handling remains intact; this is not complete Questie eligibility parity.
-- Wisp arrow identification now supports numeric texture file IDs used by the live client. Route content/progression remains owned by installed Wisp.
+- Added batched quest reference available-quest scanning with level, race/class, active/completed, prerequisite, exclusion and parent checks. Unverified profession/reputation/special requirements are excluded rather than guessed. Native map offer handling remains intact; this is not complete quest reference eligibility parity.
+- external guide arrow identification now supports numeric texture file IDs used by the live client. Route content/progression remains owned by installed external guide.
 - Local simulated marker classification, quest-details/pickup clicks, eligibility, numeric arrow texture and existing Forever compatibility checks pass. Live rendering and taint acceptance remain pending.
 
 ## 0.14.0-beta.7 — Selected areas and quest context
 
 - Reduced world-map and minimap marker sizes by 25%. Gold classified world-map markers remain, with translucent gold search cells for the currently selected quest's recorded objective/drop locations. Pickup and turn-in points are not shaded as search areas.
 - Added a separate scrollable nearby section alongside guide up-next steps. Includes active quests and known available pickups within 1,000 yards on the current map.
-- While in an instance, show matching dungeon quests using QuestieDB's named dungeon area IDs/aliases or recorded locations on an actual dungeon map. Outdoor map coordinates are not treated as dungeon matches.
-- Clicking a context row focuses that quest or pickup in the Ruthless tracker and navigation; Guide returns to Wisp. Accepting a manually selected pickup replaces the temporary pickup entry with the real quest log entry.
-- Simulated checks cover area isolation, marker sizes, nearby pickups, dungeon aliases/outdoor exclusion, combat blocking and context rerouting/Guide return. Live visual/combat acceptance remains pending. Dungeon coverage depends on installed database records; this does not add quests to the player's game log or modify Wisp's route.
+- While in an instance, show matching dungeon quests using quest reference's named dungeon area IDs/aliases or recorded locations on an actual dungeon map. Outdoor map coordinates are not treated as dungeon matches.
+- Clicking a context row focuses that quest or pickup in the Ruthless tracker and navigation; Guide returns to external guide. Accepting a manually selected pickup replaces the temporary pickup entry with the real quest log entry.
+- Simulated checks cover area isolation, marker sizes, nearby pickups, dungeon aliases/outdoor exclusion, combat blocking and context rerouting/Guide return. Live visual/combat acceptance remains pending. Dungeon coverage depends on installed database records; this does not add quests to the player's game log or modify external guide's route.
 
 ## 0.14.0-beta.8 — Tracker information and navigation
 
-- Guide objectives now include live counters and along-the-way tasks from the installed Wisp display. Objectives have a scrollable section; title/instruction/objective/up-next/context sections use measured content heights instead of fixed gaps.
-- Ruthless independently recommends dungeon trips when matching quests are in the log. View lists the dungeon's quest context without modifying Wisp; clicking a quest focuses it and Guide restores the route.
-- Read-only navigation continues during combat and across adjacent zones. A valid Wisp bearing is not discarded because its arrow texture is temporarily hidden; native/database destinations provide fallback. Fully hidden/stopped Wisp routes are not treated as current bearings. Cross-continent travel still requires a valid intermediate route destination.
+- Guide objectives now include live counters and along-the-way tasks from the installed external guide display. Objectives have a scrollable section; title/instruction/objective/up-next/context sections use measured content heights instead of fixed gaps.
+- Ruthless independently recommends dungeon trips when matching quests are in the log. View lists the dungeon's quest context without modifying external guide; clicking a quest focuses it and Guide restores the route.
+- Read-only navigation continues during combat and across adjacent zones. A valid external guide bearing is not discarded because its arrow texture is temporarily hidden; native/database destinations provide fallback. Fully hidden/stopped external guide routes are not treated as current bearings. Cross-continent travel still requires a valid intermediate route destination.
 - Added actual quest-item links/icons, hover tooltips and modified-click chat links for current guide/native quests. Forever's GetQuestLogSpecialItemInfo returns the link and icon together; the older separate link function is only a fallback. These are item links, not secure casting controls.
 - Local interaction simulations and Forever syntax/compatibility checks pass. Live layout, compass and item-link acceptance remain pending.

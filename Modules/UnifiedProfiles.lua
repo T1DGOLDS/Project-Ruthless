@@ -162,7 +162,7 @@ function P:WriteSettings(text,full)
    if key:match("^color[RGB]")or key:match("^customColor")or key:match("^background")then ProjectRuthlessDB.general[key]=nil end
   end
  end
- for section,values in pairs(parsed or {})do if section~="elvui"then
+ for section,values in pairs(parsed or {})do if not settings:IsRetiredSection(section)then
   ProjectRuthlessDB[section]=ProjectRuthlessDB[section]or {}
   for key,value in pairs(values)do ProjectRuthlessDB[section][key]=value end
  end end

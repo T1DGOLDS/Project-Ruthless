@@ -6,7 +6,7 @@ function run(test,extra='') {
  const sources={Core:'Core.lua',Profiles:'Modules/Profiles.lua',UnifiedProfiles:'Modules/UnifiedProfiles.lua',SettingsRegistry:'Modules/SettingsRegistry.lua',Menu:'ProjectRuthless_Options/Menu.lua',MenuLoader:'Modules/MenuLoader.lua',Spellbook:'Modules/Spellbook.lua',CharacterV2:'Modules/CharacterV2.lua',QuestWorkspace:'Modules/QuestWorkspace.lua',QuestLocations:'Modules/QuestLocations.lua',LowHealthGlow:'Modules/LowHealthGlow.lua',Titles:'Modules/Titles.lua'};
  Object.assign(sources,{AuraOptions:'ProjectRuthless_Options/AuraOptions.lua',LayoutEditor:'Modules/LayoutEditor.lua',HUD:'Modules/ForeverHUD.lua',Style:'Modules/ForeverStyle.lua',Buff:'Modules/ForeverExpiringBuffs.lua',Hint:'Modules/ForeverNameplateHints.lua',Error:'Modules/ErrorLog.lua',Accessibility:'Modules/Accessibility.lua',FirstRun:'Modules/FirstRun.lua'});
  for(const [name,file] of Object.entries(sources)) {
-  const source=fs.readFileSync(path.join(root,file),'utf8')+(file==='ProjectRuthless_Options/Menu.lua'?'\n'+fs.readFileSync(path.join(root,'ProjectRuthless_Options/SettingsPages.lua'),'utf8'):'');parser.parse(source,{luaVersion:'5.1'});
+  const source=(file==='Modules/QuestWorkspace.lua'?fs.readFileSync(path.join(root,'Modules/GuideBridge.lua'),'utf8')+'\n':'')+fs.readFileSync(path.join(root,file),'utf8')+(file==='ProjectRuthless_Options/Menu.lua'?'\n'+fs.readFileSync(path.join(root,'ProjectRuthless_Options/SettingsPages.lua'),'utf8'):'');parser.parse(source,{luaVersion:'5.1'});
   lua.lua_pushstring(L,to_luastring(source));lua.lua_setglobal(L,to_luastring(name.toUpperCase()+'_SOURCE'));
   if(name==='LayoutEditor'){lua.lua_pushstring(L,to_luastring(source));lua.lua_setglobal(L,to_luastring('SOURCE'));}
  }

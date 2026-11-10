@@ -1,7 +1,7 @@
 local _,AUI=...
 -- Original RUI presentation. Quest IDs, giver identities, levels and prerequisite
 -- facts checked against installed Forever metadata 2026-10-16; live review pending.
--- No Attune code, layout, prose or database is used.
+-- RUI owns its progression presentation and requirement facts.
 AUI.CreateQuestProgression=function()
  local nodes={}
  local function quest(id,title,level,giver,area,requires,dungeon)

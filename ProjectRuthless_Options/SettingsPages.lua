@@ -309,7 +309,7 @@ override("CreateMapQuestOptions",function(self,parent)
  f:Check("Always suggest Westfall supplies","On keeps Westfall reminders available. Off uses the normal level-based suggestions; other zones are chosen in Map > Supplies.",function()return q.prepWestfall==true end,function(v)q.prepWestfall=v end,"QuestWorkspace","prepWestfall")
  local workspace=AUI.modules.QuestWorkspace;local choices={}
  for _,source in ipairs(workspace:GuideSources())do choices[#choices+1]={source.id,source.label or source.name or source.id}end
- f:Choice("Guide source","Choose whose route to follow. Quest browsing and map markers remain available independently.",choices,function()return q.guideSource or "RUI"end,function(v)q.guideSource=v;workspace.manualFocus=nil;workspace.manualPickup=nil;workspace.manualTrackedQuest=nil;workspace.guide=nil end,"QuestWorkspace","guideSource")
+ f:Choice("Guide source","Choose whose route to follow. Quest browsing and map markers remain available independently.",choices,function()return workspace:GuideSourceID()or "RUI"end,function(v)q.guideSource=v;workspace.manualFocus=nil;workspace.manualPickup=nil;workspace.manualTrackedQuest=nil;workspace.guide=nil end,"QuestWorkspace","guideSource")
  f:Action("Browse guides in the map",function()if WorldMapFrame then WorldMapFrame:Show()end;workspace:SelectMapPage("Library")end)
 end)
 override("CreateSpellbookOptions",function(self,parent)

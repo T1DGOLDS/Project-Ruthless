@@ -1,6 +1,6 @@
 {
   "name": "project-ruthless",
-  "version": "0.14.0-beta.103",
+  "version": "0.14.0-beta.105",
   "private": true,
   "description": "Local validation tools for the Project Ruthless World of Warcraft addon",
   "scripts": {
@@ -34,7 +34,9 @@
     "test:dungeon-journal": "node tests/run-dungeon-journal.cjs",
     "test:dungeon-data": "python tools/build-dungeon-journal.py --check",
     "test:professions": "node tests/run-professions.cjs",
-    "test:profession-data": "python tools/build-profession-data.py --check"
+    "test:profession-data": "python tools/build-profession-data.py --check",
+    "test:product-copy": "node tools/check-product-copy.cjs",
+    "test:guide-compatibility": "node tests/run-guide-compatibility.cjs"
   },
   "devDependencies": {
     "fengari": "^0.1.5",

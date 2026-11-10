@@ -11,7 +11,7 @@ Scope: Forever runtime dependency removal, feature ownership and measured perfor
 | Supplemental visual marker positioning | RUI MapPins | Uses native public map projections, minimap radius and rotation. Unknown/restricted positions are hidden. Round/square minimaps are supported; custom hybrid shapes use conservative round clipping. |
 | Combat statistics, categories, rows and interactions | Native DamageMeter | RUI does not inspect combat-session data, calculate amounts or call native setup/refresh/render methods. Native availability and live taint remain acceptance checks. |
 | Meter backgrounds/borders and saved geometry | RUI ForeverMeters | Static chrome only; native row styling is retained. Native categories/sessions/secondary-window preferences stay character-owned. Profiles capture native activation and RUI movers. |
-| Leveling-guide engine | RUI by default; explicitly selected provider optional | Existing Wisp adapter retained. Other guide engines require verified integration; they are not silently selected. |
+| Leveling-guide engine | RUI by default; explicitly selected provider optional | Existing external guide adapter retained. Other guide engines require verified integration; they are not silently selected. |
 
 The Camelot manifest no longer lists external quest databases, map libraries or loot addons. Bundled RUI Dungeon Data/reference maps remain load-on-demand and retain their existing attribution. External meters are no longer skinned, hooked or rewritten. The last external action-button glow discovery was removed. The unused Retail talent workspace no longer loads on Forever; the native talent button/keybind remains authoritative. Retained Retail files are not newly developed.
 

@@ -1,13 +1,9 @@
-# Dungeon atlas — beta28
+# Dungeon journal
 
-**Beta 78 update:** bundled boss/loot/reference data remains independent. Native floor lookup uses unambiguous native map names; unsupported boss positions and most quest associations are unrecorded after external-database removal. [Stage five](STAGE-FIVE.md) supersedes dependency descriptions below; missing information is not guessed.
+Open Map > Dungeon atlas. Browse Overview, Maps, Bosses, Loot, Quests and Preparation. Search source records, inspect tooltips and follow verified pickup locations. The journal uses the native map where available and labelled bundled reference floors elsewhere. Missing maps and coordinates are not invented.
 
-Open the map's Dungeon atlas tab, select a dungeon, then choose a reference map, boss or Dungeon quests. Native maps remain preferred where valid; otherwise RUI displays its bundled square map with entrance/section selectors. Resizing preserves image proportions. Static maps have no player marker, and database coordinates are not projected onto unrelated artwork.
+The active load-on-demand catalogue uses public Forever journal facts. It currently includes thirty published dungeons/wings, with five additional entries showing missing journal data. Bosses, loot links, quests and preparation are separate views. Drop probabilities remain unknown where the source provides none. Native and reference maps retain their own provenance and limitations.
 
-Atlas and AtlasLoot are not runtime requirements. RUI ships 147 unchanged Atlas Classic/Burning Crusade BLP images and 38 dungeon records derived from AtlasLoot Forever 1.60.1. ProjectRuthless_DungeonData loads only on the first atlas request; images load only when selected and textures release on hide. Restart WoW once after adding this folder. The package contains three addon folders, all of which must be installed.
+RUI supplies its own journal interface and map-marker positioning. All three bundled folders must be installed. Source facts, historical exports, reference assets and required licences remain documented with their respective data. The inactive historical catalogue does not load into the current Forever journal.
 
-GPL provenance and license accompany the images and records; upstream sources and the export script accompany the records. RUI's own viewer code remains separate. Normal/heroic tables have an explicit switch where available. Only numeric item rows are retained; reference tables are not proof of complete live Forever drops, quest coverage or probabilities.
-
-Boss/loot and held/eligible quest lists remain in the sidebar. Local maps contain upstream printed reference markers; no unverified clickable coordinate overlay is added. Accurate clickable boss pins continue on supported native maps. Quest locations use the existing optional QuestieDB provider, not Atlas libraries. Custom Forever dungeons with no bundled image state that explicitly.
-
-No polling or idle animation. Item cache events subscribe only while the atlas is used. Local checks cover no-Atlas catalog/loot loading, map selection validation, square fitting, asset integrity and packaging. In-game rendering, image accuracy and taint require live review.
+Actual client floor selection, tooltips, quest eligibility and map appearance still require live acceptance. See Assets/DungeonJournal/SOURCES.md and ProjectRuthless_DungeonData/SOURCE.md for source notices.

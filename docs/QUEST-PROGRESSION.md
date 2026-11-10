@@ -2,7 +2,7 @@
 
 **Beta 78 update:** older external database/location adapters are now removed from the Forever runtime. Native/RUI data supplies current offers, authored route facts and supplied waypoints; comprehensive spawn/gate/dungeon associations are not bundled. [Stage five](STAGE-FIVE.md) supersedes dependency descriptions below.
 
-RUI owns this engine, interface and original progression presentation. It has no Attune bridge and does not redistribute Attune code, assets, layout or database. It uses native Forever APIs, independently authored RUI requirement facts and existing original RUI routes.
+RUI owns this engine, interface and original progression presentation. It uses native Forever APIs, independently authored RUI requirement facts and existing original RUI routes.
 
 ## Interaction
 
@@ -20,7 +20,7 @@ Sharing is an explicit button for the selected quest and delegates to the existi
 - **Live quest log:** all public non-header log records appear independently, with native held/completed/turn-in states. No external quest database is necessary for this view.
 - **Unknowns:** unmet known prerequisites are Blocked; unavailable state is Unknown; otherwise an unheld quest says Check giver, never falsely Available. Missing coordinates remain missing. Location actions use only real native supplied coordinates; known text areas remain useful without a waypoint.
 
-All other dungeon prerequisite chains require independently sourced/verified content. Existing optional QuestieDB/location adapters still support older guide eligibility, spawn information and tooltips elsewhere in the addon. Beta76 does not claim those remaining dependencies are removed. Optional user-selected leveling guide providers remain a deliberate supported exception. The accepted permanent direction is native/RUI-owned quest progression throughout the map.
+All other dungeon prerequisite chains require independently sourced/verified content. Optional user-selected leveling guide providers remain a deliberate supported exception. The accepted permanent direction is native/RUI-owned quest progression throughout the map.
 
 ## Ownership and performance
 
@@ -32,7 +32,7 @@ The compact tracker now shows the current step, that quest's objectives and spec
 
 ## Live acceptance
 
-1. With Attune, Questie and QuestieDB disabled, open Map → Progression. Check Your quest log and available native groups. Verify native map pins and M open/close still work.
+1. With only the three bundled RUI folders enabled, open Map → Progression. Check Your quest log and available native groups. Verify native map pins and M open/close still work.
 2. On Alliance, open The Deadmines. Inspect the Defias chain and branch into Red Silk Bandanas; click each node and verify giver/area, minimum level and state against the server. Check independent dungeon pickups. Record any Forever mismatch as data corrections, not a passed gate.
 3. Open a dungeon from the atlas without a usable native floor: the supported Deadmines chain should occupy the map canvas. Native mapped floors, bosses, loot and reference maps remain reachable through Dungeon atlas.
 4. Browse a node while following a leveling guide; the tracker must stay unchanged. Press Follow and confirm the tracker now shows only that step/objectives/item. Complete/turn in a quest, verify actual completion and next unresolved focus; abandon/reaccept, reload and switch profiles. No previous quest or stale pickup should remain as the active task.

@@ -111,7 +111,7 @@ navArrow.GetRotation=function()return secret end;q:Navigate();assert(not q.arrow
 ProjectRuthlessDB.questWorkspace.useWisp=false;q:Refresh();assert(not q.guide and q.currentTitle.text:find('Near',1,true))
 ProjectRuthlessDB.questWorkspace.useWisp=nil
 ForeverWispFrame=nil;ForeverWispNavigation=nil
-print('PASS: Wisp current guide, up-next, cross-zone travel arrow, explicit step callbacks, combat blocking, secret angle and fallback')
+print('PASS: installed guide current guide, up-next, cross-zone travel arrow, explicit step callbacks, combat blocking, secret angle and fallback')
 
 assert(load(LOCATIONS_SOURCE))('ProjectRuthless',AUI)
 local locations=AUI.modules.QuestLocations
@@ -903,7 +903,7 @@ assert(q:ReadGuide().phase=='GUIDE STOPPED') -- explicit stop never silently tak
 assert(q:RegisterGuideProvider('test','Test guide',function()return {quest='Test',target='Hub',phase='Step',count='1',instruction='Walk',objectives={},next={}}end))
 ProjectRuthlessDB.questWorkspace.guideSource='test';assert(q:ReadGuide().source=='test')
 ProjectRuthlessDB.questWorkspace.guideSource='missing';assert(q:ReadGuide()==nil and q:GuideSourceLabel():find('not connected',1,true))
-ProjectRuthlessDB.questWorkspace.guideSource='Wisp';local savedWisp=ForeverWispFrame;ForeverWispFrame=nil;assert(q:GuideSourceLabel():find('not running',1,true));ForeverWispFrame=savedWisp
+ProjectRuthlessDB.questWorkspace.guideSource='External';local savedWisp=ForeverWispFrame;ForeverWispFrame=nil;assert(q:GuideSourceLabel():find('not running',1,true));ForeverWispFrame=savedWisp
 ProjectRuthlessDB.questWorkspace.guideSource=savedSource
 print('PASS: explicit default/provider choice, registered external readers, unavailable-source fallback and no silent provider replacement')
 

@@ -1,6 +1,6 @@
 # RUI layout editor — beta 34
 
-Open **/pr edit** (or /pr layout), or Control centre → General → Edit RUI layout. Open the RUI panels you want to arrange first. The editor combines labelled mover overlays with a selected-element inspector; it is an original implementation informed by the locally installed ElvUI mover and Blizzard Edit Mode sources. No source/assets from those editors were copied.
+Open **/pr edit** (or /pr layout), or Control centre → General → Edit RUI layout. Open the RUI panels you want to arrange first. The editor combines labelled mover overlays with a selected-element inspector; it is an original implementation informed by the locally installed external interface mover and Blizzard Edit Mode sources. No source/assets from those editors were copied.
 
 Select or drag a highlighted frame. Snapping rounds to an 8-unit grid and aligns within 10 units of screen centre/edges and other visible RUI frame centres. Two centre guides are visible when snapping is on. Toggle Snap for free positioning. Inspector arrows nudge one unit; scale changes by 5%. Map width/height change independently by 40 units within existing responsive bounds. No idle OnUpdate handler is installed.
 
@@ -10,7 +10,7 @@ Player/target now use original 3D portrait panels and flat native health/resourc
 
 Changes preview immediately and persist per character. **Undo** retains 20 actions; **Cancel** restores the session's starting layout; **Done** keeps it. Enter a name to **Save** or **Load** one of up to 10 named layouts. Names are typed in this first version; a visual saved-layout picker is not implemented. Reset selected returns the frame to its captured initial placement, not a reset of all addon settings. Hooks restore saved state when supported panels are created/opened later. Combat blocks editing and closes the editor, retaining completed edits.
 
-Shared Core theme supplies editor, map, tracker and menu surfaces; Character now consumes those palette tokens too. Existing frame-specific content and native workflows remain. This is a first editor review build, not a complete replacement for all ElvUI/WoW editor capabilities or a finished whole-addon visual migration.
+Shared Core theme supplies editor, map, tracker and menu surfaces; Character now consumes those palette tokens too. Existing frame-specific content and native workflows remain. This is a first editor review build, not a complete replacement for all external interface/WoW editor capabilities or a finished whole-addon visual migration.
 
 ## Live review
 

@@ -45,6 +45,8 @@ jobs:
       - run: npm run test:macro-factory
       - run: npm run test:dungeon-journal
       - run: npm run test:dungeon-data
+      - run: npm run test:product-copy
+      - run: npm run test:guide-compatibility
       - run: npm run test:professions
       - run: npm run test:profession-data
       - run: npm run test:leveling

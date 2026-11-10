@@ -3,12 +3,13 @@
 ## Title: Project Ruthless
 ## Notes: Ruthless UI for WoW Forever.
 ## Author: Andrew
-## Version: 0.14.0-beta.103
-## OptionalDeps: Blizzard_AuraContainer, Blizzard_CooldownViewer, Blizzard_DamageMeter, ForeverWisp
+## Version: 0.14.0-beta.105
+## OptionalDeps: Blizzard_AuraContainer, Blizzard_CooldownViewer, Blizzard_DamageMeter
 ## SavedVariables: ProjectRuthlessDB
 ## SavedVariablesPerCharacter: ProjectRuthlessCharDB
 
 Core.lua
+Modules\GuideBridge.lua
 Libs\LibActionButton\LibStub.lua
 Libs\LibActionButton\CallbackHandler-1.0.lua
 Libs\LibActionButton\LibActionButton-1.0.lua

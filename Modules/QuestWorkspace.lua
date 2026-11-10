@@ -324,7 +324,7 @@ function Q:Collect()
 end
 
 
--- Read only the installed Wisp UI. Wisp owns route content and progression.
+-- Route content remains with its explicitly selected provider.
 local function DisplayText(region)
     local value=region and Call(region.GetText,region)
     return type(value)=="string" and value or ""
@@ -334,19 +334,23 @@ function Q:RegisterGuideProvider(id,label,reader)
     if type(id)~="string"or type(label)~="string"or type(reader)~="function"then return false end
     self.guideProviders=self.guideProviders or {};self.guideProviders[id]={label=label,read=reader};return true
 end
+function Q:GuideSourceID()
+    local id=ProjectRuthlessDB.questWorkspace.guideSource
+    return AUI.GuideBridge and AUI.GuideBridge:Normalize(id)or id
+end
 function Q:GuideSources()
-    local sources={{id="RUI",label="RUI default"},{id="Wisp",label="Wisp"}}
+    local sources={{id="RUI",label="RUI default"},{id="External",label="Installed guide"}}
     local extra={};for id,provider in pairs(self.guideProviders or {})do extra[#extra+1]={id=id,label=provider.label}end
     table.sort(extra,function(a,b)return a.label<b.label end);for _,source in ipairs(extra)do sources[#sources+1]=source end
     return sources
 end
 function Q:GuideSourceLabel()
-    local id=ProjectRuthlessDB.questWorkspace.guideSource or "RUI"
-    for _,source in ipairs(self:GuideSources())do if source.id==id then return source.label..(id=="Wisp"and not ForeverWispFrame and " (not running)"or "")end end
+    local id=self:GuideSourceID() or "RUI"
+    for _,source in ipairs(self:GuideSources())do if source.id==id then return source.label..(id=="External"and not(AUI.GuideBridge and AUI.GuideBridge:Available()) and " (not running)"or "")end end
     return id.." (not connected)"
 end
 function Q:CycleGuideSource()
-    local sources=self:GuideSources();local current=ProjectRuthlessDB.questWorkspace.guideSource or "RUI";local nextIndex=1
+    local sources=self:GuideSources();local current=self:GuideSourceID() or "RUI";local nextIndex=1
     for i,source in ipairs(sources)do if source.id==current then nextIndex=i%#sources+1;break end end
     ProjectRuthlessDB.questWorkspace.guideSource=sources[nextIndex].id
     self.manualTrackedQuest=nil;self.manualFocus=nil;self.manualPickup=nil;self.guide=nil;self:Refresh()
@@ -359,16 +363,16 @@ function Q:ReadGuide()
     local progression=AUI.modules.QuestProgression
     local current=progression and progression:Guide()
     if current then return current end
-    local source=ProjectRuthlessDB.questWorkspace.guideSource
+    local source=self:GuideSourceID()
     if self.manualFocus and source~="RUI"then return end
     local authored=AUI.modules.AuthoredGuides
-    if source and source~="Wisp"and source~="RUI"then
+    if source and source~="External"and source~="RUI"then
         local provider=self.guideProviders and self.guideProviders[source]
         local guide=provider and Call(provider.read,self)
         if type(guide)=="table"then guide.source=source;return guide end
         return
     end
-    if source~="Wisp"then
+    if source~="External"then
         if source=="RUI"and authored then authored:EnsureStarted(self)end
         local own=authored and authored:Read(self);if own then return own end
     end
@@ -376,55 +380,10 @@ function Q:ReadGuide()
         local state=ProjectRuthlessCharDB.authoredGuide or {}
         return {source="RUI",phase=state.paused and "GUIDE PAUSED"or state.stopped and "GUIDE STOPPED"or "CHOOSE A GUIDE",count="",quest="Leveling guide",target="",instruction=state.route and "Map → Chapters to resume your guide."or "Map → Library to choose a leveling route.",objectives={},next={}}
     end
-    return self:ReadWispGuide()
+    return self:ReadProviderGuide()
 end
-function Q:ReadWispGuide()
-    if ProjectRuthlessDB and not ProjectRuthlessDB.questWorkspace.guideSource and ProjectRuthlessDB.questWorkspace.useWisp==false then return end
-    local f=ForeverWispFrame
-    local p=f and f.route
-    if not p or not Call(f.IsShown,f) or not Call(p.IsShown,p) then return end
-    local target=DisplayText(p.heading)
-    if target=="" then return end
-    local quest=DisplayText(p.guide)
-    local guide={source="Wisp",target=target,quest=quest,phase=DisplayText(p.meta),count=DisplayText(p.count),instruction=DisplayText(p.instruction),next={}}
-    local upcoming=p.upNext
-    if upcoming and Call(upcoming.IsShown,upcoming) then
-        for _,row in ipairs(upcoming.rows or {}) do
-            if Call(row.IsShown,row) then guide.next[#guide.next+1]={title=DisplayText(row.quest),detail=DisplayText(row.npc)} end
-        end
-    end
-    guide.objectives={}
-    guide.questIDs={}
-    local seen={}
-    local function readObjectives(parent,along)
-        for _,row in ipairs(parent and parent.objectives or {})do
-            if Call(row.IsShown,row) then
-                local step=row.entry and row.entry.sourceStep
-                local id=step and step.completion and step.completion.questId
-                if type(id)=="number" and Public(id)then guide.questIDs[id]=true end
-                local name,counter=DisplayText(row.name),DisplayText(row.counter)
-                local key=name..counter
-                if name~="" and not seen[key]then seen[key]=true;guide.objectives[#guide.objectives+1]=(along and "Along the way · " or "")..name..(counter~="" and "  "..counter or "")end
-            end
-        end
-    end
-    readObjectives(p.objectives and p.objectives.copy)
-    for _,section in ipairs({p.along or {},p.batch or {}})do
-        if Call(section.IsShown,section)then for _,row in ipairs(section.rows or {})do if Call(row.IsShown,row)then readObjectives(row,section==p.along)end end end
-    end
-    -- Match only an exact localized name; never guess between duplicate names.
-    local name=quest:gsub("|c%x%x%x%x%x%x%x%x",""):gsub("|r","")
-    local locations=AUI.modules.QuestLocations;local db=locations and locations:Database()
-    if name~=self.guideName then
-        self.guideName=name;self.guideQuestID=nil
-        for _,entry in ipairs(self.entries or {}) do if entry.title==name then self.guideQuestID=entry.id;break end end
-        if not self.guideQuestID and db and db.Quest then
-            local ids=Call(db.Quest.IdsByName,name)
-            if ids and #ids==1 then self.guideQuestID=ids[1] end
-        end
-    end
-    guide.id=self.guideQuestID
-    return guide
+function Q:ReadProviderGuide()
+    local bridge=AUI.GuideBridge;return bridge and bridge:Read(self)
 end
 function Q:RenderGuide(guide)
     self.guide=guide
@@ -453,56 +412,12 @@ function Q:RenderGuide(guide)
     return true
 end
 function Q:GuideNavigation()
-    if self.guide and self.guide.source and self.guide.source~="Wisp"then return false end
-    local f=ForeverWispNavigation
-    if not f or not Call(f.IsShown,f) or type(f.GetRegions)~="function" then return false end
-    local cached=self.guideNavigationRegions
-    if not cached or self.guideNavigationFrame~=f then
-        local ok,regions=pcall(function()return {f:GetRegions()}end)
-        if not ok then return false end
-        local arrow
-        local labels={}
-        for _,region in ipairs(regions) do
-            local kind=Call(region.GetObjectType,region)
-            if kind=="Texture" then
-                local texture=Call(region.GetTexture,region)
-                local width,height=Call(region.GetSize,region)
-                -- GetTexture returns a numeric file ID in the live client.
-                if (width==96 and height==96) or (type(texture)=="string" and texture:lower():match("[/\\]arrow%.tga$")) then arrow=region end
-            elseif kind=="FontString" then
-                labels[#labels+1]=region
-            end
-        end
-        if #labels~=3 and #labels~=2 then return false end
-        cached={arrow=arrow,labels=labels};self.guideNavigationRegions=cached;self.guideNavigationFrame=f
-    end
-    local arrow,labels=cached.arrow,cached.labels
-    local distance,destination
-    -- Wisp 0.28 creates distance, destination, note in this order; text size is user configurable.
-    if #labels~=3 and #labels~=2 then return false end
-    distance=DisplayText(labels[1]);destination=DisplayText(labels[2])
-    if distance=="" and destination=="" then return false end
-    self.distance:SetText(distance);self.destination:SetText(destination)
-    local angle=arrow and Call(arrow.GetRotation,arrow)
-    if type(angle)=="number" and Public(angle) and ProjectRuthlessDB.questWorkspace.showArrow~=false then
-        self.arrow:SetRotation(angle);self.arrow:Show()
-        self.guideBearing=angle+(Call(GetPlayerFacing) or 0)
-    end
-    return true
+    local bridge=AUI.GuideBridge;return bridge and bridge:Navigation(self)or false
 end
 function Q:GuideAction(name)
     if self.guide and self.guide.source=="RUI progression"then AUI.modules.QuestProgression:Action(name);return end
     if self.guide and self.guide.source=="RUI"then AUI.modules.AuthoredGuides:Action(name);return end
-    -- External provider callbacks may change protected state.
-    if InCombatLockdown() then return end
-    if self.guide and self.guide.source and self.guide.source~="Wisp"then return end
-    local p=ForeverWispFrame and ForeverWispFrame.route
-    local button=p and p[name]
-    if button and Call(button.IsShown,button) and Call(button.IsEnabled,button) then
-        local handler=Call(button.GetScript,button,"OnClick")
-        Call(handler,button,"LeftButton")
-        self:Refresh()
-    end
+    local bridge=AUI.GuideBridge;if bridge then bridge:Action(self,name)end
 end
 
 function Q:Refresh(skipUnchanged)
@@ -706,7 +621,7 @@ function Q:RenderMapPage()
     elseif page=="Quest details" then
         self.mapCopy:SetText(self.questDetails or "Select a quest marker.")
     elseif self.guide and (page=="Chapters" or page=="Library" or page=="Professions") then
-        self.mapCopy:SetText("Installed ForeverWisp guide\n\n"..self.guide.quest.."\n"..self.guide.target.."\n\n"..self.guide.instruction.."\n\nUse Open guide browser below for Wisp chapters, library and profession controls. Wisp retains your saved progress.")
+        self.mapCopy:SetText("Installed guide\n\n"..self.guide.quest.."\n"..self.guide.target.."\n\n"..self.guide.instruction.."\n\nUse Open guide browser below for route chapters and library controls. The provider retains your saved progress.")
     elseif page=="Quests" then
         local lines={}
         for _,entry in ipairs(self:Collect()) do lines[#lines+1]=self:QuestTitle(entry).."\n|cffdddde2"..entry.detail.."|r" end
@@ -1308,9 +1223,7 @@ function Q:InstallMap()
     specs[10]={"Guide step options",function() self:GuideAction("stepOptions") end}
     specs[11]={"Open guide browser",function()
         if self.guide and self.guide.source=="RUI"then self:SelectMapPage("Chapters");return end
-        local p=ForeverWispFrame and ForeverWispFrame.route
-        local button=p and p.chapter
-        if button then Call(Call(button.GetScript,button,"OnClick"),button,"LeftButton") end
+        local bridge=AUI.GuideBridge;if bridge then bridge:OpenBrowser()end
     end}
     specs[12]={"Guide provider settings",function()AUI.modules.Menu:Show("mapquests")end}
     specs[13]={"Auto hand-in: toggle",function()local s=ProjectRuthlessDB.questWorkspace;s.autoHandIn=not s.autoHandIn;self:ApplySettings();self:RenderMapPage()end}
@@ -1813,7 +1726,7 @@ function Q:OnPlayerLogin()
         if event=="PLAYER_ENTERING_WORLD"then self:ResetPartyQuestBaseline()end
         if (event=="QUEST_REMOVED"or event=="QUEST_TURNED_IN")and self.partyQuestState and Public(loaded)and type(loaded)=="number"then self.partyQuestState[loaded]=nil end
         if event=="QUEST_POI_UPDATE"or event=="QUEST_LOG_UPDATE"or event=="ZONE_CHANGED_NEW_AREA"then self.nativeLocalQuestPoint=nil end
-        if event=="ADDON_LOADED"and loaded~="Blizzard_WorldMap"and loaded~="Blizzard_ObjectiveTracker"and not(loaded=="ForeverWisp"and ProjectRuthlessDB.questWorkspace.guideSource=="Wisp")then return end
+        if event=="ADDON_LOADED"and loaded~="Blizzard_WorldMap"and loaded~="Blizzard_ObjectiveTracker"and not(AUI.GuideBridge and AUI.GuideBridge:MatchesAddon(loaded)and self:GuideSourceID()=="External")then return end
         if event=="QUEST_LOG_UPDATE"or event=="QUEST_ACCEPTED"or event=="QUEST_REMOVED"or event=="QUEST_TURNED_IN"or event=="PLAYER_LEVEL_UP"or event=="ZONE_CHANGED_NEW_AREA"or event=="PLAYER_ENTERING_WORLD"then self.progressionDirty=true end
         if event=="AUCTION_HOUSE_SHOW"then self.prepAuctionOpen=true elseif event=="AUCTION_HOUSE_CLOSED"then self.prepAuctionOpen=nil end
         if event=="PLAYER_REGEN_ENABLED" and self.pending then self:ApplySettings()end
