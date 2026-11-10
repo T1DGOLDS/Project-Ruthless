@@ -9,7 +9,7 @@ local methods={};local frames={}
 local function frame()
  local f={scripts={},shown=true};frames[#frames+1]=f;return setmetatable(f,{__index=methods})
 end
-for _,name in ipairs({'SetPoint','ClearAllPoints','SetSize','SetScale','SetBackdrop','SetBackdropBorderColor','EnableMouse','SetColorTexture','SetTexCoord','SetAllPoints','SetDrawEdge','SetHideCountdownNumbers','SetFont','SetTooltipAnchorPoint','SetHideTooltipInCombat','SetFrameStrata','SetText','SetWidth','SetJustifyH','SetAutoFocus','ClearFocus','SetStatusBarTexture','SetMinMaxValues','SetValue','SetStatusBarColor'})do methods[name]=function(self,...)self[name]={...}end end
+for _,name in ipairs({'SetTextColor','SetPoint','ClearAllPoints','SetSize','SetScale','SetBackdrop','SetBackdropBorderColor','EnableMouse','SetColorTexture','SetTexCoord','SetAllPoints','SetDrawEdge','SetHideCountdownNumbers','SetFont','SetTooltipAnchorPoint','SetHideTooltipInCombat','SetFrameStrata','SetText','SetWidth','SetJustifyH','SetAutoFocus','ClearFocus','SetStatusBarTexture','SetMinMaxValues','SetValue','SetStatusBarColor'})do methods[name]=function(self,...)self[name]={...}end end
 -- Methods remain callable on repeat updates.
 for name in pairs(methods)do local n=name;methods[n]=function(self,...)self.values=self.values or {};self.values[n]={...};if n=='SetText'then self.text=(...)end end end
 function methods:CreateTexture()return frame()end;function methods:CreateFontString()return frame()end
@@ -71,10 +71,11 @@ assert(AUI.modules.LayoutEditor.targets.cd_EssentialCooldownViewer.options.skipN
 s.styleCooldowns=false;m:ApplySettings();assert(trim.alpha==.8 and not m.styled[item].shown)
 local menu={panels={},optionControls={}};AUI.modules.Menu=menu
 function menu:CreateOptionsPanel()return frame()end;function AUI:CreateSmoothScrollFrame()return frame()end
-function menu:CreateCheckbox(_,label,_,_,getter,setter)self[label]={get=getter,set=setter}end
-function menu:CreateSlider()end;function menu:CreateAction(_,text,_,_,_,fn)local f=frame();f.click=fn;self[text]=f;return f end
+function menu:CreateCheckbox(_,label,_,_,getter,setter)self[label]={get=getter,set=setter};return frame()end
+function menu:CreateSlider()return frame()end;function menu:CreateAction(_,text,_,_,_,fn)local f=frame();f.click=fn;self[text]=f;return f end
 function menu:Refresh()end;function menu:SelectTab()end
 AUI.modules.SettingsRegistry={Register=function()end};function AUI:CreateButton()return frame()end
+assert(load(SETTINGS_PAGES_SOURCE))('ProjectRuthless',AUI)
 assert(load(AURA_OPTIONS_SOURCE))('ProjectRuthless',AUI);menu:CreateAuraOptions(frame())
 assert(menu.panels.auras and menu['Check configuration']and menu['Preview samples'])
 m:Preview();assert(m.preview.shown);m:Preview();assert(not m.preview.shown)

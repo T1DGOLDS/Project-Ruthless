@@ -162,11 +162,28 @@ function L:ObjectiveMarkers(points)
 end
 function L:StyleIndicator(icon,p,world)
     local symbol=p.kind=="Accept"or p.kind=="Turn in"
-    local size=p.markerKind and (world and 14 or 12)or symbol and (world and 20 or 15)or (world and (p.current and 18 or 13)or (p.current and 10 or 7))
+    local pickup=p.kind=="PickupObject"
+    local size=pickup and 13 or p.markerKind and (world and 14 or 12)or symbol and (world and 20 or 15)or (world and (p.current and 18 or 13)or (p.current and 10 or 7))
     icon:SetSize(size,size)
-    icon.texture:SetTexture(p.markerKind and self:ObjectiveTexture(p.markerKind)or p.kind=="Turn in"and "Interface\\GossipFrame\\ActiveQuestIcon"or p.kind=="Accept"and "Interface\\GossipFrame\\AvailableQuestIcon"or "Interface\\AddOns\\ProjectRuthless\\Assets\\QuestObjective")
+    icon.texture:SetTexture(pickup and "Interface\\Icons\\INV_Misc_Gear_01"or p.markerKind and self:ObjectiveTexture(p.markerKind)or p.kind=="Turn in"and "Interface\\GossipFrame\\ActiveQuestIcon"or p.kind=="Accept"and "Interface\\GossipFrame\\AvailableQuestIcon"or "Interface\\AddOns\\ProjectRuthless\\Assets\\QuestObjective")
     icon.texture:SetDesaturated(p.availability=="unknown")
     icon.texture:SetVertexColor(1,1,1);icon:SetAlpha(p.availability=="unknown"and .45 or p.current and 1 or .7)
+    icon:EnableMouse(world and p.kind=="Accept")
+    if world and p.kind=="Accept"and not icon.pickupTooltip then
+        icon.pickupTooltip=true
+        icon:SetScript("OnEnter",function()
+            local point=icon.point;if not point or not GameTooltip then return end
+            GameTooltip:SetOwner(icon,"ANCHOR_RIGHT");GameTooltip:SetText(point.name or "Quest pickup")
+            local seen={}
+            for _,other in ipairs(self.points or {})do
+                if other.kind=="Accept"and other.map==point.map and math.abs(other.x-point.x)<.002 and math.abs(other.y-point.y)<.002 and not seen[other.questID]then
+                    seen[other.questID]=true;GameTooltip:AddLine(other.quest,1,.82,.2,true)
+                end
+            end
+            GameTooltip:AddLine("Browse Map > Available for pickup details",.7,.8,1,true);GameTooltip:Show()
+        end)
+        icon:SetScript("OnLeave",function()if GameTooltip then GameTooltip:Hide()end end)
+    end
 end
 function L:DirectionPoint(points)
     local map=C_Map and Read(C_Map.GetBestMapForUnit,"player")
@@ -222,7 +239,14 @@ function L:Refresh(q,force)
     local _,class=UnitClass("player");local color=RAID_CLASS_COLORS[class] or {r=.7,g=.7,b=1}
     self.activeMini=self.activeMini or {};self.freeMini=self.freeMini or {}
     local desired={}
-    local miniPoints=self:ObjectiveMarkers(self.points)
+    local miniPoints={}
+    local data=AUI.modules.QuestData
+    if data and data.PickupPoints then
+        local current=self.selectedQuest or (q.guide and q.guide.id or q.selected)
+        for _,quest in ipairs(q.entries or {})do
+            if quest.id==current then miniPoints=data:PickupPoints(quest);break end
+        end
+    end
     for _,p in ipairs(miniPoints)do desired[self:PointKey(p)]=true end
     for _,p in ipairs(self.points)do if p.kind=="Accept"or p.kind=="Turn in"then miniPoints[#miniPoints+1]=p;desired[self:PointKey(p)]=true end end
     for key,pair in pairs(self.activeMini)do
@@ -240,7 +264,7 @@ function L:Refresh(q,force)
         for _,icon in pairs(pair) do
             icon.point=p;self:StyleIndicator(icon,p,false)
         end
-        if fresh then pins:AddMinimapIconMap(self,pair.mini,p.map,p.x,p.y,true,false)end
+        if fresh then pins:AddMinimapIconMap(self,pair.mini,p.map,p.x,p.y,true,false,p.kind=="PickupObject")end
     end
     self:UpdateDirection(self:DirectionPoint(self.points))
     self:DrawAreas()
@@ -252,6 +276,7 @@ function L:WorldMarkers(points)
     for _,p in ipairs(points or {}) do
         local kind=p.kind=="Turn in" and "Turn in" or p.kind=="Accept" and "Accept" or (p.kind=="Object" or p.kind=="Collect" or p.kind=="CollectObject" or p.kind=="Vendor") and "Collect" or p.kind=="Npc" and "Kill" or "Area"
         local key=p.questID..":"..p.map..":"..kind
+        if kind=="Accept"and p.giver then key=key..":"..p.giver end
         local group=groups[key]
         if not group then group={points={},x=0,y=0,kind=kind};groups[key]=group end
         group.points[#group.points+1]=p;group.x=group.x+p.x;group.y=group.y+p.y
@@ -276,9 +301,11 @@ function L:DrawAreas()
     self.worldPool=self.worldPool or {}
     self:DrawSelectedArea()
     self.activeWorld=self.activeWorld or {};self.freeWorld=self.freeWorld or {}
-    local markers=self:ObjectiveMarkers(self.points)
+    local mapSettings=ProjectRuthlessDB.mapQuests
+    local enabled=not mapSettings or mapSettings.enabled~=false
+    local markers=enabled and self:ObjectiveMarkers(self.points)or {}
     local nativeLocations={}
-    for _,point in ipairs(self:WorldMarkers(self.points))do
+    for _,point in ipairs(enabled and self:WorldMarkers(self.points)or {})do
         local key=point.questID..":"..point.map
         if nativeLocations[key]==nil then
             local native=false
@@ -468,9 +495,19 @@ function L:Eligible(id,db,level,raceMask,classMask,preparation)
         if mask and mask~=0 and (not entry[2] or math.floor(mask/entry[2])%2==0)then return false,entry[1]=="requiredClasses"and "Quest is for another class"or "Race requirement not met" end
     end
     if not preparation then
-    for _,quest in ipairs(field("preQuestGroup") or {})do if Read(C_QuestLog.IsQuestFlaggedCompleted,quest)~=true then return false,"Complete prerequisite quest "..quest end end
     local single=field("preQuestSingle") or {}
     if #single>0 then local met=false;for _,quest in ipairs(single)do if Read(C_QuestLog.IsQuestFlaggedCompleted,quest)==true then met=true end end;if not met then return false,"Complete one prerequisite: "..table.concat(single,", ") end end
+    if #single==0 then
+        for _,quest in ipairs(field("preQuestGroup")or {})do
+            local met=Read(C_QuestLog.IsQuestFlaggedCompleted,math.abs(quest))==true
+            -- Source encoding: a positive prerequisite accepts its completed
+            -- mutually-exclusive alternative; a negative one requires that exact ID.
+            if not met and quest>0 then
+                for _,alternative in ipairs(Read(get,quest,"exclusiveTo")or {})do if Read(C_QuestLog.IsQuestFlaggedCompleted,alternative)==true then met=true;break end end
+            end
+            if not met then return false,"Complete prerequisite quest "..math.abs(quest)end
+        end
+    end
     end
     for _,quest in ipairs(field("exclusiveTo") or {})do if Read(C_QuestLog.IsOnQuest,quest) or Read(C_QuestLog.IsQuestFlaggedCompleted,quest) then return false,"Conflicts with quest "..quest end end
     local parent=field("parentQuest");if parent and parent~=0 and Read(C_QuestLog.IsOnQuest,parent)~=true then return false,"Requires active quest "..parent end
@@ -512,7 +549,10 @@ function L:Eligible(id,db,level,raceMask,classMask,preparation)
             if known~=true then return false,"Spell or specialization not verified: "..spell,true end
         end
     end
-    for _,key in ipairs({"requiredRanks","specialFlags"})do
+    -- Repeatable/exploration bits describe a quest, not an unmet pickup gate.
+    local special=field("specialFlags")
+    if type(special)=="number"and (special<0 or special>3)then return false,"Requirement not verified: specialFlags",true end
+    for _,key in ipairs({"requiredRanks"})do
         local value=field(key)
         if type(value)=="table"and next(value)or type(value)=="number"and value~=0 then return false,"Requirement not verified: "..key,true end
     end
@@ -574,6 +614,8 @@ function L:ScanOffers()
         local changed=self.offers==nil or #offers~=#self.offers
         if not changed then for i,row in ipairs(offers)do local old=self.offers[i];if row.id~=old.id or row.title~=old.title or row.map~=old.map or row.x~=old.x or row.y~=old.y then changed=true;break end end end
         if changed then self:InvalidateAvailability();self.offers=offers;self:Refresh(AUI.modules.QuestWorkspace);AUI:QueueRefresh(AUI.modules.QuestWorkspace)end
+        local q=AUI.modules.QuestWorkspace
+        if not changed and q and q.mapPage=="Available"and q.mapPanel and q.mapPanel:IsShown()then q:RenderMapPage()end
         if started then diagnostics:EndWork("Native quest offers",started,#offers)end
         return
     end
@@ -722,6 +764,14 @@ function L:AddUnitTooltip(tooltip,data)
     end
     self:AddPartyProgress(tooltip,partyIDs)
 end
+function L:QueueOffers(delay)
+ if self.offerQueued then return end
+ self.offerQueued=true
+ C_Timer.After(delay or 0,function()
+  self.offerQueued=nil
+  if ProjectRuthlessDB.questWorkspace.enabled then self:ScanOffers()end
+ end)
+end
 function L:OnPlayerLogin()
     local q=AUI.modules.QuestWorkspace
     if not q then return end
@@ -729,7 +779,7 @@ function L:OnPlayerLogin()
     local original=q.ApplySettings
     q.ApplySettings=function(workspace,...)original(workspace,...);self:SetEnabled();self:Refresh(workspace,true)end
     local events=CreateFrame("Frame")
-    self.eventNames={"PLAYER_ENTERING_WORLD","QUESTLINE_UPDATE","QUEST_ACCEPTED","QUEST_REMOVED","QUEST_TURNED_IN","PLAYER_LEVEL_UP","SKILL_LINES_CHANGED","UPDATE_FACTION","SPELLS_CHANGED","BAG_UPDATE_DELAYED","PLAYER_REGEN_DISABLED","PLAYER_REGEN_ENABLED"}
+    self.eventNames={"PLAYER_ENTERING_WORLD","QUESTLINE_UPDATE","QUEST_POI_UPDATE","MINIMAP_UPDATE_TRACKING","QUEST_ACCEPTED","QUEST_REMOVED","QUEST_TURNED_IN","PLAYER_LEVEL_UP","SKILL_LINES_CHANGED","UPDATE_FACTION","SPELLS_CHANGED","BAG_UPDATE_DELAYED","PLAYER_REGEN_DISABLED","PLAYER_REGEN_ENABLED"}
     events:SetScript("OnEvent",function(_,event)
         if not ProjectRuthlessDB.questWorkspace.enabled then return end
         if event=="PLAYER_REGEN_DISABLED"then
@@ -745,7 +795,8 @@ function L:OnPlayerLogin()
             return
         elseif event=="BAG_UPDATE_DELAYED"and not self.hasSourceRequirements then return end
         self:InvalidateAvailability()
-        if not self.offerQueued then self.offerQueued=true;C_Timer.After(1,function()self.offerQueued=nil;if ProjectRuthlessDB.questWorkspace.enabled then self:ScanOffers()end end)end
+        local data=AUI.modules.QuestData;if data and data.InvalidateOffers then data:InvalidateOffers()end
+        self:QueueOffers(1)
     end)
     self.events=events
     self:SetEnabled()
@@ -755,9 +806,9 @@ function L:OnPlayerLogin()
     end
     -- RUI positions visual markers; native quest pins/areas remain untouched.
     if WorldMapFrame then
-        WorldMapFrame:HookScript("OnShow",function()q:SyncMapObjective();self:DrawAreas()end)
+        WorldMapFrame:HookScript("OnShow",function()q:SyncMapObjective();self:DrawAreas();self:QueueOffers()end)
         WorldMapFrame:HookScript("OnSizeChanged",function()self:DrawSelectedArea()end)
-        if hooksecurefunc and WorldMapFrame.SetMapID then hooksecurefunc(WorldMapFrame,"SetMapID",function()self:DrawSelectedArea()end)end
+        if hooksecurefunc and WorldMapFrame.SetMapID then hooksecurefunc(WorldMapFrame,"SetMapID",function()self:DrawSelectedArea();self:QueueOffers()end)end
     end
     if GameTooltip and not self.tooltipHooked then
         self.tooltipHooked=true

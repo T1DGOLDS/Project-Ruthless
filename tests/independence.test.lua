@@ -64,6 +64,15 @@ radius=100;Minimap:Hide();Minimap.scripts.OnHide();assert(tickers[1].cancelled)
 Minimap:Show();Minimap.scripts.OnShow();assert(#tickers==2)
 pins:RemoveAllMinimapIcons(owner);assert(tickers[2].cancelled and next(pins.mini)==nil)
 assert(not near.scripts.OnClick)
+local pickupIcons={}
+for _,x in ipairs({.51,.514,.53,.55,.57,.9})do
+ local icon=frame();pickupIcons[#pickupIcons+1]=icon
+ pins:AddMinimapIconMap(owner,icon,1,x,.5,true,false,true)
+end
+pins:DrawMini()
+assert(pickupIcons[1].shown and not pickupIcons[2].shown and pickupIcons[3].shown and pickupIcons[4].shown)
+assert(not pickupIcons[5].shown and not pickupIcons[6].shown)
+pins:RemoveAllMinimapIcons(owner)
 print('PASS: 100 world registrations coalesce; cross-map transforms cache; minimap range/edge/secret/visibility cleanup; no external pin library')
 local poisoned=setmetatable({},{__index=function()error('External addon was accessed')end})
 LibQuestieDB=poisoned;LibStub=function()error('External library was accessed')end;Details=poisoned;_detalhes=poisoned
@@ -93,6 +102,29 @@ local points=data:Points({{id=1,title='Route quest'}},1)
 assert(#points==2 and points[1].current and points[1].kind=='Native')
 offers={};data:Offers();assert(data:Status(2).status=='uncertain')
 assert(#data:Points({{id=99,title='Unknown'}},99)==0)
+C_QuestLog.GetQuestObjectives=function()return {{type="item",finished=false}}end
+assert(#data:PickupPoints({id=5545})==3)
+assert(#data:PickupPoints({id=5545,accept=true})==0)
+assert(#data:PickupPoints({id=5545,complete=true})==0)
+assert(#data:PickupPoints({id=99})==0)
+C_QuestLog.GetQuestObjectives=function()return {{type="item",finished=SECRET}}end
+assert(#data:PickupPoints({id=5545})==0)
+C_QuestLog.GetQuestObjectives=nil
+print("PASS: recorded pickup pins cap at three, space out overlapping spots and exclude unavailable or restricted objectives")
+-- Native line/forced/task sources still supplement the owned pickup catalogue.
+do
+ local oldTask=C_TaskQuest;local oldInfo=C_QuestLine.GetQuestLineInfo;local oldForce=C_QuestLine.GetForceVisibleQuests
+ offers={}
+ C_QuestLine.GetForceVisibleQuests=function()return {77}end
+ C_QuestLine.GetQuestLineInfo=function(id)return {questID=id,questName="Forced",startMapID=1,x=.4,y=.5}end
+ C_TaskQuest={GetQuestsOnMap=function()return {{questID=78,isQuestStart=true,mapID=1,x=.6,y=.7},{questID=99,isQuestStart=false}}end,GetQuestInfoByQuestID=function()return "Task"end}
+ local rows=data:Offers();assert(#rows==2 and data.nativeOffers[77]and data.nativeOffers[78]and not data.nativeOffers[99])
+ assert(#data:Points({},77)==2)
+ C_TaskQuest=oldTask;C_QuestLine.GetQuestLineInfo=oldInfo;C_QuestLine.GetForceVisibleQuests=oldForce
+ data:InvalidateOffers();offers={};data:Offers()
+end
+print('PASS: native line/forced/task pickups remain independent of guide selection; no per-ID native catalogue scan')
+
 assert(load(LOCATIONS_SOURCE))('ProjectRuthless',AUI)
 local locations=AUI.modules.QuestLocations
 assert(locations:Database()==db and locations:PlayerStatus(1,db).status=='uncertain')

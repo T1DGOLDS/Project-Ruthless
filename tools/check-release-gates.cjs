@@ -3,9 +3,9 @@ const root=path.resolve(__dirname,'..'),ids=['installation','profiles','combat',
 function sourceDigest(base=root){
   const hash=crypto.createHash('sha256'),files=[];
   function walk(dir){for(const item of fs.readdirSync(dir,{withFileTypes:true})){const full=path.join(dir,item.name);if(item.isDirectory())walk(full);else files.push(full);}}
-  for(const dir of ['Modules','Assets','ProjectRuthless_Options','ProjectRuthless_DungeonData'])walk(path.join(base,dir));
+  for(const dir of ['Modules','Libs','Assets','ProjectRuthless_Options','ProjectRuthless_DungeonData'])walk(path.join(base,dir));
   for(const file of ['Core.lua','ProjectRuthless.toc','ProjectRuthless_Camelot.toc'])files.push(path.join(base,file));
-  for(const full of files.sort()){const name=path.relative(base,full).split(path.sep).join('/');let bytes=fs.readFileSync(full);if(/\.(lua|xml|toc|md|txt|cjs)$/.test(name))bytes=Buffer.from(bytes.toString('utf8').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n'));hash.update(name+'\0');hash.update(bytes);hash.update('\0');}
+  for(const full of files.sort()){const name=path.relative(base,full).split(path.sep).join('/');let bytes=fs.readFileSync(full);if(/\.(lua|xml|toc|md|txt|cjs|json|py)$/.test(name))bytes=Buffer.from(bytes.toString('utf8').replace(/^\uFEFF/,'').replace(/\r\n/g,'\n'));hash.update(name+'\0');hash.update(bytes);hash.update('\0');}
   return hash.digest('hex');
 }
 function validate(data,version,digest,stable){

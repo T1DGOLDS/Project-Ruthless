@@ -2,59 +2,70 @@ local _,AUI=...
 AUI=ProjectRuthless or AUI
 local Menu=AUI.modules.Menu
 function Menu:CreateAuraOptions(parent)
- local panel=self:CreateOptionsPanel(parent,"COMBAT INFORMATION","Auras & cooldowns","Native secure rendering, simple RUI groups and one profile. Edit presentation after combat; preview any time.")
- local scroll=AUI:CreateSmoothScrollFrame(panel);scroll:SetPoint("TOPLEFT",0,-120);scroll:SetSize(650,380)
- local content=CreateFrame("Frame",nil,scroll);content:SetSize(650,1900);scroll:SetScrollChild(content)
- local manager=AUI.modules.AuraManager;local settings=manager:Settings();local y=-8
+ local f=self:CreateFlowPage(parent,"auras","Auras & cooldowns","Choose what to track, then adjust its presentation. Configuration checks explain why a group may be hidden.")
+ local manager=AUI.modules.AuraManager;manager:Settings()
+ local settings=self:LiveSettings("auraManager")
  local function check(key,label,description)
-  local control=self:CreateCheckbox(content,label,description,y,function()return settings[key]end,function(v)settings[key]=v end,"AuraManager",key)
-  if control then control:SetHeight(68)end;y=y-76
+  return f:Check(label,description,function()return settings[key]end,function(v)settings[key]=v end,"AuraManager",key)
  end
- local enable=self:CreateCheckbox(content,"Enable native cooldowns","Blizzard owns cooldowns, tracked buff icons/bars, charges and alerts.",y,function()return manager:CooldownEnabled()end,function(v)local _,message=manager:SetCooldownEnabled(v);AUI:Print(message)end)
- if enable then enable:SetHeight(68)end;y=y-76
- self:CreateAction(content,"Choose tracked spells & alerts",18,y,310,function()manager:OpenNative()end)
- self:CreateAction(content,"Preview samples",338,y,290,function()manager:Preview()end);y=y-42
- for i,row in ipairs({{"combat","Combat auras"},{"buffs","Buff focus"},{"minimal","Minimal"}})do local preset=row[1];self:CreateAction(content,row[2],18+(i-1)*205,y,195,function()manager:Preset(preset);self:Refresh()end)end;y=y-44
- check("styleCooldowns","RUI cooldown borders","Thin borders and reduced decorative icon trim; native live rendering stays in charge.")
- check("playerBuffs","Player buff group","Additional movable helpful-aura icons, rendered by Blizzard's secure container.")
- check("playerDebuffs","Player debuff group","Movable harmful auras. Native filtering handles restricted aura data.")
- check("targetDebuffs","Your target debuffs","Harmful auras applied by you, using the native PLAYER filter.")
- check("focus","Focus buff","Match one exact helpful spell ID/rank on the player. Unknown or restricted matches stay hidden.")
- local label=content:CreateFontString(nil,"OVERLAY","GameFontNormalSmall");label:SetPoint("TOPLEFT",18,y-6);label:SetText("Focus spell ID (0 clears the selection)")
- if AUI.modules.Accessibility then AUI.modules.Accessibility:RegisterText(label)end
- local edit=CreateFrame("EditBox",nil,content,"InputBoxTemplate");edit:SetPoint("TOPLEFT",18,y-25);edit:SetSize(190,28);edit:SetText(tostring(settings.focusSpell));edit:SetAutoFocus(false)
+ local function slider(key,label,description,min,max,step)
+  return f:Slider(label,description,min,max,step,tostring,function()return settings[key]end,function(v)settings[key]=v end,"AuraManager",key)
+ end
+ f:Section("Cooldown manager")
+ f:Check("Enable native cooldowns","Show the game's tracked spell cooldowns, buffs, charges and alerts.",function()return manager:CooldownEnabled()end,function(v)local _,message=manager:SetCooldownEnabled(v);if message then AUI:Print(message)end end)
+ f:Action("Choose tracked spells & alerts",function()manager:OpenNative()end)
+ f:Action("Preview samples",function()manager:Preview()end)
+ check("styleCooldowns","RUI cooldown borders","Use thin borders and reduced decorative trim.")
+ f:Section("Player & target groups")
+ check("playerBuffs","Player buff group","Show an extra movable group of your helpful effects.")
+ check("playerDebuffs","Player debuff group","Show your harmful effects in a movable group.")
+ check("targetDebuffs","Your target debuffs","Show harmful effects you applied to your current target.")
+ check("focus","Focus buff","Track one exact helpful spell ID and rank on yourself.")
+ f:Note("Focus spell ID · 0 clears the selection")
+ local holder=CreateFrame("Frame",nil,f.content);holder:SetSize(610,40)
+ local edit=CreateFrame("EditBox",nil,holder,"InputBoxTemplate");edit:SetPoint("TOPLEFT",6,-4);edit:SetSize(390,28);edit:SetAutoFocus(false)
+ if AUI.modules.Accessibility then AUI.modules.Accessibility:RegisterText(edit)end
  local function apply()
   local id=tonumber(edit:GetText())
   if not id or id%1~=0 or id<0 or id>10000000 then AUI:Print("Enter a whole spell ID from 0 to 10000000.");return end
-  settings.focusSpell=id;edit:ClearFocus();manager:ApplySettings()
+  settings.focusSpell=id;edit:ClearFocus();manager:ApplySettings("focusSpell")
  end
- edit:SetScript("OnEnterPressed",apply);self:CreateAction(content,"Set focus spell",220,y-25,200,apply)
- AUI.modules.SettingsRegistry:Register("auras",edit,"Focus spell ID","Exact spell rank for the player helpful focus group",y,"text");y=y-78
- local function slider(key,label,description,min,max,step)
-  self:CreateSlider(content,label,description,y,min,max,step,function(v)return tostring(v)end,function()return settings[key]end,function(v)settings[key]=v end,"AuraManager",key);y=y-80
+ edit:SetScript("OnEscapePressed",function(box)box:ClearFocus()end);edit:SetScript("OnEnterPressed",apply)
+ edit.RefreshValue=function(box)if not box.HasFocus or not box:HasFocus()then box:SetText(tostring(settings.focusSpell or 0))end end
+ edit:RefreshValue();self.optionControls[#self.optionControls+1]=edit
+ local applyButton=self:CreateAction(holder,"Set focus spell",418,-4,192,apply)
+ AUI.modules.SettingsRegistry:Register("auras",edit,"Focus spell ID","Exact helpful spell ID and rank; zero clears the selection",f.y,"text","AuraManager","focusSpell")
+ f:Add(holder,40)
+ f:Children(holder,{{edit,-4},{applyButton,-4}})
+ f:Section("Custom group layout")
+ slider("iconSize","Aura icon size","Size of icons in RUI aura groups. Native cooldown viewers use Edit Mode.",16,48,1)
+ slider("spacing","Aura icon spacing","Gap between icons in RUI aura groups.",0,12,1)
+ slider("limit","Maximum group icons","Additional auras remain available in the normal game interface.",1,24,1)
+ check("expirationFirst","Expiring auras first","Order group icons by time remaining when supported by the game.")
+ f:Section("Party auras")
+ check("partyBuffs","Party buffs","Show helpful effects beside each party member.")
+ check("partyDebuffs","Party debuffs","Show harmful effects beside each party member.")
+ check("partyDispels","Party dispel emphasis","Enlarge debuffs the game classifies as relevant for dispelling.")
+ f:Section("Expiring self buffs")
+ check("expiring","Expiring self buffs","Show short remaining buff countdowns when the game exposes their timing.")
+ slider("expirationThreshold","Expiring-buff threshold","Show buffs with this many seconds remaining or less.",5,60,1)
+ if C_CVar and C_CVar.GetCVar and C_CVar.SetCVar and C_CVar.GetCVar("nameplateAuraScale")then
+  f:Section("Nameplate auras")
+  f:Slider("Nameplate aura size","Scale buffs and debuffs on enemy nameplates. Saved by the game.",.7,1.4,.1,function(v)return ("%d%%"):format(math.floor(v*100+.5))end,
+   function()return tonumber(C_CVar.GetCVar("nameplateAuraScale"))or 1 end,
+   function(v)local value=("%.1f"):format(v);AUI:AfterCombat("nameplateAuraScale",function()if tonumber(C_CVar.GetCVar("nameplateAuraScale"))~=tonumber(value)then C_CVar.SetCVar("nameplateAuraScale",value)end end)end)
  end
- slider("iconSize","Aura icon size","Custom groups; native viewer scale uses Edit Mode.",16,48,1)
- slider("spacing","Aura icon spacing","Spacing between custom group icons.",0,12,1)
- slider("limit","Maximum group icons","Extra auras remain in the native interface.",1,24,1)
- check("expirationFirst","Expiring auras first","Use Blizzard's secure expiration ordering, without reading timers in RUI.")
- check("partyBuffs","Party buffs","Helpful icons beside each party member.")
- check("partyDebuffs","Party debuffs","Native-classified debuffs beside each member.")
- check("partyDispels","Party dispel emphasis","Larger icons use native dispel classification for the current character.")
- check("expiring","Expiring self buffs","Existing self-buff countdowns; restricted timing is unavailable rather than guessed.")
- slider("expirationThreshold","Expiring-buff threshold","Remaining seconds while aura timing is public.",5,60,1)
- self:CreateAction(content,"Move aura / cooldown groups",18,y,300,function()AUI.modules.LayoutEditor:Show()end)
- self:CreateAction(content,"Background colours & opacity",328,y,300,function()self:SelectTab("backgrounds")end);y=y-44
- local status=content:CreateFontString(nil,"OVERLAY","GameFontNormalSmall");status:SetPoint("TOPLEFT",18,y);status:SetWidth(590);status:SetJustifyH("LEFT")
- if AUI.modules.Accessibility then AUI.modules.Accessibility:RegisterText(status)end
- local recheck
- local function refresh()
+ f:Section("Presets & placement","Presets change the options above. They do not replace your saved frame positions.")
+ for _,row in ipairs({{"combat","Combat auras"},{"buffs","Buff focus"},{"minimal","Minimal"}})do local preset=row[1];f:Action(row[2],function()manager:Preset(preset);self:Refresh()end)end
+ f:Action("Move aura / cooldown groups",function()self.frame:Hide();AUI.modules.LayoutEditor:Show()end)
+ f:Action("Aura backgrounds",function()self:SelectTab("backgrounds")end)
+ f:Section("Configuration checks")
+ local status=f:Note("")
+ status.RefreshValue=function(label)
   local lines={};for _,row in ipairs(manager:Checks())do lines[#lines+1]=row.status.." · "..row.message.."\n"..row.setting end
-  status:SetText(table.concat(lines,"\n\n"))
-  if recheck then
-   local height=status:GetStringHeight();recheck:ClearAllPoints();recheck:SetPoint("TOPLEFT",18,y-height-16);content:SetHeight(-y+height+64)
-  end
+  label:SetText(table.concat(lines,"\n\n"))
  end
- panel:HookScript("OnShow",refresh);recheck=self:CreateAction(content,"Check configuration",18,y-190,220,refresh)
- status.RefreshValue=refresh;self.optionControls[#self.optionControls+1]=status
- content:SetHeight(-y+300);self.panels.auras=panel;refresh()
+ self.optionControls[#self.optionControls+1]=status;status:RefreshValue()
+ f:Action("Check configuration",function()status:RefreshValue();f:Reflow()end)
+ f:Reflow()
 end

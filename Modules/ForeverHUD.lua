@@ -1,5 +1,5 @@
 local _,AUI=...
-local H={registered={}}
+local H={registered={},nativeHealthLabels={}}
 AUI:RegisterModule("ForeverHUD",H)
 local hudAddonFamilies={"Blizzard_ActionBar","Blizzard_UnitFrame","Blizzard_StatusTrackingBar","Blizzard_Minimap","Blizzard_BuffFrame","Blizzard_ChatFrame","Blizzard_CastingBar","Blizzard_AuraContainer","Blizzard_CompactRaid","ProjectRuthless_"}
 function H:IsRelevantAddon(name)
@@ -29,24 +29,52 @@ local specs={
 }
 specs[#specs+1]={"chat1","Chat dock",{"ChatFrame1"}}
 local function real(frame)return frame and (type(frame)=="table"or type(frame)=="userdata")and type(frame.GetCenter)=="function"end
-function H:Queue(id)
+function H:Queue(id,restoreSettings)
     if self.applying then return end
     local saved=ProjectRuthlessCharDB.layoutEditor
     if (not saved or not saved.elements or not saved.elements[id])and not (self.registered[id]and self.registered[id].ruiUnitStyled==true)then return end
-    self.pending=self.pending or {};self.pending[id]=true
+    self.pending=self.pending or {}
+    self.pending[id]=restoreSettings and "full" or self.pending[id] or "position"
     if InCombatLockdown()or self.resting or self.queued then return end
     self.queued=true
     C_Timer.After(.1,function()self.queued=nil;self:Drain()end)
 end
+-- Keep the caller of a native anchor change for the next live reproduction.
+-- Bounded, read-only in combat and independent of the Lua error log.
+function H:TraceBarAnchor(id,frame,point,parent,relative,x,y)
+    if self.applying or not debugstack or not id:match("^bar%d$")then return end
+    local char=ProjectRuthlessCharDB
+    local layout=char.layoutEditor
+    local saved=layout and layout.elements and layout.elements[id]
+    if not saved or type(saved.x)~="number"or type(saved.y)~="number"then return end
+    if issecretvalue and (issecretvalue(point)or issecretvalue(parent)or issecretvalue(relative)or issecretvalue(x)or issecretvalue(y))then return end
+    if point=="CENTER"and parent==UIParent and relative=="CENTER"and type(x)=="number"and type(y)=="number"then
+        local rootScale,frameScale=UIParent:GetEffectiveScale(),frame:GetEffectiveScale()
+        if issecretvalue and (issecretvalue(rootScale)or issecretvalue(frameScale))then return end
+        local ratio=rootScale/frameScale
+        if math.abs(x-saved.x*ratio)<.01 and math.abs(y-saved.y*ratio)<.01 then return end
+    end
+    local now=GetTime()
+    self.barTraceAt=self.barTraceAt or {}
+    if now-(self.barTraceAt[id]or -1)<.5 then return end
+    self.barTraceAt[id]=now
+    local trace=char.actionBarResetTrace or {};char.actionBarResetTrace=trace
+    trace[#trace+1]={time=date("%Y-%m-%d %H:%M:%S"),bar=id,combat=InCombatLockdown()==true,
+        point=type(point)=="string"and point or nil,stack=debugstack(3,12,0)}
+    if #trace>16 then table.remove(trace,1)end
+end
+
 function H:Drain()
     if InCombatLockdown()or self.resting then return end
     local pending=self.pending or {};self.pending={}
     self.applying=true
-    for id in pairs(pending)do
-        local store=ProjectRuthlessCharDB.layoutEditor
-        if store and store.elements[id]then AUI.modules.LayoutEditor:Apply(id,store.elements[id])end
-        if id:match("^party%d$")and self.registered[id]then self:StylePartyMember(id,self.registered[id])
-        elseif (id=="player"or id=="target")and self.registered[id]then self:StyleUnit(id,self.registered[id])end
+    for id,mode in pairs(pending)do
+        xpcall(function()
+            local store=ProjectRuthlessCharDB.layoutEditor
+            if store and store.elements[id]then AUI.modules.LayoutEditor:Apply(id,store.elements[id],id:match("^bar%d$")~=nil and mode~="full")end
+            if (id=="pet"or id:match("^party%d$"))and self.registered[id]then self:StylePartyMember(id,self.registered[id])
+            elseif (id=="player"or id=="target")and self.registered[id]then self:StyleUnit(id,self.registered[id])end
+        end,geterrorhandler())
     end
     self.applying=nil
 end
@@ -59,7 +87,7 @@ function H:Register(id,label,frame)
     if AUI.modules.FirstRun then AUI.modules.FirstRun:PlaceReplacement(id,frame)end
     editor:Attach(id,label,frame)
     local target=editor.targets[id];if not target then return end
-    target.preview=id=="chat1"or id=="castplayer"or id=="casttarget"or id=="castoffhand"or id=="party";target.hud=true
+    target.preview=id=="chat1"or id=="castplayer"or id=="casttarget"or id=="casttargettarget"or id=="castoffhand"or id=="party";target.hud=true
     self.registered[id]=frame
     if frame.SetClampedToScreen then frame:SetClampedToScreen(true)end
     -- Retain native secure buttons, casting/unit events and secret-value rendering.
@@ -69,10 +97,17 @@ function H:Register(id,label,frame)
     -- LayoutEditor owns the temporary mover outline; native HUD bounds stay invisible.
     border:Hide()
     target.border=border
+    if frame.ruiActionBar==true then return end
     hooksecurefunc(frame,"SetScale",function()self:Queue(id)end)
     frame:HookScript("OnShow",function()self:Queue(id)end)
     if id=="target"then frame:HookScript("OnHide",function()self:StopCast("target")end)end
-    hooksecurefunc(frame,"SetPoint",function()self:Queue(id)end)
+    hooksecurefunc(frame,"SetPoint",function(_,point,parent,relative,x,y)
+        self:Queue(id)
+        self:TraceBarAnchor(id,frame,point,parent,relative,x,y)
+    end)
+    if id:match("^bar%d$") and type(frame.UpdateGridLayout)=="function"then
+        hooksecurefunc(frame,"UpdateGridLayout",function()self:Queue(id)end)
+    end
 end
 local function flat(bar,mask)
     if not bar then return end
@@ -109,10 +144,55 @@ local function barLabels(parent,bar,center)
         if text and type(text)~="function"then text:ClearAllPoints();text:SetPoint(entry[2],bar,entry[2],entry[3],0)end
     end
 end
+local function updateHealthLabels(left,right,unit,current)
+    right:SetText(current)
+    if type(UnitHealthPercent)=="function"and CurveConstants and CurveConstants.ScaleTo100 then
+        left:SetFormattedText("%.0f%%",UnitHealthPercent(unit,false,CurveConstants.ScaleTo100))
+    end
+end
+local function petDisplayUnit(frame)
+    local token=frame.unit
+    if not(issecretvalue and issecretvalue(token))and token=="player"then return "player"end
+    return "pet"
+end
+function H:StyleNativeHealthLabels(unit,bars,health,petFrame)
+    for _,key in ipairs({"HealthBarText","LeftText","RightText"})do
+        local text=bars[key]
+        if text and type(text)~="function"then text:SetAlpha(0)end
+    end
+    local labels=self.nativeHealthLabels[unit]
+    if labels then return end
+    labels=CreateFrame("Frame",nil,health)
+    self.nativeHealthLabels[unit]=labels
+    labels:SetAllPoints(health)
+    labels.LeftText=labels:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
+    labels.RightText=labels:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
+    barLabels(labels,health,"HealthBarText")
+    local function refresh()
+        local token=petFrame and petDisplayUnit(petFrame)or unit
+        updateHealthLabels(labels.LeftText,labels.RightText,token,UnitHealth(token))
+    end
+    for _,event in ipairs({"UNIT_HEALTH","UNIT_MAXHEALTH","UNIT_CONNECTION"})do
+        if petFrame then labels:RegisterUnitEvent(event,unit,"player")
+        else labels:RegisterUnitEvent(event,unit)end
+    end
+    if petFrame then
+        labels:RegisterUnitEvent("UNIT_PET","player")
+        labels:RegisterUnitEvent("UNIT_ENTERED_VEHICLE","player")
+        labels:RegisterUnitEvent("UNIT_EXITED_VEHICLE","player")
+        labels:RegisterEvent("PET_UI_UPDATE")
+        labels:SetScript("OnShow",refresh)
+    end
+    labels:RegisterEvent("PLAYER_ENTERING_WORLD")
+    if unit=="target"then labels:RegisterEvent("PLAYER_TARGET_CHANGED")end
+    labels:SetScript("OnEvent",refresh)
+    refresh()
+end
 local styling=setmetatable({},{__mode="k"})
 local resourceColors={MANA={.20,.43,.85},RAGE={.85,.22,.18},ENERGY={.9,.73,.20},FOCUS={.9,.48,.2},RUNIC_POWER={.15,.7,.85}}
 function H:PaintUnitBars(id,frame)
-    if id=="party0"then id="player"end
+    if id=="party0"then id="player"
+    elseif id=="pet"then id=petDisplayUnit(frame)end
     local health,power=frame.ruiHealth,frame.ruiPower
     if not health or not power or frame.ruiPainting==true then return end
     frame.ruiPainting=true
@@ -204,7 +284,7 @@ function H:StyleUnit(id,frame)
     local bars=main.HealthBarsContainer;bars:ClearAllPoints();bars:SetPoint("TOPLEFT",frame,"TOPLEFT",64,-21);bars:SetSize(184,22)
     health:ClearAllPoints();health:SetAllPoints(bars);keepFlat(health,bars.HealthBarMask)
     power:ClearAllPoints();power:SetPoint("TOPLEFT",frame,"TOPLEFT",64,-46);power:SetSize(184,12);keepFlat(power,power.ManaBarMask)
-    barLabels(bars,health,"HealthBarText");barLabels(power,power,"ManaBarText")
+    self:StyleNativeHealthLabels(id,bars,health);barLabels(power,power,"ManaBarText")
     for _,key in ipairs({"PlayerFrameHealthBarAnimatedLoss","PlayerFrameTempMaxHealthLoss","TempMaxHealthLoss"})do
         local loss=bars[key]
         if loss and type(loss)~="function"then
@@ -244,11 +324,24 @@ function H:ContainPortrait(frame)
 end
 function H:StylePartyMember(id,frame)
     if InCombatLockdown()or self.resting or styling[frame]then self:Queue(id);return end
+    local pet=id=="pet"
     local bars=frame.HealthBarContainer
-    local health=real(bars)and bars.HealthBar;local power=frame.ManaBar
+    local health=pet and PetFrameHealthBar or real(bars)and bars.HealthBar
+    local power=pet and PetFrameManaBar or frame.ManaBar
     if not real(health)or not real(power)then return end
     styling[frame]=true;frame.ruiUnitStyled=true;frame.ruiHealth=health;frame.ruiPower=power
-    frame:SetSize(224,76)
+    frame:SetSize(224,pet and 56 or 76)
+    if pet then
+        removeArt(PetFrameTexture)
+        removeArt(PetFrameFlash)
+        if PetAttackModeTexture then
+            PetAttackModeTexture:SetTexture("Interface\\Buttons\\WHITE8X8")
+            PetAttackModeTexture:ClearAllPoints()
+            PetAttackModeTexture:SetPoint("TOPLEFT",frame,"TOPLEFT",1,-1)
+            PetAttackModeTexture:SetPoint("TOPRIGHT",frame,"TOPRIGHT",-1,-1)
+            PetAttackModeTexture:SetHeight(2)
+        end
+    end
     for _,key in ipairs({"Texture","VehicleTexture","Flash"})do removeArt(frame[key])end
     if real(frame.PartyMemberOverlay)then removeArt(frame.PartyMemberOverlay.Status)end
     if frame.Portrait and type(frame.Portrait)~="function"then removeArt(frame.Portrait);frame.Portrait:SetAlpha(0)end
@@ -256,7 +349,7 @@ function H:StylePartyMember(id,frame)
         local background=CreateFrame("Frame",nil,frame,"BackdropTemplate")
         background:SetPoint("TOPLEFT",frame,"TOPLEFT",0,0);background:SetSize(224,56);background:SetFrameLevel(math.max(0,frame:GetFrameLevel()-1));background:EnableMouse(false)
         background:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1})
-        AUI:StyleSurface(background,"window",math.max(.72,ProjectRuthlessDB.questWorkspace.opacity or .52),id=="targettarget"and "Target"or "Party")
+        AUI:StyleSurface(background,"window",math.max(.72,ProjectRuthlessDB.questWorkspace.opacity or .52),(id=="targettarget"or pet)and "Target"or "Party")
         local r,g,b=AUI:AccentColor();background:SetBackdropBorderColor(r,g,b,.22)
         local line=background:CreateTexture(nil,"ARTWORK");line:SetColorTexture(r,g,b,.9);line:SetPoint("TOPLEFT",1,-1);line:SetPoint("TOPRIGHT",-1,-1);line:SetHeight(2)
         frame.ruiSurface=background
@@ -267,12 +360,31 @@ function H:StylePartyMember(id,frame)
         for _,bar in ipairs({health,power})do hooksecurefunc(bar,"SetStatusBarColor",function()self:PaintUnitBars(id,frame)end)end
 
     end
-    bars:ClearAllPoints();bars:SetPoint("TOPLEFT",frame,"TOPLEFT",54,-20);bars:SetSize(166,18)
-    health:ClearAllPoints();health:SetAllPoints(bars);keepFlat(health,health.HealthBarMask or bars.HealthBarMask)
-    power:ClearAllPoints();power:SetPoint("TOPLEFT",frame,"TOPLEFT",54,-42);power:SetSize(166,10);keepFlat(power,power.ManaBarMask)
-    barLabels(health,health,"CenterText");barLabels(power,power,"CenterText")
-    if real(bars.TempMaxHealthLoss)then bars.TempMaxHealthLoss:ClearAllPoints();bars.TempMaxHealthLoss:SetAllPoints(health);keepFlat(bars.TempMaxHealthLoss,bars.HealthBarMask)end
-    if frame.Name and type(frame.Name)~="function"then frame.Name:ClearAllPoints();frame.Name:SetPoint("TOPLEFT",frame,"TOPLEFT",54,-4);frame.Name:SetWidth(166);frame.Name:SetFontObject(GameFontNormalSmall);frame.Name:SetJustifyH("LEFT")end
+    health:ClearAllPoints()
+    if pet then
+        health:SetPoint("TOPLEFT",frame,"TOPLEFT",54,-20);health:SetSize(166,18)
+        keepFlat(health,PetFrameHealthBarMask)
+        if PetFrameHealthBarText then PetFrameHealthBarText:SetAlpha(0)end
+        self:StyleNativeHealthLabels("pet",health,health,frame)
+        if PetFrameManaBarText then
+            PetFrameManaBarText:ClearAllPoints()
+            PetFrameManaBarText:SetPoint("CENTER",power,"CENTER")
+        end
+        if PetHitIndicator then
+            PetHitIndicator:ClearAllPoints()
+            PetHitIndicator:SetPoint("CENTER",frame.ruiPortraitBox,"CENTER")
+        end
+    else
+        bars:ClearAllPoints();bars:SetPoint("TOPLEFT",frame,"TOPLEFT",54,-20);bars:SetSize(166,18)
+        health:SetAllPoints(bars);keepFlat(health,health.HealthBarMask or bars.HealthBarMask)
+        barLabels(health,health,"CenterText")
+        if real(bars.TempMaxHealthLoss)then bars.TempMaxHealthLoss:ClearAllPoints();bars.TempMaxHealthLoss:SetAllPoints(health);keepFlat(bars.TempMaxHealthLoss,bars.HealthBarMask)end
+    end
+    power:ClearAllPoints();power:SetPoint("TOPLEFT",frame,"TOPLEFT",54,-42);power:SetSize(166,10)
+    keepFlat(power,pet and PetFrameManaBarMask or power.ManaBarMask)
+    barLabels(power,power,"CenterText")
+    local name=pet and PetName or frame.Name
+    if name and type(name)~="function"then name:ClearAllPoints();name:SetPoint("TOPLEFT",frame,"TOPLEFT",54,-4);name:SetWidth(166);name:SetFontObject(GameFontNormalSmall);name:SetJustifyH("LEFT")end
     local overlay=frame.PartyMemberOverlay
     if real(overlay)then
         for _,key in ipairs({"LeaderIcon","GuideIcon","RoleIcon","Disconnect"})do
@@ -377,11 +489,9 @@ function H:CreatePartyRow(index,parent,unitOverride)
         local full=not event or not event:match("^UNIT_")or event=="UNIT_TARGET"or event=="UNIT_CONNECTION"
         if full or event=="UNIT_NAME_UPDATE"then row.Name:SetText(UnitName(unit))end
         if full or event=="UNIT_HEALTH"or event=="UNIT_MAXHEALTH"then
-        health:SetMinMaxValues(0,UnitHealthMax(unit));health:SetValue(UnitHealth(unit))
-        health.RightText:SetText(UnitHealth(unit))
-        if type(UnitHealthPercent)=="function"and CurveConstants and CurveConstants.ScaleTo100 then
-            health.LeftText:SetFormattedText("%.0f%%",UnitHealthPercent(unit,true,CurveConstants.ScaleTo100))
-        end
+        local current=UnitHealth(unit)
+        health:SetMinMaxValues(0,UnitHealthMax(unit));health:SetValue(current)
+        updateHealthLabels(health.LeftText,health.RightText,unit,current)
         end
         if full or event=="UNIT_POWER_UPDATE"or event=="UNIT_MAXPOWER"or event=="UNIT_DISPLAYPOWER"then
         power:SetMinMaxValues(0,UnitPowerMax(unit));power:SetValue(UnitPower(unit));power.RightText:SetText(UnitPower(unit))
@@ -476,10 +586,10 @@ function H:ApplySettings()
     self:LayoutParty()
 end
 function H:RefreshPortraits(unit)
-    for _,id in ipairs({"player","target","targettarget","party0","party1","party2","party3","party4"})do
+    for _,id in ipairs({"player","target","targettarget","pet","party0","party1","party2","party3","party4"})do
         local frame=self.registered[id];local model=frame and frame.ruiPortrait
-        local token=id=="party0"and "player"or id
-        if model and (not unit or unit==token)then
+        local token=id=="party0"and "player"or id=="pet"and frame and petDisplayUnit(frame)or id
+        if model and (not unit or unit==token or unit==id)then
             local access=AUI.modules.Accessibility
             local animated=not access or access:AnimatedPortraits()
             local box=frame.ruiPortraitBox
@@ -508,7 +618,30 @@ function H:Discover()
     if not AUI.isForever or InCombatLockdown()then self.needsDiscovery=true;return end
     self.needsDiscovery=nil
     for _,spec in ipairs(specs)do
-        for _,name in ipairs(spec[3])do local frame=_G[name];if real(frame)then self:Register(spec[1],spec[2],frame);if spec[1]=="player"or spec[1]=="target"then self:StyleUnit(spec[1],frame)end;break end end
+        local owned=AUI.modules.ForeverActionBars
+        local replacement=owned and owned:GetBar(spec[1])
+        if replacement then self:Register(spec[1],spec[2],replacement)
+        else
+        for _,name in ipairs(spec[3])do local frame=_G[name];if real(frame)then self:Register(spec[1],spec[2],frame);if spec[1]=="player"or spec[1]=="target"then self:StyleUnit(spec[1],frame)elseif spec[1]=="pet"then self:StylePartyMember("pet",frame)end;break end end
+        end
+    end
+end
+function H:QueueActionBars(restoreSettings)
+    for index=1,8 do local id="bar"..index;local frame=self.registered[id];if frame and frame.ruiActionBar~=true then self:Queue(id,restoreSettings)end end
+end
+function H:WatchNativeBarLayout()
+    local owned=AUI.modules.ForeverActionBars
+    if owned and owned.initialized then return end
+    local manager=EditModeManagerFrame
+    if not manager or self.watchedBarManager==manager then return end
+    self.watchedBarManager=manager
+    if type(manager.UpdateLayoutInfo)=="function"then
+        hooksecurefunc(manager,"UpdateLayoutInfo",function()self:QueueActionBars(true)end)
+    end
+    for _,method in ipairs({"UpdateRightActionBarPositions","UpdateBottomActionBarPositions","ApplyLayout"})do
+        if type(manager[method])=="function"then
+            hooksecurefunc(manager,method,function()self:QueueActionBars()end)
+        end
     end
 end
 function H:OnPlayerLogin()
@@ -517,12 +650,38 @@ function H:OnPlayerLogin()
     self:DiscoverParty()
     self:CreateTargetOfTarget()
     self:CreateCastBars()
+    self:WatchNativeBarLayout()
     local events=CreateFrame("Frame");self.events=events
-    for _,event in ipairs({"ADDON_LOADED","PLAYER_ENTERING_WORLD","PLAYER_REGEN_DISABLED","PLAYER_REGEN_ENABLED","PLAYER_TARGET_CHANGED","GROUP_ROSTER_UPDATE"})do events:RegisterEvent(event)end
-    events:RegisterUnitEvent("UNIT_DISPLAYPOWER","player","target","party1","party2","party3","party4")
-    events:RegisterUnitEvent("UNIT_MODEL_CHANGED","player","target","party1","party2","party3","party4");events:RegisterUnitEvent("UNIT_PORTRAIT_UPDATE","player","target","party1","party2","party3","party4")
-    events:SetScript("OnEvent",function(_,event,unit)
+    for _,event in ipairs({"ADDON_LOADED","PLAYER_ENTERING_WORLD","PLAYER_REGEN_DISABLED","PLAYER_REGEN_ENABLED","PLAYER_TARGET_CHANGED","GROUP_ROSTER_UPDATE","PLAYER_LEVEL_UP","ACTIONBAR_SLOT_CHANGED","ACTIONBAR_PAGE_CHANGED"})do events:RegisterEvent(event)end
+    events:RegisterEvent("ADDON_ACTION_BLOCKED")
+    events:RegisterEvent("ADDON_ACTION_FORBIDDEN")
+    events:RegisterUnitEvent("UNIT_DISPLAYPOWER","player","target","pet","party1","party2","party3","party4")
+    events:RegisterUnitEvent("UNIT_PET","player")
+    events:RegisterUnitEvent("UNIT_ENTERED_VEHICLE","player")
+    events:RegisterUnitEvent("UNIT_EXITED_VEHICLE","player")
+    events:RegisterEvent("PET_UI_UPDATE")
+    events:RegisterUnitEvent("UNIT_MODEL_CHANGED","player","target","pet","party1","party2","party3","party4");events:RegisterUnitEvent("UNIT_PORTRAIT_UPDATE","player","target","pet","party1","party2","party3","party4")
+    events:SetScript("OnEvent",function(_,event,unit,detail)
+        if event=="ADDON_ACTION_BLOCKED"or event=="ADDON_ACTION_FORBIDDEN"then
+            if not(issecretvalue and (issecretvalue(unit)or issecretvalue(detail))) and unit=="ProjectRuthless"and type(detail)=="string"then
+                ProjectRuthlessCharDB.lastBlockedHUDAction={time=date("%Y-%m-%d %H:%M:%S"),action=detail,event=event,
+                    stack=debugstack and debugstack(2,12,0)}
+            end
+            return
+        end
         if event=="ADDON_LOADED"and not self:IsRelevantAddon(unit)then return end
+        if event=="PLAYER_LEVEL_UP"or event=="ACTIONBAR_SLOT_CHANGED"or event=="ACTIONBAR_PAGE_CHANGED"then
+            self:QueueActionBars(event=="PLAYER_LEVEL_UP")
+            local style=AUI.modules.ForeverStyle
+            if style then style:Queue()end
+            return
+        end
+        if event=="UNIT_PET"or event=="PET_UI_UPDATE"or event=="UNIT_ENTERED_VEHICLE"or event=="UNIT_EXITED_VEHICLE"then
+            self:RefreshPortraits("pet")
+            local pet=self.registered.pet
+            if pet and pet.ruiUnitStyled==true then self:PaintUnitBars("pet",pet)end
+            return
+        end
         if event=="UNIT_DISPLAYPOWER"then local frame=self.registered[unit];if frame and frame.ruiUnitStyled then self:PaintUnitBars(unit,frame)end;return end
         if event=="PLAYER_TARGET_CHANGED"then self:RefreshPortraits("target");local frame=self.registered.target;if frame and frame.ruiUnitStyled then self:PaintUnitBars("target",frame)end;return end
         if event=="UNIT_MODEL_CHANGED"or event=="UNIT_PORTRAIT_UPDATE"then self:RefreshPortraits(unit);return end
@@ -530,7 +689,7 @@ function H:OnPlayerLogin()
         elseif event=="PLAYER_REGEN_ENABLED"then
             local revision=self.combatRevision or 0
             C_Timer.After(3,function()if revision~=(self.combatRevision or 0)or InCombatLockdown()then return end;self.resting=nil;if self.needsDiscovery then self:Discover();self:DiscoverParty();self:CreateTargetOfTarget()end;self:Drain()end)
-        elseif not InCombatLockdown()and not self.resting then self:Discover();self:DiscoverParty();self:CreateTargetOfTarget()else self.needsDiscovery=true end
+        elseif not InCombatLockdown()and not self.resting then self:WatchNativeBarLayout();self:Discover();self:DiscoverParty();self:CreateTargetOfTarget()else self.needsDiscovery=true end
     end)
 end
 
@@ -620,7 +779,7 @@ function H:CastEvent(unit,event,castGUID,castID)
     if event=="UNIT_SPELLCAST_START"or event=="UNIT_SPELLCAST_CHANNEL_START"then
         frame.activeCastID=not secret(castID)and castID or nil
         frame.activeCastGUID=not secret(castGUID)and castGUID or nil
-    elseif event=="PLAYER_TARGET_CHANGED"or event=="PLAYER_ENTERING_WORLD"then
+    elseif event=="PLAYER_TARGET_CHANGED"or event=="PLAYER_ENTERING_WORLD"or event=="UNIT_TARGET"then
         self:StopCast(unit)
     elseif frame.castActive~=true then return end
     self:RefreshCast(unit)
@@ -662,7 +821,10 @@ end
 function H:RefreshCast(unit)
     local frame=self.castFrames and self.castFrames["cast"..unit]
     if not frame then return end
-    if type(UnitExists)=="function"and not UnitExists(unit)then self:StopCast(unit);return end
+    if type(UnitExists)=="function"then
+        local exists=UnitExists(unit)
+        if not secret(exists)and not exists then self:StopCast(unit);return end
+    end
     local name,_,icon,startMs,endMs=UnitCastingInfo(unit)
     local channel=false
     if not secret(name)and name==nil then
@@ -691,10 +853,15 @@ end
 function H:CreateCastBars()
     if self.castFrames or type(UnitCastingInfo)~="function"or type(UnitChannelInfo)~="function"then return end
     self.castFrames={}
-    for _,unit in ipairs({"player","target","offhand"})do
+    for _,unit in ipairs({"player","target","targettarget","offhand"})do
         local id="cast"..unit
         local f=CreateFrame("Frame",nil,UIParent,"BackdropTemplate");self.castFrames[id]=f;f.swingFill=false
         f:SetSize(250,24);f:SetPoint("CENTER",UIParent,"CENTER",unit=="target"and 180 or -180,unit=="offhand"and -220 or -190)
+        if unit=="targettarget"then
+            f:SetSize(192,20);f:ClearAllPoints()
+            if self.targetOfTarget then f:SetPoint("TOPLEFT",self.targetOfTarget,"BOTTOMLEFT",0,-5)
+            else f:SetPoint("CENTER",UIParent,"CENTER",180,-250)end
+        end
         f:SetClampedToScreen(true);f:EnableMouse(false)
         f:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1})
         AUI:StyleSurface(f,"window",.8,"Cast")
@@ -703,7 +870,7 @@ function H:CreateCastBars()
         fill:SetStatusBarTexture("Interface\\Buttons\\WHITE8X8");fill:SetStatusBarColor(r,g,b,.7);f.fill=fill
         local icon=f:CreateTexture(nil,"OVERLAY");icon:SetPoint("TOPLEFT",1,-1);icon:SetPoint("BOTTOMLEFT",1,1);icon:SetWidth(22);f.icon=icon
         fill:ClearAllPoints();fill:SetPoint("TOPLEFT",f,"TOPLEFT",25,-1);fill:SetPoint("BOTTOMRIGHT",f,"BOTTOMRIGHT",-1,1)
-        if unit~="target"then
+        if unit=="player"or unit=="offhand"then
             local swingFill=CreateFrame("StatusBar",nil,f);swingFill:SetAllPoints(fill);swingFill:SetFrameLevel(fill:GetFrameLevel())
             swingFill:SetStatusBarTexture("Interface\\Buttons\\WHITE8X8");swingFill:SetStatusBarColor(r,g,b,.7);swingFill:Hide();f.swingFill=swingFill
         end
@@ -721,14 +888,15 @@ function H:CreateCastBars()
             end
             self:LayoutCastLatency(f)
         end)
-        f:Hide();self:Register(id,unit=="player"and "Player cast bar"or unit=="offhand"and "Off-hand attack bar"or "Target cast bar",f)
+        f:Hide();self:Register(id,unit=="player"and "Player cast bar"or unit=="offhand"and "Off-hand attack bar"or unit=="targettarget"and "Target of target cast bar"or "Target cast bar",f)
         local target=AUI.modules.LayoutEditor.targets[id]
         target.resize={minWidth=100,maxWidth=700,minHeight=14,maxHeight=80}
         local saved=ProjectRuthlessCharDB.layoutEditor.elements[id]
         if saved then AUI.modules.LayoutEditor:Apply(id,saved)end
         if unit~="offhand"then
         for _,event in ipairs({"UNIT_SPELLCAST_START","UNIT_SPELLCAST_STOP","UNIT_SPELLCAST_FAILED","UNIT_SPELLCAST_FAILED_QUIET","UNIT_SPELLCAST_INTERRUPTED","UNIT_SPELLCAST_DELAYED","UNIT_SPELLCAST_CHANNEL_START","UNIT_SPELLCAST_CHANNEL_UPDATE","UNIT_SPELLCAST_CHANNEL_STOP"})do f:RegisterUnitEvent(event,unit)end
-        if unit=="target"then f:RegisterEvent("PLAYER_TARGET_CHANGED")end
+        if unit=="target"or unit=="targettarget"then f:RegisterEvent("PLAYER_TARGET_CHANGED")end
+        if unit=="targettarget"then f:RegisterUnitEvent("UNIT_TARGET","target")end
         f:RegisterEvent("PLAYER_ENTERING_WORLD")
         if unit=="player"then
             for _,event in ipairs({"PLAYER_SWING","PLAYER_LEAVE_COMBAT","STOP_AUTOREPEAT_SPELL","PLAYER_DEAD","PLAYER_TARGET_CHANGED"})do f:RegisterEvent(event)end
@@ -757,5 +925,5 @@ function H:CreateCastBars()
             hooksecurefunc(native,"SetAlpha",hideArt);hideArt()
         end
     end
-    self:RefreshCast("player");self:RefreshCast("target")
+    self:RefreshCast("player");self:RefreshCast("target");self:RefreshCast("targettarget")
 end

@@ -185,6 +185,23 @@ local refreshes=0;book.Refresh=function()refreshes=refreshes+1 end
 for i=1,100 do book.events:Fire('OnEvent','ACTIONBAR_SLOT_CHANGED')end
 flush();assert(refreshes==1)
 book.frame:Hide();assert(book.events.events.ACTIONBAR_SLOT_CHANGED==nil)
+do
+ local oldSpellBook,oldBank,oldMode=C_SpellBook,Enum.SpellBookSpellBank,book.mode
+ local count,name=1,'Bite'
+ Enum.SpellBookSpellBank={Player=0,Pet=1}
+ C_SpellBook={HasPetSpells=function()return count end,GetSpellBookItemInfo=function(slot,bank)
+    assert(slot==1 and bank==1);return {name=name,spellID=3144,iconID=123,isPassive=false}
+ end}
+ book.mode='pet'
+ local pet=book:GetGroups()[1].items[1]
+ assert(pet.name=='Bite' and pet.spellBank==1 and pet.slotIndex==1)
+ name='Claw';book.events:Fire('OnEvent','UNIT_PET','player')
+ assert(book:GetGroups()[1].items[1].name=='Claw')
+ count=0;assert(#book:GetGroups()==0)
+ C_SpellBook,Enum.SpellBookSpellBank,book.mode=oldSpellBook,oldBank,oldMode
+ book.groupCache=nil
+ print('PASS: native pet bank, replacement pet with same count and dismissal')
+end
 print('PASS: spell groups reuse data; pins/settings/spell events invalidate correctly; false action-bar results cache; visible event bursts coalesce')
 assert(load(LOWHEALTHGLOW_SOURCE))('ProjectRuthless',AUI)
 local glow=AUI.modules.LowHealthGlow;local before=frames;glow:OnPlayerLogin();assert(not glow.frame and frames==before)
@@ -410,8 +427,8 @@ do
  ProjectRuthlessDB.general=oldSettings;ProjectRuthlessDB.questWorkspace.opacity=oldQuest
  local oldSlider,oldCheck,oldAction=foreverMenu.CreateSlider,foreverMenu.CreateCheckbox,foreverMenu.CreateAction
  local sliders,checks=0,0
- foreverMenu.CreateSlider=function(_,_,label,description,y,min,max,step,formatter,getter,setter)sliders=sliders+1;assert(min==0 and max==1 and step==.01 and type(getter())=='number');return {}end
- foreverMenu.CreateCheckbox=function()checks=checks+1 end;foreverMenu.CreateAction=function()end
+ foreverMenu.CreateSlider=function(_,_,label,description,y,min,max,step,formatter,getter,setter)sliders=sliders+1;assert(min==0 and max==1 and step==.01 and type(getter())=='number');return CreateFrame('Frame')end
+ foreverMenu.CreateCheckbox=function()checks=checks+1;return CreateFrame('Frame')end;foreverMenu.CreateAction=function()return CreateFrame('Button')end
  foreverMenu:CreateBackgroundOptions(foreverMenu.content);assert(sliders==#AUI.backgroundGroups+1 and checks==#AUI.backgroundGroups)
  foreverMenu.CreateSlider,foreverMenu.CreateCheckbox,foreverMenu.CreateAction=oldSlider,oldCheck,oldAction
  print('PASS: inherited quest opacity, background-only global/individual/zero/reset updates, profile roundtrip validation and complete scrollable background controls')

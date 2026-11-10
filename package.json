@@ -1,6 +1,6 @@
 {
   "name": "project-ruthless",
-  "version": "0.14.0-beta.79",
+  "version": "0.14.0-beta.102",
   "private": true,
   "description": "Local validation tools for the Project Ruthless World of Warcraft addon",
   "scripts": {
@@ -20,7 +20,21 @@
     "test:progression": "node tests/run-progression.cjs",
     "test:auras": "node tests/run-auras.cjs",
     "test:independence": "node tests/run-independence.cjs",
-    "test:live-checks": "node tests/run-live-checks.cjs"
+    "test:live-checks": "node tests/run-live-checks.cjs",
+    "test:actionbars": "node tests/run-actionbars.cjs",
+    "test:inventory": "node tests/run-inventory.cjs",
+    "test:auction": "node tests/run-auction-house.cjs",
+    "test:supplies-data": "python tools/build-quest-supplies.py --check",
+    "test:native-source": "node tools/check-native-source.cjs",
+    "test:quest-pickups": "node tests/run-quest-pickups.cjs",
+    "test:pickup-data": "python Assets/QuestPickups/build.py --check",
+    "test:travel": "node tests/run-travel.cjs",
+    "test:feature-guide": "node tests/run-feature-guide.cjs",
+    "test:macro-factory": "node tests/run-macro-factory.cjs",
+    "test:dungeon-journal": "node tests/run-dungeon-journal.cjs",
+    "test:dungeon-data": "python tools/build-dungeon-journal.py --check",
+    "test:professions": "node tests/run-professions.cjs",
+    "test:profession-data": "python tools/build-profession-data.py --check"
   },
   "devDependencies": {
     "fengari": "^0.1.5",

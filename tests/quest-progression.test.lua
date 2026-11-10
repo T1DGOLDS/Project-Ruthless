@@ -7,7 +7,9 @@ local frames={}
 local function frame(parent)
  local f={parent=parent,scripts={},shown=true,width=600,height=400,horizontal=0,vertical=0,text=""};frames[#frames+1]=f
  function f:SetSize(w,h)self.width=w;self.height=h end
- function f:GetWidth()return self.width end;function f:SetHeight(h)self.height=h end
+ function f:GetWidth()return self.width end;function f:GetHeight()return self.height end
+ function f:SetScale(scale)self.scale=scale end
+ function f:SetHeight(h)self.height=h end
  function f:SetPoint(...)self.point={...}end;function f:ClearAllPoints()end
  function f:SetText(text)self.text=text end;function f:GetStringHeight()return 180 end
  function f:SetScript(n,fn)self.scripts[n]=fn end
@@ -64,6 +66,35 @@ assert(not p:Layout({nodes={{id=1},{id=1}}}))
 p.selected=c.key;p.selectedQuest=166;combat=true;p:Render(q)
 assert(p.frame.shown and #p.buttons==11 and #p.edges>0 and not p.canvas.scripts.OnUpdate)
 assert(q.mapCopy.text:find('Gryan')and q.mapCopy.text:find('Sentinel Hill'))
+-- The complete diagram, including text-bearing child buttons, fits the viewport.
+local function fitted()
+ assert(p.zoom==nil and p.graph.scale==p.renderZoom)
+ assert(p.graph.width*p.renderZoom<=p.scroll.width-16+.001)
+ assert(p.graph.height*p.renderZoom<=p.scroll.height-16+.001)
+ assert(p.scroll:GetHorizontalScrollRange()==0 and p.scroll:GetVerticalScrollRange()==0)
+ for _,button in ipairs(p.buttons)do if button.shown then assert(button.parent==p.graph and button.width==218 and button.height==86)end end
+end
+fitted();assert(p.renderZoom<.65,'auto-fit must go below the previous hard zoom floor')
+local selected=p.selectedQuest
+p.scroll.width=1480;p.scroll.height=560
+for _=1,100 do p.scroll.scripts.OnSizeChanged()end
+assert(#pending==1,'viewport resize must coalesce')
+local queued=pending;pending={};for _,fn in ipairs(queued)do fn()end
+fitted();assert(p.selectedQuest==selected)
+local fit=p.renderZoom;p:ChangeGraphZoom(1)
+assert(p.zoom>fit and p.scroll:GetHorizontalScrollRange()>0)
+p.scroll.width=640;p.scroll.height=280;p.scroll.scripts.OnSizeChanged()
+assert(#pending==0 and p.zoom>fit,'manual zoom remains under user control')
+local fitButton;for _,control in ipairs(frames)do if control.parent==p.frame and control.text=='Fit tree'then fitButton=control end end
+assert(fitButton);fitButton.scripts.OnClick();fitted()
+-- A tall independent branch must fit height as well as width.
+local tall={key='test:tall',kind='dungeon',name='Tall test',nodes={},source='Test'}
+for id=1,20 do tall.nodes[#tall.nodes+1]={id=1000+id,title='Quest '..id,requires={}}end
+p.byKey[tall.key]=tall;p.selected=tall.key;p.selectedQuest=nil;p:Render(q);fitted()
+assert(p.renderZoom<.2)
+p.selected=c.key;p.selectedQuest=selected;p:Render(q);fitted()
+print('PASS: full quest tree auto-fits wide/tall viewports below the old zoom floor, scales node content with connectors, coalesces resize and preserves manual zoom/selection with a working Fit tree control')
+
 p.buttons[8].scripts.OnClick();assert(p.selectedQuest==214 and q.mapCopy.text:find('Red Silk'))
 local refreshes=q.refreshes;p.buttons[7].scripts.OnClick();assert(q.refreshes==refreshes) -- Browsing does not replace the active guide.
 p.frame.scripts.OnKeyDown(p.frame,'RIGHT');assert(p.selectedQuest==214 and p.frame.propagate==false)

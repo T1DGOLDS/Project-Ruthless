@@ -1,0 +1,17 @@
+# Minimap and travel
+
+RUI Settings → **Map & quests → Travel & gathering icons** contains Square minimap, Spirit healer locations, Estimated healer areas and Flight timer. All four preferences travel with a unified profile. The first, second and fourth default on; approximate healer boundaries default off.
+
+The minimap retains Blizzard's terrain, rotation, blips, quest areas, tracking menu, alerts and zoom controls. Its RUI border is one UI unit thick. Minimap trim and zone-header artwork follow the existing Blizzard art preference; square mode always omits the circular ring. Native config refreshes queue a cosmetic reapply, with changes deferred during combat. RUI minimap markers use square-edge clipping too.
+
+Spirit healer icons are passive and do not select a cemetery, resurrect, or modify native corpse/quest markers. A current release destination is cyan when supplied by the game while dead/ghost. Recorded positions may differ with phase. Existing native graveyard pins retain their own selection controls. Optional outlines estimate the nearest *recorded healer on the displayed map*, using physical map dimensions. They are not authoritative respawn boundaries, and do not account for every neighbouring-zone healer, terrain or server rule. Hover a RUI healer to isolate its outline. A lone recorded healer does not imply guaranteed map-wide coverage.
+
+The flight timer starts when the player is actually on a taxi. It shows **~ estimated remaining** from current upstream Classic reference durations where available, **Measured** for a previously completed matching flight, and **elapsed / Learning this route** for unknown flights. Speed-perk changes, route hops, faction and client build separate learned samples. Failed/cancelled boarding, interrupted trips, and reload-interrupted flights do not teach a false full duration. Completion requires a public native player position within 300 yards of the selected destination; missing location evidence simply leaves the route unlearned. Shared learned history is capped at 512 routes and is not exported as a profile preference. Reversing a route does not reuse the outgoing duration.
+
+Drag the timer directly or choose **Flight timer** in RUI Edit Mode. Its position is saved through the same profile layout as other RUI frames. The update driver runs five times a second only while boarding/flying; no timer polling runs while idle. Online source and licence details are in `Assets/Travel/README.md`; the addon itself never downloads data.
+
+Live acceptance remains required: zone/continent and ghost maps, phase-dependent healers, square/rotating minimap, art toggle, profile/reload, direct/multi-hop flights with/without Frequent Flier, landing/interruption/reload, and combat entry/exit. Local simulated results are not live combat approval.
+
+## Repair warning
+
+Combat & utilities / Equipment repairs offers a movable RUI durability warning (30% lowest equipped item by default), a configurable threshold, one-time reminders, optional sound and a ten-second drag preview. Position travels with unified profiles. Hover for equipped-item percentages. The native armour indicator remains the fallback for unavailable durability data and returns on disable. Reads are coalesced from equipment/durability/vendor/login events; no idle scan or automated repair purchase. Square minimap engine-rendered circular quest/archaeology/task rims are suppressed without changing their filled objective areas.

@@ -1,8 +1,17 @@
 # Project Ruthless
 
+Beta.95 retains the integrated auction Tools, Market prices and Settings into the movable native auction window. Drag the title bar; use the bottom tabs. Market prices offers a manual full snapshot with local search/sorting, age/partial labels and bounded indexing. The combined backpack includes the held reagent bag with the corrected current native initialization contract. Quest progression trees now auto-fit the map pane with a Fit tree control. Available map pickups also use native displayable-only catalogue discovery independently of the selected guide quest. See docs/AUCTION-HOUSE.md and docs/FOREVER-INVENTORY.md for scope and live checks.
+
+
 Ruthless UI is a standalone interface overhaul for WoW Forever (`Interface 16001`, game type `camelot`). It presents native game functions through a consistent charcoal interface, searchable settings and shared profiles.
 
-## Beta 79
+## Beta 88
+
+RUI now includes an auction companion with character-specific saved searches/default filters, favourites, shopping lists, unit-price history, saved selling preferences and undercut review. Buying, bidding, posting and cancellation use native controls/confirmations. The quest-supply tab indexes the readable client records and discloses unread encrypted records, with clearly labelled Classic reference candidates and explicit missing Forever data. Open `/pr auction`, or Map > Supplies, to plan outside the auction house. [Auction tools and coverage](docs/AUCTION-HOUSE.md).
+
+The RUI combat meter retains Forever's native live engine, fight/category selectors and clickable spell breakdowns, with RUI surfaces/rows and font controls. `/pr meter` enables it and explains the controls. [Combat meter](docs/COMBAT-METER.md). All new live acceptance gates remain pending.
+
+## Earlier beta 79 foundation
 
 The release-readiness follow-up adds `/pr checks`: six guided live checks, evidence notes and version/client-specific manual results included in the bug report. Nothing passes automatically. [Workflow and limits](docs/LIVE-CHECKS.md).
 
@@ -49,3 +58,7 @@ Native protected edits defer during combat. RUI does not calculate secret aura/c
 - [Changelog](CHANGELOG.md)
 
 Legacy Retail source remains preserved without new Retail feature development. Bundled dungeon reference assets/data retain their included attribution and licence notices; they are distinct from requiring another installed addon.
+
+Available quest map coverage now combines bundled current Forever pickup metadata with native offers. Use Map > Available to search the viewed zone/continent by quest, giver or ID; a guide is not required. Source, coverage gaps and pending live checks: [Quest availability](docs/QUEST-AVAILABILITY.md).
+
+Profession recipes, leveling, vendors, crafting estimates and shopping: [workspace guide](docs/PROFESSIONS.md).

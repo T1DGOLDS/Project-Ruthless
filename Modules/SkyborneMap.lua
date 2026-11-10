@@ -9,6 +9,8 @@ local function read(fn,...)
     return a,b
 end
 function L:Locations(mapID)
+    local settings=ProjectRuthlessDB and ProjectRuthlessDB.mapQuests
+    if settings and settings.showSkyborne==false then return {}end
     local _,race=read(UnitRace,"player")
     if race~="Skyborne"then return {}end
     local faction=read(UnitFactionGroup,"player")

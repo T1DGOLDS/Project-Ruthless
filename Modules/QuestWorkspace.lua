@@ -193,8 +193,35 @@ function Q:UpdatePreparation()
     self.lastPrepNotice=city and key or nil
     return changed
 end
+local function ManualQuestDialog()
+    return InCombatLockdown() or Call(IsShiftKeyDown)==true
+end
+function Q:AutoAccept()
+    if not ProjectRuthlessDB.questWorkspace.autoAccept or ManualQuestDialog()then return end
+    if Call(QuestFlagsPVP)~=false or Call(QuestGetAutoAccept)==true or Call(QuestIsFromAreaTrigger)==true then return end
+    if QuestFrame and QuestFrame.autoQuest then return end
+    if QuestFrameAcceptButton and Call(QuestFrameAcceptButton.IsEnabled,QuestFrameAcceptButton)==false then return end
+    if AcceptQuest then AcceptQuest()end
+end
+function Q:AutoGossip()
+    if ManualQuestDialog() or not C_GossipInfo then return end
+    local settings=ProjectRuthlessDB.questWorkspace
+    local active=Call(C_GossipInfo.GetActiveQuests)
+    local available=Call(C_GossipInfo.GetAvailableQuests)
+    if type(active)~="table"or type(available)~="table"then return end
+    -- Leave a choice of quests or services to the player.
+    local options=Call(C_GossipInfo.GetOptions)
+    if type(options)~="table" or #options>0 or #active+#available~=1 then return end
+    local turnIn=active[1]
+    local offer=available[1]
+    if settings.autoHandIn and turnIn and turnIn.isComplete==true and Public(turnIn.questID) and type(turnIn.questID)=="number" then
+        Call(C_GossipInfo.SelectActiveQuest,turnIn.questID)
+    elseif settings.autoAccept and offer and Public(offer.questID) and type(offer.questID)=="number" then
+        Call(C_GossipInfo.SelectAvailableQuest,offer.questID)
+    end
+end
 function Q:AutoHandIn(event)
-    if not ProjectRuthlessDB.questWorkspace.autoHandIn or InCombatLockdown()then return end
+    if not ProjectRuthlessDB.questWorkspace.autoHandIn or ManualQuestDialog()then return end
     if event=="QUEST_PROGRESS" and Call(IsQuestCompletable)==true then
         if CompleteQuest then CompleteQuest()end
     elseif event=="QUEST_COMPLETE" then
@@ -242,12 +269,8 @@ function Q:SyncMapObjective()
     if type(C_QuestLog.GetLogIndexForQuestID)=="function"and not Call(C_QuestLog.GetLogIndexForQuestID,id)then return end
     local locations=AUI.modules.QuestLocations
     if locations then locations.selectedQuest=id end
-    if InCombatLockdown()then self.pendingMapObjective=true;return end
-    self.pendingMapObjective=nil
-    local selected=Call(C_QuestLog.GetSelectedQuest)
-    local tracked=Call(C_SuperTrack and C_SuperTrack.GetSuperTrackedQuestID)
-    if selected~=id and (selected~=nil or self.syncedMapObjective~=id)then Call(C_QuestLog.SetSelectedQuest,id)end
-    if tracked~=id and (tracked~=nil or self.syncedMapObjective~=id)then Call(C_SuperTrack and C_SuperTrack.SetSuperTrackedQuestID,id)end
+    -- Keep passive guide refreshes on RUI's side of the map. Super-tracking
+    -- fires a Blizzard objective-tracker update that can read restricted auras.
     self.syncedMapObjective=id
 end
 function Q:SetWaypoint(id)
@@ -258,7 +281,11 @@ function Q:SetWaypoint(id)
         end)
         self:Refresh();return
     end
-    Call(C_SuperTrack and C_SuperTrack.SetSuperTrackedQuestID,id)
+    if not AUI.isForever then
+        Call(C_SuperTrack and C_SuperTrack.SetSuperTrackedQuestID,id)
+    elseif Call(C_QuestLog.GetLogIndexForQuestID,id) then
+        Call(C_QuestLog.SetSelectedQuest,id)
+    end
     local map,x,y=Call(C_QuestLog.GetNextWaypoint,id)
     if map and x and y and UiMapPoint and C_Map.SetUserWaypoint then
         local point=UiMapPoint.CreateFromCoordinates(map,x,y)
@@ -281,13 +308,15 @@ function Q:Collect()
                 for _,objective in ipairs(Call(C_QuestLog.GetQuestObjectives,id) or {}) do
                     if Public(objective.text) and objective.text then lines[#lines+1]=objective.text end
                 end
-                entries[#entries+1]={id=id,title=info.title,level=Public(info.level) and info.level or nil,elite=Public(info.isElite) and info.isElite or nil,complete=complete==true,distance=type(distance)=="number" and distance or math.huge,detail=complete and "Ready to turn in" or table.concat(lines," • ")}
+                entries[#entries+1]={id=id,title=info.title,level=Public(info.level) and info.level or nil,elite=Public(info.isElite) and info.isElite or nil,complete=complete==true,watched=Call(C_QuestLog.GetQuestWatchType,id)~=nil,distance=type(distance)=="number" and distance or math.huge,detail=complete and "Ready to turn in" or table.concat(lines," • ")}
             end
         end
     end
     table.sort(entries,function(a,b)
+        if a.id==b.id then return false end
         if a.id==self.selected then return true end
         if b.id==self.selected then return false end
+        if a.watched~=b.watched then return a.watched end
         if a.distance~=b.distance then return a.distance<b.distance end
         return a.id<b.id
     end)
@@ -320,9 +349,13 @@ function Q:CycleGuideSource()
     local sources=self:GuideSources();local current=ProjectRuthlessDB.questWorkspace.guideSource or "RUI";local nextIndex=1
     for i,source in ipairs(sources)do if source.id==current then nextIndex=i%#sources+1;break end end
     ProjectRuthlessDB.questWorkspace.guideSource=sources[nextIndex].id
-    self.manualFocus=nil;self.manualPickup=nil;self.guide=nil;self:Refresh()
+    self.manualTrackedQuest=nil;self.manualFocus=nil;self.manualPickup=nil;self.guide=nil;self:Refresh()
 end
 function Q:ReadGuide()
+    if self.manualTrackedQuest then
+        for _,entry in ipairs(self.entries or {})do if entry.id==self.manualTrackedQuest then return end end
+        self.manualTrackedQuest=nil
+    end
     local progression=AUI.modules.QuestProgression
     local current=progression and progression:Guide()
     if current then return current end
@@ -476,7 +509,7 @@ function Q:Refresh(skipUnchanged)
     if not self.frame or not self.frame:IsShown() then return end
     local entries=self:Collect()
     local parts={}
-    for _,entry in ipairs(entries)do parts[#parts+1]=tostring(entry.id)..":"..tostring(entry.complete)..":"..tostring(entry.title)..":"..tostring(entry.detail)..":"..tostring(entry.level)..":"..tostring(entry.elite)end
+    for _,entry in ipairs(entries)do parts[#parts+1]=tostring(entry.id)..":"..tostring(entry.complete)..":"..tostring(entry.title)..":"..tostring(entry.detail)..":"..tostring(entry.level)..":"..tostring(entry.elite)..":"..tostring(entry.watched)end
     local signature=table.concat(parts,"|")
     if skipUnchanged and signature==self.entriesSignature and self.manualPickup==self.appliedManualPickup then self:RenderQuestItems();if AUI.modules.QuestProgression or self:UpdatePreparation()then self:LayoutContent()end;return end
     if signature~=self.entriesSignature then self.entries=entries;self.entriesSignature=signature end
@@ -497,7 +530,7 @@ function Q:Refresh(skipUnchanged)
     self.currentQuestID=current and current.id;self.currentTitle:SetText(current and self:QuestTitle(current) or "No active quest")
     self.phase:SetText(current and (current.complete and "TURN IN" or "CURRENT OBJECTIVE") or "QUESTS")
     self.summary:SetText(current and (current.detail~="" and current.detail or "Check the quest log for objective details.") or "Accept a quest to start.")
-    self.offset=math.max(0,math.min(self.offset,math.max(0,#nearby-3)))
+    if not AUI.modules.QuestProgression then self.offset=math.max(0,math.min(self.offset,math.max(0,#nearby-3)))end
     for i,row in ipairs(self.rows) do
         local entry=nearby[self.offset+i]; row.entry=entry; row:SetShown(entry~=nil)
         if entry then
@@ -516,12 +549,34 @@ function Q:Refresh(skipUnchanged)
     if self.mapPanel and self.mapPanel:IsVisible() then self:RenderMapPage() end
 end
 
+-- A quest can have a native map marker without a global next-waypoint result.
+function Q:NativeLocalQuestPoint(id,map)
+    if not map then return end
+    local function coords(x,y)
+        return Public(x)and Public(y)and type(x)=="number"and type(y)=="number"and x>=0 and x<=1 and y>=0 and y<=1 and (x~=0 or y~=0)
+    end
+    local now=Call(GetTime) or 0
+    local cached=self.nativeLocalQuestPoint
+    if cached and cached.id==id and cached.map==map and now<cached.expires then return cached.x,cached.y end
+    local x,y=Call(C_QuestLog.GetNextWaypointForMap,id,map)
+    if not coords(x,y)then
+        x,y=nil,nil
+        for _,pin in ipairs(Call(C_QuestLog.GetQuestsOnMap,map)or {})do
+            if Public(pin)and Public(pin.questID)and pin.questID==id and Public(pin.isQuestStart)and pin.isQuestStart~=true and coords(pin.x,pin.y)then
+                x,y=pin.x,pin.y;break
+            end
+        end
+    end
+    self.nativeLocalQuestPoint={id=id,map=map,x=x,y=y,expires=now+2}
+    return x,y
+end
+
 function Q:Navigate()
     if not self.frame then return end
     self.arrow:Hide()
     if self.guide and self:GuideNavigation() and self.arrow:IsShown() then return end
     if self.guide and self.guide.source=="RUI"and not self.guide.id then self.distance:SetText(self.guide.phase);self.destination:SetText(self.guide.instruction);return end
-    local targetID=self.guide and self.guide.source=="RUI"and self.guide.id or self.selected
+    local targetID=self.guide and self.guide.id or self.selected
     if not targetID then self.destination:SetText("Select a quest destination");self.distance:SetText("");return end
     local title=Call(C_QuestLog.GetTitleForQuestID,targetID) or "Quest destination"
     local waypointText=Call(C_QuestLog.GetNextWaypointText,targetID)
@@ -529,6 +584,10 @@ function Q:Navigate()
     local map,x,y=Call(C_QuestLog.GetNextWaypoint,targetID)
     if self.manualPickup and self.manualPickup.id==targetID and self.manualPickup.point then local p=self.manualPickup.point;map,x,y=p.map,p.x,p.y;self.destination:SetText(p.name) end
     local playerMap=Call(C_Map.GetBestMapForUnit,"player")
+    if not map or not x or not y then
+        local localX,localY=self:NativeLocalQuestPoint(targetID,playerMap)
+        if localX then map,x,y=playerMap,localX,localY end
+    end
     if (not map or not x or not y) and AUI.modules.QuestLocations then
         local point=AUI.modules.QuestLocations:Destination(self.guide and self.guide.id or self.selected)
         if point then map,x,y=point.map,point.x,point.y;self.destination:SetText(point.name)end
@@ -555,18 +614,57 @@ function Q:Navigate()
     if distance>=25 and (not ProjectRuthlessDB or ProjectRuthlessDB.questWorkspace.showArrow~=false) then self.arrow:SetRotation(math.atan2(-dx,-dy)-facing); self.arrow:Show() end
 end
 
+function Q:RenderQuestActions()
+    self:SetMapBack("‹ Quest log",function()self:ReturnMapPage("Quests")end)
+    self.mapHeading:SetText("Quest actions")
+    self.mapScroll:ClearAllPoints();self.mapScroll:SetPoint("TOPLEFT",12,-42);self.mapScroll:SetPoint("BOTTOMRIGHT",-30,12)
+    local title=Call(C_QuestLog.GetTitleForQuestID,self.selected)or self.guide and self.guide.quest or "No current quest selected"
+    local lines={title,"Actions affect the current quest or guide. Skipping never abandons a quest."}
+    if self.greyReview then
+        lines={"Review before abandoning","Quest progress and associated quest items may be lost."}
+        for _,entry in ipairs(self.greyReview)do lines[#lines+1]=entry.title end
+        if #self.greyReview==0 then lines[#lines+1]="No abandonable grey quests."end
+    end
+    self.mapCopy:SetText(table.concat(lines,"\n\n"))
+    local offset=math.max(96,(Call(self.mapCopy.GetStringHeight,self.mapCopy)or 80)+16)
+    local indices={1,2,3}
+    if self.guide then
+        local own=self.guide.source=="RUI"
+        self.mapControls[8]:SetText(own and "Previous guide chapter"or "Previous guide step")
+        self.mapControls[9]:SetText(own and "Next guide chapter"or "Next guide step")
+        self.mapControls[10]:SetText(own and "Current guide chapter"or "Guide step options")
+        for i=8,11 do indices[#indices+1]=i end
+    end
+    self.mapControls[16]:SetText(self.greyReview and #self.greyReview>0 and ("Confirm abandon · "..#self.greyReview.." grey quests")or "Review grey quests to abandon")
+    if not self.greyReview or #self.greyReview>0 then indices[#indices+1]=16 end
+    for _,i in ipairs(indices)do
+        local button=self.mapControls[i];button:SetParent(self.mapContent);button:ClearAllPoints();button:SetPoint("TOPLEFT",0,-offset);button:SetSize(Call(self.mapContent.GetWidth,self.mapContent)or 300,30);button:Show();offset=offset+38
+    end
+    self.mapContent:SetHeight(offset+12)
+end
 function Q:RenderMapPage()
     if not self.mapCopy then return end
     self:LayoutMap()
     local page=self.mapPage or "Quests"
+    self:SetMapBack("‹ Back",function()self:BackMapPage()end)
+    if AUI.isForever and page=="Settings"then self.mapPage="Quests";self:SyncMapPage();AUI.modules.Menu:Show("mapquests");return end
+    -- Clear every outgoing surface before any specialised renderer returns.
+    -- Otherwise guide/progression rows or footer actions can cover the next page.
+    for _,control in ipairs(self.mapControls or {})do control:Hide()end
+    for _,button in ipairs(self.dungeonMapButtons or {})do button:Hide();if button.share and type(button.share)~="function"then button.share:Hide()end end
+    if self.mapCopy then self.mapCopy:SetText("")end
+    local availability=AUI.modules.QuestAvailability
+    if availability and page~="Available"then availability:HideBrowser()end
     local atlas=AUI.modules.DungeonAtlas
     if atlas then atlas:Hide()end
     local progression=AUI.modules.QuestProgression
     if progression then progression:Hide()end
     local authored=AUI.modules.AuthoredGuides
     if authored then authored:HideBrowser()end
+    if AUI.isForever and page=="Tools"then self:RenderQuestActions();return end
     if progression and page=="Dungeons"then progression:Render(self);return end
     if authored and (page=="Library"or page=="Chapters")then authored:RenderBrowser(self,page);return end
+    if page=="Professions"and AUI.modules.Professions then AUI.modules.Professions:RenderMap(self);return end
     if page=="Dungeon atlas"and atlas then
         for _,control in ipairs(self.mapControls or {})do control:Hide()end
         for _,button in ipairs(self.dungeonMapButtons or {})do button:Hide();if button.share and type(button.share)~="function"then button.share:Hide()end end
@@ -576,12 +674,14 @@ function Q:RenderMapPage()
     self.mapContent:SetHeight(1500)
     self.mapHeading:SetText(page)
     for _,tab in ipairs(self.mapTabs or {})do
-        local r,g,b=Accent();tab:SetBackdropBorderColor(r,g,b,tab.page==page and .9 or .22)
-        if AUI.PaintBackground then AUI:PaintBackground(tab,"Map",.025,.028,.035)else tab:SetBackdropColor(.025,.028,.035,tab.page==page and 1 or .8)end
+        local selected=tab.page==self:MapNavigationPage(page)
+        local r,g,b=Accent();tab:SetBackdropBorderColor(r,g,b,selected and .9 or .22)
+        if AUI.PaintBackground then AUI:PaintBackground(tab,"Map",.025,.028,.035)else tab:SetBackdropColor(.025,.028,.035,selected and 1 or .8)end
     end
-    if self.mapScroll then self.mapScroll:ClearAllPoints();self.mapScroll:SetPoint("TOPLEFT",12,-42);self.mapScroll:SetPoint("BOTTOMRIGHT",-30,(page=="Tools"and 240 or page=="Settings"and 200) or false or (page=="Chapters"or page=="Library"or page=="Professions")and 82 or 12) end
+    if self.mapScroll then self.mapScroll:ClearAllPoints();self.mapScroll:SetPoint("TOPLEFT",12,-42);self.mapScroll:SetPoint("BOTTOMRIGHT",-30,(page=="Tools"and 240 or page=="Settings"and 200 or page=="Supplies"and 82) or false or (page=="Chapters"or page=="Library"or page=="Professions")and 82 or 12) end
     for _,button in ipairs(self.dungeonMapButtons or {})do button:Hide()end
-    if page=="Dungeons" then
+    if page=="Available"and availability then availability:Render(self);return
+    elseif page=="Dungeons" then
         self.mapCopy:SetText("")
         local locations=AUI.modules.QuestLocations
         local catalog=locations and locations:DungeonCatalog(self) or {}
@@ -628,6 +728,7 @@ function Q:RenderMapPage()
     else
         self.mapCopy:SetText("Original 1–20 guides are being authored. No guide chapters are installed yet.\n\nYour active quests remain available in the Quests tab.")
     end
+    if AUI.isForever and page~="Dungeons"then self.mapContent:SetHeight(math.max(220,(Call(self.mapCopy.GetStringHeight,self.mapCopy)or 200)+20))end
     for _,control in ipairs(self.mapControls) do control:Hide() end
     if page=="Settings" then
         for index,i in ipairs({4,5,6,7,12,14,13})do self.mapControls[i]:ClearAllPoints();self.mapControls[i]:SetPoint("BOTTOMLEFT",12,10+(7-index)*25)end
@@ -649,6 +750,10 @@ function Q:RenderMapPage()
             self.mapCopy:SetText(table.concat(lines,"\n\n"))
         end
     elseif page=="Settings" then for i=4,7 do self.mapControls[i]:Show() end;self.mapControls[12]:Show();self.mapControls[13]:Show();self.mapControls[14]:Show();self.mapControls[15]:Show()
+    elseif page=="Supplies"then
+        if self.mapControls[17]then self.mapControls[17]:ClearAllPoints();self.mapControls[17]:SetPoint("BOTTOMLEFT",12,10);self.mapControls[17]:Show()end
+        local map=Call(WorldMapFrame.GetMapID,WorldMapFrame);local maps=ProjectRuthlessDB.questWorkspace.prepMaps or {}
+        self.mapControls[15]:ClearAllPoints();self.mapControls[15]:SetPoint("BOTTOMLEFT",12,40);self.mapControls[15]:SetText("Prepare this zone: "..(maps[map]and "On"or "Off"));self.mapControls[15]:Show()
     elseif self.guide and (page=="Chapters" or page=="Library" or page=="Professions") then self.mapControls[11]:Show() end
     if self.guide and page=="Tools" then
         local own=self.guide.source=="RUI"
@@ -693,13 +798,42 @@ function Q:OpenDungeonMenu()
     if self.mapPanel then self:SelectMapPage("Dungeons")end
 end
 
+function Q:MapNavigationPage(page)
+    return (page=="Chapters"or page=="Professions")and "Library"or page=="Tools"and "Quests"or page
+end
+function Q:SetMapBack(label,callback)
+    if not self.mapBack then return end
+    self.mapBack:SetText("‹ Back");self.mapBack.destination=label or "Previous page";self.mapBack:SetScript("OnClick",callback)
+    self.mapBack:SetShown(callback~=nil and self.mapPage~="Quests")
+end
+function Q:BackMapPage()
+    local history=self.mapHistory or {}
+    local destination=table.remove(history)or "Quests"
+    self.mapHistoryNavigating=true;self:SelectMapPage(destination);self.mapHistoryNavigating=nil
+end
+function Q:ReturnMapPage(page)
+    local history=self.mapHistory or {}
+    if history[#history]==page then table.remove(history)end
+    self.mapHistoryNavigating=true;self:SelectMapPage(page);self.mapHistoryNavigating=nil
+end
 function Q:SelectMapPage(page)
+    if AUI.isForever and page=="Settings"then AUI.modules.Menu:Show("mapquests");return end
+    if self.mapPage~=page and not self.mapHistoryNavigating then
+        self.mapHistory=self.mapHistory or {};self.mapHistory[#self.mapHistory+1]=self.mapPage or "Quests"
+        if #self.mapHistory>20 then table.remove(self.mapHistory,1)end
+    end
+    if self.mapPage~=page and self.mapScroll then
+        if self.mapScroll.ScrollTo then self.mapScroll:ScrollTo(0,true)else self.mapScroll:SetVerticalScroll(0)end
+    end
     if page~="Tools"then self.greyReview=nil end
     self.mapPage=page;self:SyncMapPage()
+    if self.mapBack and page=="Quests"then self.mapBack:Hide()end
     if page=="Quests"and AUI.modules.DungeonAtlas then AUI.modules.DungeonAtlas:Hide()end
     if page~="Quests"then self:RenderMapPage()end
 end
 function Q:SyncMapPage()
+    local availability=AUI.modules.QuestAvailability
+    if availability and self.mapPage~="Available"then availability:HideBrowser()end
     local progression=AUI.modules.QuestProgression
     if progression and (self.mapPage~="Dungeons"or not ProjectRuthlessDB.questWorkspace.enabled)then progression:Hide()end
     if self.syncingMap or not self.mapPanel then return end
@@ -735,31 +869,63 @@ function Q:SyncMapPage()
         end
     end
     for _,tab in ipairs(self.mapTabs or {})do
-        local r,g,b=Accent();tab:SetBackdropBorderColor(r,g,b,tab.page==(self.mapPage or "Quests")and .9 or .22)
+        local r,g,b=Accent();tab:SetBackdropBorderColor(r,g,b,tab.page==self:MapNavigationPage(self.mapPage or "Quests")and .9 or .22)
     end
     self:LayoutMap()
     self.syncingMap=nil
 end
-function Q:LayoutMap()
-    if self.layingOutMap or not self.mapTabBar or InCombatLockdown()then return end
-    self.layingOutMap=true
+-- Restoring saved geometry is separate from native quest/data refreshes. Never
+-- infer that the map and every descendant share the same protected status.
+local function MapGeometryAllowed(frame)
+    return frame and (not InCombatLockdown() or Call(frame.IsProtected,frame)==false)
+end
+function Q:LayoutMapViewport()
     local map=WorldMapFrame
     local width=Call(map.GetWidth,map)or 944
     local sidebar=math.max(340,math.min(420,width*.34))
-    self.mapTabBar:SetWidth(sidebar)
+    if MapGeometryAllowed(self.mapTabBar)then self.mapTabBar:SetWidth(sidebar)end
     local column=(sidebar-20)/3
-    for i,tab in ipairs(self.mapTabs or {})do
-        tab:SetWidth(column-4);tab:ClearAllPoints()
-        tab:SetPoint("TOPLEFT",self.mapTabBar,"TOPLEFT",8+((i-1)%3)*column,-8-math.floor((i-1)/3)*26)
+    local tabHeight=22
+    if AUI.isForever then
+        for _,tab in ipairs(self.mapTabs or {})do
+            if MapGeometryAllowed(tab)then tab:SetWidth(column-4)end
+            local font=Call(tab.GetFontString,tab)
+            if font and type(font)~="function"then tabHeight=math.max(tabHeight,(Call(font.GetStringHeight,font)or 14)+8)end
+        end
     end
-    -- Keep the map viewport separate even when native quest visibility changes.
+    for i,tab in ipairs(self.mapTabs or {})do
+        if MapGeometryAllowed(tab)then
+            tab:SetWidth(column-4);if AUI.isForever then tab:SetHeight(tabHeight)end;tab:ClearAllPoints()
+            tab:SetPoint("TOPLEFT",self.mapTabBar,"TOPLEFT",8+((i-1)%3)*column,-8-math.floor((i-1)/3)*(tabHeight+4))
+        end
+    end
+    local utilityTop=8+2*(tabHeight+4);local utilityHeight=20
+    for i,button in ipairs(self.mapUtilities or {})do
+        if MapGeometryAllowed(button)then
+            button:ClearAllPoints();button:SetPoint("TOPLEFT",self.mapTabBar,"TOPLEFT",8+(i-1)*(sidebar-16)/2,-utilityTop);button:SetWidth((sidebar-16)/2-4)
+            local font=Call(button.GetFontString,button)
+            if font and type(font)~="function"then utilityHeight=math.max(utilityHeight,(Call(font.GetStringHeight,font)or 12)+8)end
+        end
+    end
+    for _,button in ipairs(self.mapUtilities or {})do if MapGeometryAllowed(button)then button:SetHeight(utilityHeight)end end
+    if AUI.isForever and MapGeometryAllowed(self.mapTabBar)then self.mapTabBar:SetHeight(utilityTop+utilityHeight+4)end
     local spacer=map.TitleCanvasSpacerFrame
-    if spacer and type(spacer)~="function"then spacer:SetPoint("BOTTOMRIGHT",map,"TOPRIGHT",-sidebar-20,-60)end
+    if spacer and type(spacer)~="function"and MapGeometryAllowed(spacer)then spacer:SetPoint("BOTTOMRIGHT",map,"TOPRIGHT",-sidebar-20,-60)end
     local container=map.ScrollContainer
-    if container and type(container)~="function"and container.ClearAllPoints then
+    if container and type(container)~="function"and container.ClearAllPoints and MapGeometryAllowed(container)then
         container:ClearAllPoints();container:SetPoint("TOPLEFT",map,"TOPLEFT",8,-62)
         container:SetPoint("BOTTOMRIGHT",map,"BOTTOMRIGHT",-sidebar-20,12)
     end
+    return sidebar
+end
+function Q:LayoutMap()
+    if self.layingOutMap or not self.mapTabBar then return end
+    self.layingOutMap=true
+    local map=WorldMapFrame
+    local sidebar=self:LayoutMapViewport()
+    -- Combat browsing needs only bounds/viewport restoration. Leave the native
+    -- quest details, layout callbacks and data lifecycle to Blizzard until safe.
+    if InCombatLockdown()then self.layingOutMap=nil;return end
     local log=self.nativeMapLog
     local quests=log and log.QuestsFrame
     if quests and type(quests)~="function"then
@@ -793,14 +959,19 @@ function Q:LayoutMap()
     end
     if self.mapContent then self.mapContent:SetWidth(sidebar-44)end
     if self.mapCopy then self.mapCopy:SetWidth(sidebar-44)end
-    for _,control in ipairs(self.mapControls or {})do control:SetWidth(sidebar-24)end
+    if self.mapHeading and self.mapBack then self.mapHeading:SetWidth(sidebar-112)end
+    for _,control in ipairs(self.mapControls or {})do control:SetWidth(sidebar-(Call(control.GetParent,control)==self.mapContent and 44 or 24))end
     for _,button in ipairs(self.dungeonMapButtons or {})do button:SetWidth(sidebar-44)end
     if type(map.OnFrameSizeChanged)=="function"then map:OnFrameSizeChanged()end
     self.layingOutMap=nil
 end
 function Q:ApplyMapScale()
-    if not WorldMapFrame or not ProjectRuthlessDB.questWorkspace.enabled or InCombatLockdown()then return end
+    if not WorldMapFrame or not ProjectRuthlessDB.questWorkspace.enabled then return end
     if self.applyingMapState then return end
+    if InCombatLockdown()then
+        AUI:AfterCombat("mapGeometry",function()self:QueueMapRestore()end)
+        if not MapGeometryAllowed(WorldMapFrame)then return end
+    end
     self.applyingMapState=true
     local scale=ProjectRuthlessCharDB.mapScale
     if type(scale)=="number"and scale>=.55 and scale<=1.5 then WorldMapFrame:SetScale(scale)end
@@ -817,7 +988,7 @@ function Q:QueueMapRestore()
     self.mapRestoreQueued=true
     C_Timer.After(0,function()
         self.mapRestoreQueued=nil
-        if WorldMapFrame and WorldMapFrame:IsShown()and not InCombatLockdown()and not (self.mapResize and self.mapResize.resizing==true)then self:ApplyMapScale()end
+        if WorldMapFrame and WorldMapFrame:IsShown()and not (self.mapResize and self.mapResize.resizing==true)then self:ApplyMapScale()end
     end)
 end
 function Q:InstallMapPersistence()
@@ -1103,17 +1274,32 @@ function Q:InstallMap()
         nativeLog:HookScript("OnShow",function()self:SyncMapPage()end)
     end
     self.mapTabs={}
-    for i,name in ipairs({"Quests","Chapters","Library","Professions","Tools","Settings","Supplies","Dungeons","Dungeon atlas"}) do
-        local tab=AUI:CreateButton(tabs); tab:SetSize(90,22); tab:SetPoint("TOPLEFT",8+((i-1)%3)*94,-8-math.floor((i-1)/3)*26); tab:SetText(name=="Dungeons"and AUI.modules.QuestProgression and "Progression"or name);tab.page=name;self.mapTabs[#self.mapTabs+1]=tab
+    local pages={"Quests","Chapters","Library","Professions","Tools","Settings","Supplies","Dungeons","Dungeon atlas"}
+    if AUI.isForever then pages={"Quests","Available","Library","Dungeons","Supplies","Dungeon atlas"}end
+    local labels={Quests="Quest log",Library="Guides",Dungeons="Progression"}
+    for i,name in ipairs(pages) do
+        local tab=AUI:CreateButton(tabs); tab:SetSize(90,22); tab:SetPoint("TOPLEFT",8+((i-1)%3)*94,-8-math.floor((i-1)/3)*26); tab:SetText(AUI.isForever and (labels[name]or name)or name);tab.page=name;self.mapTabs[#self.mapTabs+1]=tab
         tab:SetScript("OnClick",function()self:SelectMapPage(name)end)
     end
+    if AUI.isForever then
+        self.mapUtilities={}
+        for i,spec in ipairs({{"Quest actions",function()self:SelectMapPage("Tools")end},{"Map settings",function()AUI.modules.Menu:Show("mapquests")end}})do
+            local button=AUI:CreateButton(tabs);button:SetSize(138,20);button:SetPoint("TOPLEFT",8+(i-1)*142,-60);button:SetText(spec[1]);button:SetScript("OnClick",spec[2]);self.mapUtilities[i]=button
+        end
+    end
     self.mapHeading=Text(panel,12,-12,276,"GameFontNormalLarge"); self.mapHeading:SetTextColor(r,g,b)
-    local scroll=CreateFrame("ScrollFrame",nil,panel,"UIPanelScrollFrameTemplate");self.mapScroll=scroll
+    if AUI.isForever then
+        self.mapHeading:SetWordWrap(false)
+        self.mapBack=AUI:CreateButton(panel);self.mapBack:SetSize(80,24);self.mapBack:SetPoint("TOPRIGHT",-8,-8);self.mapBack:SetText("‹ Back");self.mapBack:Hide()
+        self.mapBack:SetScript("OnEnter",function(button)GameTooltip:SetOwner(button,"ANCHOR_LEFT");GameTooltip:SetText(button.destination or "Previous page");GameTooltip:Show()end)
+        self.mapBack:SetScript("OnLeave",function()GameTooltip:Hide()end)
+    end
+    local scroll=AUI.isForever and AUI.CreateSmoothScrollFrame and AUI:CreateSmoothScrollFrame(panel)or CreateFrame("ScrollFrame",nil,panel,"UIPanelScrollFrameTemplate");self.mapScroll=scroll
     scroll:SetPoint("TOPLEFT",12,-42); scroll:SetPoint("BOTTOMRIGHT",-30,120)
     local content=CreateFrame("Frame",nil,scroll);self.mapContent=content; content:SetSize(254,1500); scroll:SetScrollChild(content)
     self.mapCopy=Text(content,0,0,250); self.mapCopy:SetTextColor(.88,.88,.9)
     self.mapControls={}
-    local specs={{"Track / untrack",function() if self.selected then self:ToggleTracking(self.selected); self:RenderMapPage() end end},{"Skip current",function() if self.selected then self.skipped[self.selected]=true; self:Refresh(); self:RenderMapPage() end end},{"Restore skipped",function() wipe(self.skipped); self:Refresh(); self:RenderMapPage() end},{"Quest marker settings",function() AUI.modules.Menu:Show("mapquests") end}}
+    local specs={{"Track / untrack",function() if self.selected then self:ToggleTracking(self.selected); self:RenderMapPage() end end},{"Skip current",function() if self.selected then self.skipped[self.selected]=true; self:Refresh(); self:RenderMapPage() end end},{"Restore skipped",function() wipe(self.skipped); self:Refresh(); self:RenderMapPage() end},{"Icon display",function() AUI.modules.Menu:Show("mapquests") end}}
     specs[5]={"Toggle direction arrow",function() local s=ProjectRuthlessDB.questWorkspace; s.showArrow=not s.showArrow; self:Navigate(); self:RenderMapPage() end}
     specs[6]={"Quest background settings",function()AUI.modules.Menu:Show("backgrounds")end}
     specs[7]={"Lock / unlock position",function() local s=ProjectRuthlessDB.questWorkspace; s.locked=not s.locked; self:RenderMapPage() end}
@@ -1127,14 +1313,23 @@ function Q:InstallMap()
         if button then Call(Call(button.GetScript,button,"OnClick"),button,"LeftButton") end
     end}
     specs[12]={"Guide provider settings",function()AUI.modules.Menu:Show("mapquests")end}
-    specs[13]={"Auto hand-in: toggle",function()local s=ProjectRuthlessDB.questWorkspace;s.autoHandIn=not s.autoHandIn;self:RenderMapPage()end}
+    specs[13]={"Auto hand-in: toggle",function()local s=ProjectRuthlessDB.questWorkspace;s.autoHandIn=not s.autoHandIn;self:ApplySettings();self:RenderMapPage()end}
     specs[14]={"Prepare for Westfall: toggle",function()local s=ProjectRuthlessDB.questWorkspace;s.prepWestfall=not s.prepWestfall;self:RenderContext();self:RenderMapPage()end}
+    if AUI.isForever then
+        for _,i in ipairs({5,7,13,14})do specs[i]={"Map & quest settings",function()AUI.modules.Menu:Show("mapquests")end}end
+    end
     specs[15]={"Prepare for displayed zone: toggle",function()
         local map=Call(WorldMapFrame.GetMapID,WorldMapFrame);if not map then return end
         local s=ProjectRuthlessDB.questWorkspace;s.prepMaps=s.prepMaps or {};s.prepMaps[map]=not s.prepMaps[map]or nil
         self.prepRouteRevision=(self.prepRouteRevision or 0)+1;self:RenderContext();self:RenderMapPage()
     end}
     specs[16]={"Review grey quests to abandon",function()self:ClearGreyQuests()end}
+    if AUI.modules.AuctionHouseUI then specs[17]={"Auction quest supplies / shopping lists",function()
+        local info=Call(C_Map.GetMapInfo,map:GetMapID())
+        local auctions=AUI.modules.AuctionHouse;auctions.zone=0
+        for _,zone in ipairs(AUI.modules.QuestSupplies:Zones())do if info and zone.name==info.name then auctions.zone=zone.id;break end end
+        AUI.modules.AuctionHouseUI:Show("supplies")
+    end}end
     for i,spec in ipairs(specs) do local control=AUI:CreateButton(panel); control:SetSize(270,22); control:SetPoint("BOTTOMLEFT",12,10+(i<=3 and (7-i)*25 or i>=8 and (11-i)*25 or (8-i)*25)); control:SetText(spec[1]); control:SetScript("OnClick",spec[2]); self.mapControls[i]=control end
     if hooksecurefunc and type(map.UpdateSpacerFrameAnchoring)=="function"then hooksecurefunc(map,"UpdateSpacerFrameAnchoring",function()self:LayoutMap()end)end
     self:InstallMapResize();self:InstallMapPersistence()
@@ -1235,8 +1430,32 @@ function Q:LayoutContent()
         self.objectiveContent:SetSize(254,fullHeight);self.objectiveCopy:SetHeight(fullHeight);y=y+visible+10
     end
     for _,row in ipairs(self.itemRows or {})do if row:IsShown()then row:ClearAllPoints();row:SetPoint("TOPLEFT",12,-y);y=y+28 end end
+    local focused=self.guide and self.guide.id and (self.guide.source=="RUI"or self.guide.source=="RUI progression")and ProjectRuthlessDB.questWorkspace.guideOtherQuests~=true
+    local upcoming=focused and ProjectRuthlessDB.questWorkspace.guideUpcoming~=false and self.guide.next and self.guide.next[1]
+    if upcoming then
+        self.upcomingCopy=self.upcomingCopy or Text(self.frame,12,0,268)
+        self.upcomingCopy:SetText("UP NEXT · "..(upcoming.title or "Next step"))
+        self.upcomingCopy:SetTextColor(.62,.69,.78);self.upcomingCopy:ClearAllPoints();self.upcomingCopy:SetPoint("TOPLEFT",12,-y)
+        local upcomingHeight=height(self.upcomingCopy,16,40);self.upcomingCopy:SetHeight(upcomingHeight);self.upcomingCopy:Show();y=y+upcomingHeight+8
+    elseif self.upcomingCopy then self.upcomingCopy:Hide()end
     if AUI.modules.QuestProgression then
-        self.nearbyHeading:Hide();for _,row in ipairs(self.rows)do row:Hide()end
+        local active={}
+        for _,entry in ipairs(self.entries or {})do
+            if not focused and entry.id~=self.currentQuestID and entry~=self.manualPickup then active[#active+1]=entry end
+        end
+        self.offset=math.max(0,math.min(self.offset,math.max(0,#active-#self.rows)))
+        self.nearbyHeading:SetShown(#active>0)
+        if #active>0 then
+            self.nearbyHeading:SetText(#active>#self.rows and "ACTIVE QUESTS · SCROLL" or "ACTIVE QUESTS")
+            self.nearbyHeading:ClearAllPoints();self.nearbyHeading:SetPoint("TOPLEFT",12,-y);y=y+18
+        end
+        for index,row in ipairs(self.rows)do
+            local entry=active[self.offset+index];row.entry=entry;row:SetShown(entry~=nil)
+            if entry then
+                row.title:SetText(self:QuestTitle(entry));row.detail:SetText(entry.detail)
+                row:ClearAllPoints();row:SetPoint("TOPLEFT",12,-y);y=y+29
+            end
+        end
         self.contextHeading:Hide();self.contextEmpty:Hide();for _,row in ipairs(self.contextRows)do row:Hide()end
         self.dungeonHeading:Hide();for _,row in ipairs(self.dungeonRows)do row:Hide();if row.share then row.share:Hide()end end
         self.dungeonPrompt:Hide();self.trackDungeonButton:Hide();self.dismissDungeonButton:Hide();self.tripButton:Hide()
@@ -1357,27 +1576,21 @@ function Q:RenderContext()
 end
 
 function Q:SuppressNativeTracker()
+    if InCombatLockdown()then return end
     local tracker=ObjectiveTrackerFrame
     if not tracker or (tracker.IsForbidden and tracker:IsForbidden())then return end
     self.nativeTrackerStates=self.nativeTrackerStates or setmetatable({},{__mode="k"})
-    local state=self.nativeTrackerStates[tracker]
-    if not state then
-        state={};self.nativeTrackerStates[tracker]=state
-        local function suppress()
-            if state.applying or not ProjectRuthlessDB.questWorkspace.enabled then return end
-            state.applying=true;tracker:SetAlpha(0);state.applying=nil
-        end
-        hooksecurefunc(tracker,"SetAlpha",suppress)
-        if tracker.HookScript then tracker:HookScript("OnShow",suppress)end
-    end
+    local alpha=self.nativeTrackerStates[tracker]
+    -- Set visibility once from our settings path. Never run addon code from
+    -- Blizzard's tracker rendering, OnShow, or alpha-update callbacks.
     if ProjectRuthlessDB.questWorkspace.enabled then
-        if state.alpha==nil then
-            local alpha=tracker:GetAlpha()
-            state.alpha=Public(alpha)and type(alpha)=="number"and alpha or 1
+        if alpha==nil then
+            local original=tracker:GetAlpha()
+            self.nativeTrackerStates[tracker]=Public(original)and type(original)=="number"and original or 1
         end
-        state.applying=true;tracker:SetAlpha(0);state.applying=nil
-    elseif state.alpha~=nil then
-        state.applying=true;tracker:SetAlpha(state.alpha);state.applying=nil;state.alpha=nil
+        tracker:SetAlpha(0)
+    elseif alpha~=nil then
+        tracker:SetAlpha(alpha);self.nativeTrackerStates[tracker]=nil
     end
 end
 
@@ -1385,6 +1598,16 @@ function Q:ApplySettings()
     local enabled=ProjectRuthlessDB.questWorkspace.enabled
     if self.events then
         for _,event in ipairs(self.eventNames)do if enabled then self.events:RegisterEvent(event)else self.events:UnregisterEvent(event)end end
+    end
+    if self.questDialogEvents then
+        local s=ProjectRuthlessDB.questWorkspace
+        self.questDialogEvents:UnregisterAllEvents()
+        if s.autoAccept then self.questDialogEvents:RegisterEvent("QUEST_DETAIL")end
+        if s.autoHandIn then
+            self.questDialogEvents:RegisterEvent("QUEST_PROGRESS")
+            self.questDialogEvents:RegisterEvent("QUEST_COMPLETE")
+        end
+        if s.autoAccept or s.autoHandIn then self.questDialogEvents:RegisterEvent("GOSSIP_SHOW")end
     end
     if enabled and not self.frame then self:CreateWorkspace();self:InstallMap()end
     if not self.frame then return end
@@ -1444,8 +1667,12 @@ function Q:CreateWorkspace()
         row:SetScript("OnClick",function(_,button)
             if not row.entry then return end
             if self:LinkQuestToChat(row.entry.id)then return end
-            if button=="LeftButton" then self:SetWaypoint(row.entry.id) end
+            if button=="LeftButton" then
+                if AUI.modules.QuestProgression then self.manualTrackedQuest=row.entry.id;self.manualFocus=true;self.manualPickup=nil end
+                self:SetWaypoint(row.entry.id)
+            end
         end)
+        row:EnableMouseWheel(true);row:SetScript("OnMouseWheel",function(_,delta)self.offset=self.offset-delta;self:Refresh()end)
         self.rows[i]=row
     end
     self.itemRows={}
@@ -1495,7 +1722,7 @@ function Q:CreateWorkspace()
     self.returnGuide=AUI:CreateButton(f);self.returnGuide:SetSize(48,18);self.returnGuide:SetPoint("TOPRIGHT",-60,-8);self.returnGuide:SetText("Guide")
     self.returnGuide:SetScript("OnClick",function()
         local progression=AUI.modules.QuestProgression;if progression then progression:Store().active=nil;progression:Store().quest=nil end
-        self.manualFocus=nil;self.manualPickup=nil;self.tripArea=nil;if AUI.modules.QuestLocations then AUI.modules.QuestLocations.selectedQuest=nil end;self:Refresh()
+        self.manualTrackedQuest=nil;self.manualFocus=nil;self.manualPickup=nil;self.tripArea=nil;if AUI.modules.QuestLocations then AUI.modules.QuestLocations.selectedQuest=nil end;self:Refresh()
     end);self.returnGuide:Hide()
     self.empty=Text(f,12,-92,266); self.empty:SetText("No quests displayed. Accept a quest or restore hidden quests below.")
     f:EnableMouseWheel(true); f:SetScript("OnMouseWheel",function(_,delta) self.offset=self.offset-delta; self:Refresh() end)
@@ -1524,28 +1751,42 @@ end
 
 -- Establish a silent baseline, then announce only unfinished -> finished edges.
 -- Runs with the existing batched quest refresh, never on a polling timer.
+function Q:ResetPartyQuestBaseline()
+    -- Keep completion latches through an empty/partial loading-screen log.
+    -- Explicit removal, not temporary missing data, retires a quest entry.
+    self.partyQuestNeedsBaseline=true
+    self.partyQuestQuietUntil=(Call(GetTime)or 0)+3
+end
 function Q:AnnounceQuestProgress()
     if not C_QuestLog then return end
     local previous=self.partyQuestState or {}
-    local nextState={}
-    local party=Call(IsInGroup)==true and Call(IsInRaid)~=true
+    local nextState={};for id,state in pairs(previous)do nextState[id]=state end
+    local quiet=self.partyQuestNeedsBaseline or self.partyQuestQuietUntil and (Call(GetTime)or 0)<self.partyQuestQuietUntil
+    local party=not quiet and Call(IsInGroup)==true and Call(IsInRaid)~=true
     local count=Call(C_QuestLog.GetNumQuestLogEntries)or 0
     for i=1,count do
         local info=Call(C_QuestLog.GetInfo,i)
         if info and Public(info.questID)and Public(info.isHeader)and Public(info.title)and not info.isHeader and info.questID then
             local id=info.questID
-            local state={objectives={},complete=Call(C_QuestLog.IsComplete,id)==true}
             local before=previous[id]
+            -- Loading screens can temporarily report false/nil for a finished
+            -- quest. Completion stays latched for this log entry; removal and
+            -- a later acceptance establish a fresh entry/baseline.
+            local complete=Call(C_QuestLog.IsComplete,id)
+            if type(complete)~="boolean"then complete=before and before.complete end
+            if before and before.complete==true then complete=true end
+            local state={objectives={},complete=complete}
             local finished={}
             for index,objective in ipairs(Call(C_QuestLog.GetQuestObjectives,id)or {})do
                 if Public(objective.finished)and Public(objective.text)and Public(objective.objectID)and Public(objective.type)then
                     local key=tostring(objective.type)..":"..tostring(objective.objectID)..":"..index
-                    state.objectives[key]=objective.finished==true
+                    if type(objective.finished)=="boolean"then state.objectives[key]=objective.finished end
+                    if before and before.objectives[key]==true then state.objectives[key]=true end
                     if before and before.objectives[key]==false and objective.finished==true and type(objective.text)=="string"then finished[#finished+1]=objective.text end
                 end
             end
             nextState[id]=state
-            if party and before and (not before.complete and state.complete or #finished>0)then
+            if party and before and before.complete~=true and (before.complete==false and state.complete==true or #finished>0)then
                 local message="[RUI] "..(info.title or "Quest")..": "..(state.complete and "Complete — ready to turn in!" or table.concat(finished,"; "))
                 -- Keep the chat payload short without splitting a UTF-8 character.
                 if #message>240 then message=message:sub(1,237):gsub("[\194-\244][\128-\191]*$","").."..."end
@@ -1554,6 +1795,7 @@ function Q:AnnounceQuestProgress()
         end
     end
     self.partyQuestState=nextState
+    if count>0 then self.partyQuestNeedsBaseline=nil end
 end
 
 function Q:OnPlayerLogin()
@@ -1564,15 +1806,17 @@ function Q:OnPlayerLogin()
     self.skipped=ProjectRuthlessCharDB.skippedQuestWorkspace or {}
     ProjectRuthlessCharDB.skippedQuestWorkspace=self.skipped
     local events=CreateFrame("Frame")
-    self.eventNames={"QUEST_LOG_UPDATE","QUEST_ACCEPTED","QUEST_REMOVED","QUEST_TURNED_IN","QUEST_POI_UPDATE","PLAYER_ENTERING_WORLD","PLAYER_REGEN_ENABLED","ADDON_LOADED","MERCHANT_SHOW","MERCHANT_UPDATE","BAG_UPDATE_DELAYED","ZONE_CHANGED_NEW_AREA","PLAYER_LEVEL_UP","QUEST_PROGRESS","QUEST_COMPLETE","AUCTION_HOUSE_SHOW","AUCTION_HOUSE_CLOSED","GET_ITEM_INFO_RECEIVED"}
+    self.eventNames={"QUEST_LOG_UPDATE","QUEST_ACCEPTED","QUEST_REMOVED","QUEST_TURNED_IN","QUEST_POI_UPDATE","QUEST_WATCH_LIST_CHANGED","PLAYER_ENTERING_WORLD","PLAYER_LEAVING_WORLD","PLAYER_REGEN_ENABLED","ADDON_LOADED","MERCHANT_SHOW","MERCHANT_UPDATE","BAG_UPDATE_DELAYED","ZONE_CHANGED_NEW_AREA","PLAYER_LEVEL_UP","AUCTION_HOUSE_SHOW","AUCTION_HOUSE_CLOSED","GET_ITEM_INFO_RECEIVED"}
     events:SetScript("OnEvent",function(_,event,loaded)
         if not ProjectRuthlessDB.questWorkspace.enabled then return end
+        if event=="PLAYER_LEAVING_WORLD"then self:ResetPartyQuestBaseline();return end
+        if event=="PLAYER_ENTERING_WORLD"then self:ResetPartyQuestBaseline()end
+        if (event=="QUEST_REMOVED"or event=="QUEST_TURNED_IN")and self.partyQuestState and Public(loaded)and type(loaded)=="number"then self.partyQuestState[loaded]=nil end
+        if event=="QUEST_POI_UPDATE"or event=="QUEST_LOG_UPDATE"or event=="ZONE_CHANGED_NEW_AREA"then self.nativeLocalQuestPoint=nil end
         if event=="ADDON_LOADED"and loaded~="Blizzard_WorldMap"and loaded~="Blizzard_ObjectiveTracker"and not(loaded=="ForeverWisp"and ProjectRuthlessDB.questWorkspace.guideSource=="Wisp")then return end
         if event=="QUEST_LOG_UPDATE"or event=="QUEST_ACCEPTED"or event=="QUEST_REMOVED"or event=="QUEST_TURNED_IN"or event=="PLAYER_LEVEL_UP"or event=="ZONE_CHANGED_NEW_AREA"or event=="PLAYER_ENTERING_WORLD"then self.progressionDirty=true end
         if event=="AUCTION_HOUSE_SHOW"then self.prepAuctionOpen=true elseif event=="AUCTION_HOUSE_CLOSED"then self.prepAuctionOpen=nil end
-        if event=="QUEST_PROGRESS"or event=="QUEST_COMPLETE"then self:AutoHandIn(event);return end
         if event=="PLAYER_REGEN_ENABLED" and self.pending then self:ApplySettings()end
-        if event=="PLAYER_REGEN_ENABLED"and self.pendingMapObjective then self:SyncMapObjective()end
         if event=="ADDON_LOADED"or event=="QUEST_ACCEPTED"or event=="QUEST_REMOVED"then self.guideName=nil end
         if event=="ADDON_LOADED" then self:InstallMap();self:SuppressNativeTracker()end
         if event=="MERCHANT_SHOW" or event=="MERCHANT_UPDATE" then
@@ -1593,6 +1837,10 @@ function Q:OnPlayerLogin()
                 if progression and self.progressionDirty then progression:Invalidate()end
                 self.progressionDirty=nil
                 if ProjectRuthlessDB.questWorkspace.enabled then
+                    -- Run from our coalesced event path, after native quest
+                    -- events settle. Never hook the tracker's render or aura
+                    -- update path to maintain cosmetic suppression.
+                    if event=="QUEST_LOG_UPDATE"or event=="PLAYER_ENTERING_WORLD"or event=="PLAYER_REGEN_ENABLED"or event=="PLAYER_LEVEL_UP"then self:SuppressNativeTracker()end
                     self:AnnounceQuestProgress();self:Refresh(skipUnchanged)
                     if progression and self.mapPanel and self.mapPanel:IsVisible()and self.mapPage=="Dungeons"and progression.renderedRevision~=progression.revision then self:RenderMapPage()end
                 end
@@ -1600,6 +1848,12 @@ function Q:OnPlayerLogin()
         end
     end)
     self.events=events
+    self.questDialogEvents=CreateFrame("Frame")
+    self.questDialogEvents:SetScript("OnEvent",function(_,event)
+        if event=="QUEST_DETAIL"then self:AutoAccept()
+        elseif event=="GOSSIP_SHOW"then self:AutoGossip()
+        else self:AutoHandIn(event)end
+    end)
     self:ApplySettings()
 end
 

@@ -17,22 +17,36 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: Gethe/wow-ui-source
-          ref: a84e2b1b41d3d4137127c07e4da448aa3251d6f1
+          ref: 9dc84f0d3bbae1768ac3405b3716000bd93eda06
           path: native
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+      - run: node tools/check-native-source.cjs --check-remote
       - run: npm ci
       - run: npm run test:achievements
       - run: npm run test:equipment
       - run: npm run test:talents
       - run: npm run test:macro-ranks
+      - run: npm run test:quest-pickups
+      - run: python3 Assets/QuestPickups/build.py --check
       - run: npm run test:quests
       - run: npm run test:performance
       - run: npm run test:forever
+      - run: npm run test:auction
+      - run: npm run test:inventory
+      - run: python3 tools/build-quest-supplies.py --check
+      - run: npm run test:actionbars
       - run: npm run test:layout
       - run: npm run test:skyborne
+      - run: npm run test:travel
+      - run: npm run test:feature-guide
+      - run: npm run test:macro-factory
+      - run: npm run test:dungeon-journal
+      - run: npm run test:dungeon-data
+      - run: npm run test:professions
+      - run: npm run test:profession-data
       - run: npm run test:leveling
       - run: npm run test:foundation
       - run: npm run test:settings

@@ -1,0 +1,11 @@
+# Profession fact provenance
+
+Factual records reviewed 2026-11-10 from Wowhead's public **Forever** profession overview and leveling pages. `facts.json` records every page URL and the SHA-256 of its reviewed source response, with per-profession overview/guide references and per-recipe source URLs. This package includes factual identities, numeric recipe/skill/material relationships, source/vendor identities and trainer/resource locations. It does not include downloaded page HTML, screenshots, paid routes, writer prose, market averages or copied addon code.
+
+Entry point: https://www.wowhead.com/forever/classicplus-profession-leveling-guides-outro . Eight crafting guide pages use `/forever/profession-leveling-guides/{alchemy,blacksmithing,enchanting,engineering,leatherworking,tailoring,cooking,first-aid}`. Gathering overviews use `/forever/guide/professions/{herbalism,mining,skinning,fishing}/overview-leveling`. Exact overview URLs for every profession are preserved in the facts.
+
+Raw review responses are retained in the developer workspace `work/wowhead-professions-20261110`, outside the addon. Direct spell, item and full recipe-list page requests returned HTTP 403; no workaround was used. Accordingly, the public seed catalogue and vendor locations are explicitly incomplete. Native current-client observations are an independent source and take precedence for schematics, yields and learned state; native filters are not rewritten to manufacture completeness.
+
+Full-range guide material totals are divided by published craft counts only where all resulting counts are exact integers; they remain labelled as that derivation. They are not used to infer output quantity or exact unlock skill. The native schematic verifies the output yield. A guide range start is stored separately from a verified minimum skill. NPC links alone do not establish a vendor: dungeon drops retain their source identity without being mislabelled as purchasable recipes. Missing locations, craft counts and prices remain unknown.
+
+Regenerate with `python tools/build-profession-data.py`; validate with `--check`. The generated table is constructed only when the profession workspace/crafting observation first needs it. Future source updates must recheck Forever requirements and preserve these uncertainty boundaries.

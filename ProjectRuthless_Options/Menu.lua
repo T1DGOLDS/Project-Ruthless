@@ -29,8 +29,10 @@ end
 function Menu:CreateOptionsPanel(parent, eyebrow, title, description)
     local panel=CreateFrame("Frame",nil,parent); panel:SetAllPoints()
     local overline=AddLabel(panel,eyebrow,"TOPLEFT",panel,"TOPLEFT",18,-18,"GameFontNormalSmall"); overline:SetTextColor(unpack(COLORS.muted))
-    AddLabel(panel,title,"TOPLEFT",panel,"TOPLEFT",18,-44,"GameFontNormalHuge")
+    panel.ruiTitle=AddLabel(panel,title,"TOPLEFT",panel,"TOPLEFT",18,-44,"GameFontNormalHuge")
+    panel.ruiEyebrow=overline
     local copy=AddLabel(panel,description,"TOPLEFT",panel,"TOPLEFT",18,-76,"GameFontNormalSmall"); copy:SetWidth(610); copy:SetJustifyH("LEFT"); copy:SetTextColor(unpack(COLORS.muted))
+    panel.ruiDescription=copy
     return panel
 end
 
@@ -43,11 +45,11 @@ function Menu:CreateCheckbox(parent,label,description,y,getter,setter,section,ke
     button.description:SetWidth(556)
     button.getter=getter; button.setter=setter
     button.RefreshValue=function(self) local checked=self.getter(); self.tick:SetShown(checked); local r,g,b=GetAccentColor(); self.box:SetBackdropBorderColor(checked and r or COLORS.border[1],checked and g or COLORS.border[2],checked and b or COLORS.border[3],1) end
-    button:SetScript("OnClick",function(self) self.setter(not self.getter()); AUI:SettingsChanged(section,key); Menu:Refresh() end)
+    button:SetScript("OnClick",function(self) self.setter(not self.getter()); if section then AUI:SettingsChanged(section,key)end; Menu:Refresh() end)
     button:SetScript("OnEnter",function(self)if AUI.isForever then AUI:PaintBackground(self,"Options",.055,.060,.078)else self:SetBackdropColor(.055,.060,.078,.96)end end)
     button:SetScript("OnLeave",function(self)if AUI.isForever then AUI:PaintBackground(self,"Options",.035,.039,.052)else self:SetBackdropColor(.035,.039,.052,.92)end end)
     self.optionControls=self.optionControls or {}; self.optionControls[#self.optionControls+1]=button
-    if AUI.modules.SettingsRegistry then AUI.modules.SettingsRegistry:Register(self.buildingPage,button,label,description,y,"boolean")end
+    if AUI.modules.SettingsRegistry then AUI.modules.SettingsRegistry:Register(self.buildingPage,button,label,description,y,"boolean",section,key)end
     return button
 end
 
@@ -70,7 +72,7 @@ function Menu:CreateSlider(parent,label,description,y,minimum,maximum,step,forma
     slider:HookScript("OnMouseUp",FinishDrag); slider:HookScript("OnHide",FinishDrag)
     holder.getter=getter; holder.RefreshValue=function(self) local value=self.getter(); slider:SetValue(value); self.value:SetText(formatter(value)) end
     self.optionControls=self.optionControls or {}; self.optionControls[#self.optionControls+1]=holder
-    if AUI.modules.SettingsRegistry then AUI.modules.SettingsRegistry:Register(self.buildingPage,holder,label,description,y,"range")end
+    if AUI.modules.SettingsRegistry then AUI.modules.SettingsRegistry:Register(self.buildingPage,holder,label,description,y,"range",section,key)end
     return holder
 end
 
@@ -118,9 +120,19 @@ function Menu:CreateActionBarOptions(parent)
     local function setting(name)return Settings and Settings.GetSetting and Settings.GetSetting(name)end
     for i=2,8 do
         local variable="PROXY_SHOW_ACTIONBAR_"..i
+        local id="bar"..i
         self:CreateCheckbox(content,"Action bar "..i,"Show this bar; placement is saved in Edit Mode.",-8-(i-2)*56,
-            function()local option=setting(variable);return option and option:GetValue()or false end,
-            function(value)if InCombatLockdown()then AUI:Print("Change action bars after combat.");return end;local option=setting(variable);if option then option:SetValue(value)end end)
+            function()
+                local owned=AUI.modules.ForeverActionBars
+                if owned and owned.initialized then return owned:IsEnabled(id)end
+                local option=setting(variable);return option and option:GetValue()or false
+            end,
+            function(value)
+                if InCombatLockdown()then AUI:Print("Change action bars after combat.");return end
+                local owned=AUI.modules.ForeverActionBars
+                if owned and owned.initialized then owned:SetEnabled(id,value);return end
+                local option=setting(variable);if option then option:SetValue(value)end
+            end)
     end
     for i,row in ipairs({{"lockActionBars","Lock action bars"},{"countdownForCooldowns","Show cooldown numbers"}})do
         local variable,label=row[1],row[2]
@@ -180,7 +192,7 @@ function Menu:CreateBackgroundOptions(parent)
 end
 
 function Menu:CreateBackgroundColour(parent,label,key,y)
-    local suffix=key or "";local s=ProjectRuthlessDB.general
+    local suffix=key or "";local s=self.LiveSettings and self:LiveSettings("general")or ProjectRuthlessDB.general
     local button=self:CreateAction(parent,label.." background colour",18,y,390,function()
         if not ColorPickerFrame or not ColorPickerFrame.SetupColorPickerAndShow then
             if C_AddOns and C_AddOns.LoadAddOn then C_AddOns.LoadAddOn("Blizzard_ColorPickerFrame")end
@@ -204,11 +216,12 @@ function Menu:CreateBackgroundColour(parent,label,key,y)
         control:SetText(("%s colour · #%02x%02x%02x%s"):format(label,math.floor(r*255+.5),math.floor(g*255+.5),math.floor(b*255+.5),key and not s["customColor"..key]and " · global"or ""))
     end
     self.optionControls[#self.optionControls+1]=button
-    self:CreateAction(parent,key and ("Use global: "..label)or "Default charcoal",418,y,210,function()
+    local reset=self:CreateAction(parent,key and ("Use global: "..label)or "Default charcoal",418,y,210,function()
         s["colorR"..suffix],s["colorG"..suffix],s["colorB"..suffix]=nil,nil,nil
         if key then s["customColor"..key]=nil end
         AUI:RefreshBackgrounds(key);Menu:Refresh()
     end)
+    return button,reset
 end
 
 function Menu:CreateFeatureOptions(parent,page,title,description)
@@ -333,11 +346,32 @@ function Menu:CreateHealthOptions(parent)
     self:CreateAction(content,"Preview glow",18,-338+offset,130,function() if AUI.modules.LowHealthGlow then AUI.modules.LowHealthGlow:Preview() end end)
     if AUI.isForever then self:CreateAction(content,"Leveling history",158,-338+offset,200,function()AUI.modules.LevelHistory:Show()end)end
     if meters then
-        self:CreateCheckbox(content,"Enable native damage meter","Blizzard owns combat data, categories and row interactions. No external meter is required.",-302,function()return meters:Enabled()end,function(v)local _,message=meters:SetEnabled(v);AUI:Print(message)end)
+        self:CreateCheckbox(content,"Enable RUI damage meter","Live damage, healing, interrupts and deaths, with fight history and clickable spell breakdowns. Uses Forever's native combat engine.",-302,function()return meters:Enabled()end,function(v)local _,message=meters:SetEnabled(v);AUI:Print(message)end)
+        self:CreateAction(content,"Meter controls & help",18,-362,260,function()meters:Show()end)
         self:CreateAction(content,"Move damage meters",18,-390,260,function()AUI.modules.LayoutEditor:Show()end)
         self:CreateAction(content,"Meter background colour & opacity",18,-434,310,function()self:SelectTab("backgrounds")end)
+        self:CreateCheckbox(content,"Flat RUI meter bars","Keep class colours with simple fills and tight borders.",-474,function()return (ProjectRuthlessDB.meterStyle or {}).flatBars~=false end,function(value)ProjectRuthlessDB.meterStyle=ProjectRuthlessDB.meterStyle or {};ProjectRuthlessDB.meterStyle.flatBars=value end,"ForeverMeters")
+        self:CreateSlider(content,"Meter text size","Names and values, applied outside combat.",-532,9,18,1,function(value)return tostring(value)end,function()return (ProjectRuthlessDB.meterStyle or {}).textSize or 11 end,function(value)ProjectRuthlessDB.meterStyle=ProjectRuthlessDB.meterStyle or {};ProjectRuthlessDB.meterStyle.textSize=value end,"ForeverMeters")
+        self:CreateAction(content,"Auction tools & quest supplies",18,-618,310,function()AUI.modules.AuctionHouseUI:Show("supplies")end)
+        content:SetHeight(680)
     end
     self.panels.health=panel
+end
+
+function Menu:CreateAuctionOptions(parent)
+    local panel=self:CreateOptionsPanel(parent,"TRADING & PREPARATION","Auction house","Searches and lists stay with your character. Appearance and feature preferences travel with RUI profiles.")
+    for index,row in ipairs({
+        {"autoOpen","Start on RUI Tools","Open the integrated Tools page with the auctioneer. Turn off to start on native Buy; all bottom tabs remain available."},
+        {"retainHistory","Keep recent searches","Remember the last 30 searches for this character. Turning off keeps existing entries."},
+        {"autoSaleDefaults","Restore saved item selling preferences","Apply remembered quantity and duration when selecting that item. Prices always need a fresh comparison."},
+        {"trackPrices","Record observed unit prices","Record prices returned by your searches, up to 500 item variants and 14 observed days per market. No background full-market scans."},
+    })do
+        local key=row[1]
+        self:CreateCheckbox(panel,row[2],row[3],-116-(index-1)*70,function()return (ProjectRuthlessDB.auctionHouse or {})[key]~=false end,function(value)ProjectRuthlessDB.auctionHouse=ProjectRuthlessDB.auctionHouse or {};ProjectRuthlessDB.auctionHouse[key]=value end,"AuctionHouse")
+    end
+    self:CreateAction(panel,"Open quest supplies / shopping lists",18,-414,340,function()AUI.modules.AuctionHouseUI:Show("supplies")end)
+    self:CreateAction(panel,"Auction background colour & opacity",18,-456,340,function()self:SelectTab("backgrounds")end)
+    self.panels.auctionhouse=panel
 end
 
 function Menu:CreateTalentsOptions(parent)
@@ -372,19 +406,45 @@ end
 
 function Menu:CreateMapQuestOptions(parent)
     local panel=self:CreateOptionsPanel(parent,"WORLD NAVIGATION","Map & quests","Show the complete quest picture that WoW Forever provides to the main map.")
-    self:CreateCheckbox(panel,"Show quest markers","Enable the lightweight native quest-map layer.",-116,function()return ProjectRuthlessDB.mapQuests.enabled end,function(v)ProjectRuthlessDB.mapQuests.enabled=v end,"MapQuests")
-    self:CreateCheckbox(panel,"Show local stories","Include optional side-story quest lines that Forever normally hides behind a map filter.",-172,function()return ProjectRuthlessDB.mapQuests.showLocalStories end,function(v)ProjectRuthlessDB.mapQuests.showLocalStories=v end,"MapQuests")
-    self:CreateCheckbox(panel,"Show low-level quests","Include trivial quests below your current level.",-228,function()return ProjectRuthlessDB.mapQuests.showTrivial end,function(v)ProjectRuthlessDB.mapQuests.showTrivial=v end,"MapQuests")
-    self:CreateCheckbox(panel,"Show account-completed quests","Include quest starts already completed by another character on the account.",-284,function()return ProjectRuthlessDB.mapQuests.showAccountCompleted end,function(v)ProjectRuthlessDB.mapQuests.showAccountCompleted=v end,"MapQuests")
-    self:CreateCheckbox(panel,"Compact quest workspace (preview)","One nearby-sorted quest list with navigation at the top. Replaces the Blizzard tracker while enabled.",-340,function()return ProjectRuthlessDB.questWorkspace.enabled end,function(v)ProjectRuthlessDB.questWorkspace.enabled=v end,"QuestWorkspace")
-    local note=AddLabel(panel,"Native quest pins and blue objective areas follow Show quest markers. Original RUI hub guides through level 30 are available in Map > Library.","TOPLEFT",panel,"TOPLEFT",20,-408,"GameFontNormalSmall")
+    local page=panel
+    if AUI.isForever then
+        local scroll=CreateFrame("ScrollFrame",nil,page,"UIPanelScrollFrameTemplate")
+        scroll:SetPoint("TOPLEFT",0,-104);scroll:SetPoint("BOTTOMRIGHT",-28,2)
+        panel=CreateFrame("Frame",nil,scroll);panel:SetSize(630,890);scroll:SetScrollChild(panel)
+    end
+    local offset=AUI.isForever and 104 or 0
+    if AUI.isForever then
+        AddLabel(panel,"ICON DISPLAY","TOPLEFT",panel,"TOPLEFT",20,-6,"GameFontNormal")
+        offset=offset-24
+    end
+    self:CreateCheckbox(panel,"Show quest markers","Enable the lightweight native quest-map layer.",-116+offset,function()return ProjectRuthlessDB.mapQuests.enabled end,function(v)ProjectRuthlessDB.mapQuests.enabled=v end,"MapQuests")
+    self:CreateCheckbox(panel,"Show local stories","Include optional side-story quest lines that Forever normally hides behind a map filter.",-172+offset,function()return ProjectRuthlessDB.mapQuests.showLocalStories end,function(v)ProjectRuthlessDB.mapQuests.showLocalStories=v end,"MapQuests")
+    self:CreateCheckbox(panel,"Show low-level quests","Include trivial quests below your current level.",-228+offset,function()return ProjectRuthlessDB.mapQuests.showTrivial end,function(v)ProjectRuthlessDB.mapQuests.showTrivial=v end,"MapQuests")
+    self:CreateCheckbox(panel,"Show account-completed quests","Include quest starts already completed by another character on the account.",-284+offset,function()return ProjectRuthlessDB.mapQuests.showAccountCompleted end,function(v)ProjectRuthlessDB.mapQuests.showAccountCompleted=v end,"MapQuests")
+    self:CreateCheckbox(panel,"Compact quest workspace (preview)","One nearby-sorted quest list with navigation at the top. Replaces the Blizzard tracker while enabled.",AUI.isForever and -550 or -340,function()return ProjectRuthlessDB.questWorkspace.enabled end,function(v)ProjectRuthlessDB.questWorkspace.enabled=v end,"QuestWorkspace")
+    if AUI.isForever then
+        self:CreateCheckbox(panel,"Auto-accept quests","Accept standard quest offers. Hold Shift to handle the dialogue manually.",-610,function()return ProjectRuthlessDB.questWorkspace.autoAccept end,function(v)ProjectRuthlessDB.questWorkspace.autoAccept=v end,"QuestWorkspace")
+        self:CreateCheckbox(panel,"Auto hand-in","Turn in completed quests. Multiple rewards stay manual. Hold Shift to pause.",-666,function()return ProjectRuthlessDB.questWorkspace.autoHandIn end,function(v)ProjectRuthlessDB.questWorkspace.autoHandIn=v end,"QuestWorkspace")
+    end
+    if AUI.isForever then
+        local function icon(key,label,description,y,get)
+            self:CreateCheckbox(panel,label,description,y,get or function()return ProjectRuthlessDB.mapQuests[key]~=false end,
+                function(v)ProjectRuthlessDB.mapQuests[key]=v end,"MapQuests",key)
+        end
+        icon("showSkyborne","Skyborne racial markers","World map ley lines or elemental convergences for your Skyborne faction.",-260)
+        icon("showFlights","Flight points","Show the flight points offered by the native world map.",-316)
+        icon("showInstances","Instance entrances","Show dungeon and raid entrance icons on the world map.",-372)
+        icon("trackHerbs","Herb nodes on minimap","Use Find Herbs when the character has learned it.",-428,function()return AUI.modules.MapQuests:GatherTracking("trackHerbs")end)
+        icon("trackOre","Mining nodes on minimap","Use Find Minerals when the character has learned it.",-484,function()return AUI.modules.MapQuests:GatherTracking("trackOre")end)
+    end
+    local note=AddLabel(panel,"Native quest pins and blue objective areas follow Show quest markers. Original RUI hub guides through level 30 are available in Map > Library.","TOPLEFT",panel,"TOPLEFT",20,AUI.isForever and -788 or -408,"GameFontNormalSmall")
     note:SetWidth(590); note:SetJustifyH("LEFT"); note:SetTextColor(unpack(COLORS.muted))
     local guideButton
-    guideButton=self:CreateAction(panel,"Guide source",20,-455,260,function()
+    guideButton=self:CreateAction(panel,"Guide source",20,AUI.isForever and -726 or -455,260,function()
         local workspace=AUI.modules.QuestWorkspace;workspace:CycleGuideSource();guideButton:SetText("Guide: "..workspace:GuideSourceLabel())
     end)
     guideButton:SetText("Guide: "..AUI.modules.QuestWorkspace:GuideSourceLabel())
-    self.panels.mapquests=panel
+    self.panels.mapquests=page
 end
 
 function Menu:CreateCompatibilityOptions(parent)
@@ -502,7 +562,7 @@ function Menu:SearchControls(query)
     local registry=AUI.modules.SettingsRegistry
     if query==""then if self.searchResults then self.searchResults:Hide()end;return end
     if not self.searchIndexed then
-        for _,section in ipairs(registry.sections)do local id=section.id
+        for _,id in ipairs(registry.searchPages or {})do
             if self.pageBuilders[id]and not self.panels[id]then
                 self.buildingPage=id;self[self.pageBuilders[id]](self,self.content);self.panels[id]:Hide()
             end
@@ -537,9 +597,14 @@ end
 function Menu:OpenSearchResult(row)
     if not row then return end
     self.search:SetText("");self.search:ClearFocus();self:SelectTab(row.page)
-    local child=row.control:GetParent();local parent=child and child:GetParent()
-    if parent and type(parent.GetScrollChild)=="function"and parent:GetScrollChild()==child then
-        if parent.ScrollTo then parent:ScrollTo(math.max(0,-row.y-20),true)else parent:SetVerticalScroll(math.max(0,-row.y-20))end
+    local child=row.control;local parent=child:GetParent()
+    for _=1,8 do
+        if not parent then break end
+        if type(parent.GetScrollChild)=="function"and parent:GetScrollChild()==child then
+            if parent.ScrollTo then parent:ScrollTo(math.max(0,-row.y-20),true)else parent:SetVerticalScroll(math.max(0,-row.y-20))end
+            break
+        end
+        child=parent;parent=child:GetParent()
     end
     local highlight=self.searchHighlight
     if highlight then highlight:Hide();highlight:SetParent(row.control)
@@ -603,6 +668,11 @@ function Menu:Create()
         if not registered then UISpecialFrames[#UISpecialFrames+1]="ProjectRuthlessMenuFrame"end
     end
     self.sidebar = sidebar
+    if AUI.isForever and AUI.modules.SettingsRegistry then
+        local navScroll=AUI:CreateSmoothScrollFrame(sidebar);navScroll:SetPoint("TOPLEFT",12,-82);navScroll:SetPoint("BOTTOMRIGHT",-12,8)
+        local navigation=CreateFrame("Frame",nil,navScroll);navigation:SetSize(184,460);navScroll:SetScrollChild(navigation)
+        self.navigation=navigation;self.navScroll=navScroll
+    end
     self.content = content
     self.optionControls = {}
     local search=CreateFrame("EditBox",nil,sidebar,"InputBoxTemplate");search:SetAutoFocus(false);search:SetMaxLetters(80);search:SetSize(174,24);search:SetPoint("TOPLEFT",20,-18)
@@ -622,7 +692,10 @@ function Menu:Create()
         self.pageBuilders.character=nil
         self.pageBuilders.achievements=nil
         self.pageBuilders.actionbars="CreateActionBarOptions"
+        if AUI.modules.AuctionHouse then self.pageBuilders.auctionhouse="CreateAuctionOptions"end
         self.pageBuilders.backgrounds="CreateBackgroundOptions"
+        self.pageBuilders.errorlog="CreateErrorLogView"
+        if AUI.modules.FeatureGuide then self.pageBuilders.features="CreateFeatureGuide"end
         if AUI.modules.SettingsRegistry then
             self.pageBuilders.unitframes="CreateUnitFrameOptions";self.pageBuilders.bags="CreateBagOptions";self.pageBuilders.chat="CreateChatOptions"
             self.pageBuilders.talents=nil
@@ -664,29 +737,34 @@ function Menu:Refresh()
         local lines={"CURRENT CAPABILITIES"}
         lines[#lines+1]="RUI settings, layout, frames, bags and chat use native foundations."
         lines[#lines+1]="Guide selection: "..AUI.modules.QuestWorkspace:GuideSourceLabel()
-        lines[#lines+1]="Quest location coverage still uses an optional external database adapter."
+        lines[#lines+1]="Quest pickup data is bundled; coverage gaps are reported in Help & diagnostics."
         lines[#lines+1]="Dungeon data is bundled with RUI."
         panel.dependencies:SetText(table.concat(lines,"\n"))
         panel.foundationLabel:SetText("UI overhaul dependency: none")
         panel.ownershipLabel:SetText("Compatibility checks: read-only")
         panel.errorLabel:SetText(("Captured Lua errors: %d"):format(errorCount))
-    elseif self.selectedTab=="errors" then
+    elseif self.selectedTab=="errorlog"or self.selectedTab=="errors"and self.panels.errors.editBox then
         local errorText=AUI.modules.ErrorLog:GetFormattedText()
-        self.panels.errors.editBox:SetText(errorText);self.panels.errors.editBox:SetCursorPosition(0)
+        self.panels[self.selectedTab].editBox:SetText(errorText);self.panels[self.selectedTab].editBox:SetCursorPosition(0)
     end
     self.refreshing=true
     for _,control in ipairs(self.optionControls or {}) do if control.RefreshValue and control:IsVisible() then control:RefreshValue() end end
     self.refreshing=false
+    if self.selectedTab and self.panels[self.selectedTab]and self.panels[self.selectedTab].flow then self.panels[self.selectedTab].flow:Reflow()end
 end
 
 function Menu:SelectTab(id)
     self:Create()
+    if self.searchResults then self.searchResults:Hide()end
+    if self.search and self.search:GetText()~=""then self.search:SetText("")end
     if not self.pageBuilders[id]then id="general"end
     if not self.panels[id]then self.buildingPage=id;self[self.pageBuilders[id]](self,self.content);self.buildingPage=nil end
 
+    for page,panel in pairs(self.panels)do panel:SetShown(page==id)end
+    local registry=AUI.modules.SettingsRegistry
+    local navigation=registry and registry.NavigationPage and registry:NavigationPage(id)or id
     for _, tab in ipairs(self.tabs) do
-        local selected = tab.panelID == id
-        if self.panels[tab.panelID]then self.panels[tab.panelID]:SetShown(selected)end
+        local selected = tab.panelID == navigation
         tab.selected=selected
         tab.accent:SetShown(selected)
         tab.highlight:SetShown(selected)

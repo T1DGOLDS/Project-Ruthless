@@ -41,3 +41,9 @@ The compact tracker now shows the current step, that quest's objectives and spec
 7. Record quest/bag bursts, graph opening, prolonged idle and repeated open/close. Compare recordings; no idle graph callbacks, control growth or repeated hitches should appear. Automated tests do not certify live CPU cost.
 
 `npm run test:progression` covers standalone engine/graph behaviour; `test:quests` also checks the actual workspace's focus-only rendering. Six live release gates remain pending until Andrew supplies evidence.
+
+
+## Graph fitting — beta95
+Newly selected quest trees start fitted to the map viewport in both dimensions, with centred placement. Text, buttons and connectors inherit one inner graph scale; the scroll child remains in viewport units. Auto-fit recalculates on viewport resize without polling. Zoom ± changes the displayed scale proportionally, manual zoom remains until Fit tree or a different chain is selected, and Fit tree restores the full overview. Small overview text can be inspected with zoom or the full-size detail pane.
+
+Checks cover wide/tall diagrams, resize coalescing, removal of the old 65% floor, zero scroll range in fitted mode, parent scaling for node content, preserved selection and manual zoom. Live check: open the Deadmines progression tree, confirm that its final node/branches are visible, zoom into a step, select it, choose Fit tree, resize the map and inspect again.

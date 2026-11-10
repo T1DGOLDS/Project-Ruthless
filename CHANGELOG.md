@@ -1,3 +1,147 @@
+## 0.14.0-beta.101 — 2026-11-10
+## 0.14.0-beta.102 — 2026-11-10
+
+- Add an integrated Spellbook profession workspace, also reachable from Map > Professions and searchable settings: Recipes, Leveling, Sources, Profit and Shopping. All twelve professions are represented.
+- Include 1,008 reviewed Forever recipe facts, 171 crafting/gathering guide ranges and 1,866 item identities from current public Wowhead pages. Native crafting observations enrich learned/unlearned state, schematics, yields and learning-source text without changing native filters or crafting controls. Vendor locations and some gathering ranges remain incomplete and labelled.
+- Calculate per-craft/batch material value, direct purchase cash, vendor return and auction listing margin with output yields, explicit sale fees, owned stock, manual prices, current realm quotes, provenance/age/partial warnings and binding checks. Missing inputs never become free materials. Optional learned intermediate craft/buy comparisons are cycle/depth bounded.
+- Persist character crafting plans, aggregate material requirements and export a replaceable auction shopping list. Browsing works in combat; native recording and crafting opening defer. No automatic crafting or trading.
+- Add profession accounting, data coverage, native/combat and integrated UI checks to CI. Six manual live acceptance gates remain pending.
+
+
+- Added a centered login introduction with account-wide Don't show again, keyboard navigation, combat deferral and a permanent searchable feature guide linked from Help.
+- Expanded macro Templates into 33 explained utility/spell starters, all markers and native ping forms, explicit safe utility creation, editable spell drafts and examples for nine classes. Existing unsaved edits and combat guards remain.
+- Consolidated map Back/history and level/faction/race guide browsing; focused current-step display, one upcoming preview and opt-in full notes/other quests. Existing routes are not represented as newly verified RestedXP routes.
+- Replaced the active mixed-expansion atlas catalog with current public Wowhead Forever journal facts: 30 published dungeon/wing records, 217 bosses, 891 boss-item links, 249 quest links and five explicit unpublished gaps. Added Overview, Maps, Bosses, Loot, Quests and Preparation navigation, source search, native/reference map choices, ability/item tooltips, quest-giver facts and known key/summon preparation. No unrelated level-70/raid catalog, copied guide prose/images or fabricated drop rates.
+- Live visual, combat and route/data validation remain separate pending acceptance gates.
+
+## 0.14.0-beta.100 — 2026-11-10
+
+- Added a readable, freely draggable repair warning with profile-saved position, equipped-item durability tooltip, configurable 30% default threshold, one-time low/broken reminders, optional sound and a preview. The native indicator is restored when the feature is disabled or durability data cannot safely be read. No idle polling or automatic repair spending.
+- Removed the engine-rendered circular quest/archaeology/task rims that remain visible through a square minimap mask; filled quest areas stay intact.
+- Prevented party quest-completion replay across instance loading screens: silently rebaseline on travel, preserve finished quests/objectives through temporary empty/false/unknown data, and retire them on explicit quest removal/turn-in. Genuine new grouped completion still announces.
+
+## 0.14.0-beta.99 — 2026-11-10
+
+- Final travel validation: unavailable hop metadata shows the flight timer without learning an unverified exact route. Preserves the prior local beta98 package.
+
+## 0.14.0-beta.98 — 2026-11-10
+
+- Added a square minimap with a thin RUI border, persistent shape preference and native map-config reset handling; remove decorative minimap/header trim with Blizzard art disabled.
+- Added 85 attributed Forever spirit-healer positions, passive native release-destination highlighting, and optional, explicitly estimated nearest-healer region outlines in Map & quests.
+- Added a movable, profile-positioned flight timer: current upstream reference times are labelled estimates; complete, destination-checked flights learn measured times for the exact route, build and speed-perk state. Unknown or reload-interrupted flights show elapsed time without inventing a full duration. No idle timer polling.
+- Recheck native objective-tracker suppression after coalesced quest/login/level events, without hooking Blizzard's rendering or aura calls.
+- Static and simulated checks are recorded separately from the six pending live acceptance gates.
+
+## 0.14.0-beta.97 - Consolidate and polish settings
+
+- Review settings ownership, navigation, labels and constructed layout in multiple passes. Consolidate seventeen top-level sections into thirteen, grouped under Interface, Activities, and Setup & Support. Backgrounds belongs to Appearance; quick setup belongs to Profiles; error log, compatibility and About are children of Help. Existing section links remain valid.
+- Rebuild Forever pages with section headings, consistent scrolling rows, explanatory labels and explicit choice menus. Group aura, cooldown, party, nameplate and expiring-buff controls. Share auction preference definitions between the main and integrated settings pages.
+- Reflow controls and page headers for text size changes. Correct nested search destinations and keyboard activation of text fields; exclude setup-wizard drafts from search. Separate profile save/load, new-character defaults, transfer and recovery. Live settings bindings survive profile-table replacement without changing stored keys or layouts.
+- Replace the ten-tab map grid with Quest log, Available, Guides, Progression, Supplies, and Dungeon atlas. Separate Quest actions and Map settings. Keep chapters inside Guides, retire the unimplemented Professions tab, and move zone preparation to Supplies.
+- Clear outgoing controls before specialised renderers return; reset scroll targets on page changes, add guide back-navigation, use the RUI slim scrollbar and fit navigation rows to their text. Repair malformed close/colour/search glyphs.
+- Review all thirteen constructed primary pages at 100/125/150% simulated text metrics, plus search, choices, live profile bindings, keyboard access and six-destination map navigation. Existing functionality and native contracts remain checked. Real-client visual/combat acceptance stays pending.
+
+## 0.14.0-beta.96 - Data-backed available quest pickups
+
+- Replace the unsuccessful beta94 per-ID native discovery pass with a bundled, corrected current Forever pickup catalogue. Metadata and giver positions are independent of guide selection and native map-offer omissions. Native offers retain priority and fill gaps; existing blue areas and native pins are preserved.
+- Browse zone/continent maps for eligible, unaccepted and uncompleted pickups. Add Map > Available with quest/giver/ID search, level ordering, coordinates, follow-pickup actions and Shift-click chat links. Hover markers to see co-located quest titles. Preserve multiple recorded givers and faction-dependent locations.
+- Reuse acceptance checks for level/race/class/chains/professions/reputation/items/spells. Correct explicit Skyborne 95/96 high-bit masks, exact negative grouped prerequisites and completed mutually-exclusive alternatives. Seasonal/event quests require a current game offer; unsupported requirements remain uncertain.
+- Pin QuestieDB Forever revision c1b50fefb19c064edc436429bef73435d9ff4254 (2026-11-09), including static/derived and faction-specific corrections. Ship editable factual data, deterministic builder and full upstream GPLv3 permission/provenance with its historical-contributor caveat. No installed-addon dependency or upstream UI/brand/code loader.
+- Keep 5,233 source quest records; 4,499 match readable installed-client IDs, of which 3,957 have recorded pickup locations. Diagnostics explicitly retain the 2,115 metadata gaps, 542 missing locations and 92 unread client records; no claim of complete server eligibility or fabricated positions.
+- Lazy materialization, map indexes, cached character/quest gates and existing coalesced events replace repeated native ID scans. Local source/index, real Westfall/native-empty, eligibility, search/focus/pooling/resize/follow, standalone and combat-cache regressions pass. Live rendering/eligibility/performance gates remain pending.
+
+## 0.14.0-beta.95 - Fit quest progression to the map
+
+- Fit the entire quest tree to the available map viewport on initial chain selection, using both width and height. Remove the old 65% minimum that clipped long chains.
+- Scale an inner graph containing the text, buttons and connectors together; retain an unscaled scroll child for consistent ranges and pan input. Centre fitted diagrams and keep the selected quest/details unchanged.
+- Refit after viewport resizing through a coalesced callback. Preserve deliberate manual zoom/pan, and add Fit tree to return to the overview. Zoom controls now step proportionally from the displayed fit scale.
+- Regression covers the Deadmines-style wide chain, tall chains, different viewport sizes, whole-node scaling, scroll bounds, resizing, manual zoom, selection and Fit tree. Live visual fit remains to be checked.
+
+## 0.14.0-beta.94 - Available quest map discovery
+
+- Show all game-confirmed available quest pickups independently of the selected quest or active guide. Merge native quest lines, force-visible pickups, explicit task starts and a map-only pass through known readable Forever quest IDs using GetQuestLineInfo(id, mapID, true).
+- Use current native displayability, completion, held-state, flags and coordinates rather than Classic level/race/prerequisite assumptions. Native offers take priority over outdated authored metadata. Exclude completed/in-progress records and respect low-level/local-story/account filters.
+- Refresh offers on map opening/navigation and tracking/POI changes. Cache by map/generation, query at most 100 known IDs per frame, and cancel discovery when the map closes, changes or combat begins. No catalogue pass runs at login with the map hidden.
+- Preserve native quest pins/blue areas. Diagnostics report offer/discovery counts and data gaps. Complete pickup coverage still depends on native responses and readable client IDs; unread records and unreported coordinates are not fabricated.
+- Retain beta93's bag repair and current-source freshness checks. Source/mocked checks pass; live map availability and inventory interaction remain to be verified.
+
+## 0.14.0-beta.93 - Repair combined inventory initialization
+
+- Fix reagent item initialization for current Forever's (containerFrame, bag, slot) contract. Detect the native engine's initialized-button shape instead of assuming an old two-argument signature; retain a historical compatibility regression.
+- Set the displayed slot count only after native buttons are initialized. On an incompatible future contract, remove appended buttons and preserve native backpack capacity/routing, with the reagent bag available separately. Prevent missing-button layout/close errors from cascading.
+- Refresh the reviewed Forever source/CI pin to 9dc84f0d3bbae1768ac3405b3716000bd93eda06, checked against the current branch head on 2026-11-09. Add a source freshness guard that rejects stale test checkouts or a changed remote branch before CI validation.
+- The strengthened harness rejects the broken beta92 module with the same invalid SetID cause and passes the corrected module against current native pool construction/initialization and historical initialization. In-game inventory interaction/taint acceptance still requires reload and live checking.
+
+## 0.14.0-beta.92 - Integrated auction house and reagent inventory
+
+- Make the whole auction house draggable by its title bar with persistent, profile-aware position. Replace the detached companion with integrated Tools, Market prices and Settings pages alongside native Buy/Sell/Auctions bottom tabs. Native trading handlers remain intact.
+- Add a manual full-market snapshot through Blizzard's ReplicateItems API. Index up to 1,000 listings per batch with a 2ms measured budget checked every 100 rows; yield between batches. Cache item-ID minima, quantities and listing counts for instant local filtering, with timestamps, partial-data labels, timeout/cancellation recovery and bounded storage. No purchase/post action uses cached full-market prices.
+- Merge held reagent-bag slots into the native combined backpack's pool, routing and slot count. Keep native item initialization, clicks, search/sort/cooldown/tooltip paths, separate-bag preference and bank routing.
+- Regression checks execute native auction display switching, native reagent item initialization and routing, persistent drag handlers, shared settings controls, batched scan work and local-cache searches. In-game appearance, full-market API availability and combined-bag interaction still require live testing.
+
+## 0.14.0-beta.91 - Combat map dimensions
+
+- Restore saved main-map dimensions/scale after native compact resets during combat when the frame is unprotected. Restore the viewport and sidebar geometry separately from native quest/data refreshes.
+- Check protected status per frame and defer protected changes/full layout work until combat ends. Preserve native M open/close identity and keep interactive resizing outside combat.
+- Regression exercises the inspected native Minimize method, late resets, protected roots/descendants, coalescing and post-combat recovery. Live combat rendering remains to be checked.
+
+## 0.14.0-beta.90 - Auction tools and combat meter
+
+- Use compact 8-point muted macro labels anchored inside the bottom of owned action buttons; shared styling respects the button font configuration, and labels remain bounded when resizing.
+
+- Repair beta87 extra-bar visibility imports: read native gameplay toggles without requiring loaded Settings proxies, accept numeric 0/1, and recover the precise all-disabled migration signature once while preserving saved anchors and later explicit visibility choices. The uninstalled beta88 archive is retained as an earlier candidate.
+
+- Add a themed auction companion with per-character saved/favourite/recent searches and persistent default filters, inventory-aware shopping lists, data-only list import/export and unit-price observations.
+- Retain native buying, bidding, posting, owned-auction sorting and fee/confirmation controls. Add saved item quantity/duration, fresh exact-variant competing-price suggestions and undercut review. No automatic purchases, posting or cancellation.
+- Add a quest-supply tab and Map > Supplies shortcut. Index all 6,614 readable installed-client quest records and disclose 92 unread encrypted records, with 363 explicitly labelled Classic purchase references across 65 zone/category groups. Missing/unverified Forever requirements remain visible. Record complete native turn-in requirements without restoring an external addon database dependency.
+- Extend RUI meter styling to native player/spell rows and breakdown surfaces, with font/flat-fill controls. Preserve native live combat updates, categories, fight history, row clicks, reset and additional windows.
+- Add a searchable Auction house settings page and profile-aware appearance/behaviour preferences. Keep character trading data and realm observations outside profiles. Bound caches, coalesce result bursts, defer meter cosmetics during combat and stop hidden auction rendering.
+- Static/simulated checks pass. Native transaction lifecycle, live combat rendering, visual fit and performance still require in-client acceptance. Complete verified Forever quest-supply coverage is not yet available.
+
+## 0.14.0-beta.87 - RUI-owned Forever action bars
+
+- Replace the eight moved Blizzard bars with RUI-owned secure bars using bundled LibActionButton 168. Existing action slots, bindings and saved grids/positions carry across, with a one-time layout backup.
+- Keep bar geometry outside Blizzard Edit Mode. Configure secure paging and visibility before combat rather than restoring native anchors after level-up resets.
+- Action bar element settings now edit the RUI grid. Profile loads use these settings without calling Blizzard's Edit Mode setting handlers.
+- Bundle the button engine and its licences, isolated from libraries supplied by other addons. Include libraries in packages and release source checksums.
+- Static and simulated checks pass. In-client level-up/combat, action dragging, cooldowns, stance/form paging and special action states still require live acceptance.
+
+## 0.14.0-beta.86 - Forever pet spellbook
+
+- Added the Pet tab to the RUI spellbook using Blizzard's pet spell bank. Pet changes invalidate the catalog.
+
+## 0.14.0-beta.85 - Forever combat action-bar sizing
+
+- Store custom action-bar size in Blizzard's native Icon Size setting rather than scaling the protected bar frame.
+- Migrate existing bar scale to native icon size when a saved layout is applied out of combat.
+
+## 0.14.0-beta.84 - Forever action bar stability and target-of-target casts
+
+- Added a movable target-of-target cast and channel bar.
+- Reapply saved action-bar geometry after native reflows, spell moves and level-ups; preserve it when saving a profile during a transient native layout.
+- Suppress remaining decorative action-button frame art when Blizzard art is disabled.
+
+## 0.14.0-beta.83 — Forever terrain map
+
+- Added an optional world map terrain layer using client minimap tiles for Eastern Kingdoms, Kalimdor and Zephras Isle.
+
+## 0.14.0-beta.82 — Forever UI taint isolation
+
+- Apply decorative action-button opacity outside native callbacks and leave native action-button state textures intact.
+- Stop hooking Blizzard's objective tracker show and alpha callbacks.
+
+## 0.14.0-beta.81 — Forever level-up stability
+
+- Keep passive quest focus in RUI rather than repeatedly triggering native super-tracking.
+- Restore saved action-bar positions on level-up and after combat without replaying native Edit Mode settings.
+
+## 0.14.0-beta.80 — Forever launch polish
+
+- Added independent auto-accept and auto hand-in controls under Map & quests. Hold Shift to handle quest dialogue manually.
+- The compact tracker lists other active quests beneath the current objective and can use Blizzard map pins when no quest waypoint is available.
+- Styled the native Esc menu and added RUI Settings as its first button.
+- Profile capture retains valid saved positions for unmeasured frames and omits invalid geometry instead of rejecting the whole save.
+
 ## 0.14.0-beta.79 — release-readiness follow-up
 
 - Add `/pr checks` and settings shortcuts for the six guided live acceptance checks. Require explicit start and evidence before self-reported Pass/Fail; retain Pending and retesting. Add links to relevant settings and the bug report.

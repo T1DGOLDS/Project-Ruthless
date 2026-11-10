@@ -46,3 +46,13 @@ AUI.modules.Spellbook.macroDirty=false; ranks.events.callback(nil,"UPDATE_MACROS
 ProjectRuthlessDB.spellbook.autoUpdateRanks=false; macros[1][3]='/cast Fireball(Rank 1)'
 ranks.events.callback(nil,"LEARNED_SPELL_IN_SKILL_LINE",133); flush(); assert(#writes==3)
 print('PASS: event-driven account/character rank writes, exact preserved fields, pre-write history, parsing boundaries, localization, combat/data/draft deferral, duplicate events, and disabled mode')
+
+-- A saved opt-in from the removed feature must never re-enable protected action writes.
+AUI.isForever=true
+ProjectRuthlessDB.spellbook.autoUpdateBarRanks=true
+function PlaceAction()error("Rank updates must not write to native action slots")end
+C_Spell.PickupSpell=function()error("Rank updates must leave the cursor alone")end
+ProjectRuthlessDB.spellbook.autoUpdateRanks=true
+ranks.events.callback(nil,"LEARNED_SPELL_IN_SKILL_LINE",133);flush()
+assert(#writes==4 and not ranks.pending[133])
+print("PASS: old action rank settings cannot restore protected writes; macro rank updates still run")

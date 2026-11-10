@@ -2,6 +2,7 @@ function hooksecurefunc(obj,key,callback)local old=obj[key];obj[key]=function(..
 local AUI={modules={}}
 math.atan2=math.atan
 function AUI:RegisterModule(name,module) self.modules[name]=module end
+AUI.modules.Menu={Show=function(self,page)self.page=page end}
 assert(load('local _, AUI=...\n'..RUNTIME_SOURCE))('ProjectRuthless',AUI)
 local secret={}
 function issecretvalue(v) return v==secret end
@@ -56,7 +57,7 @@ print('PASS: supply reminders require an offered missing item and stop after que
 local nodes={}
 local function node(parent)
     local n={parent=parent,shown=true,scripts={}}
-    local methods={SetSize=function(self,w,h)self.width=w;self.height=h end,SetHeight=function(self,h)self.height=h end,SetWidth=function(self,w)self.width=w end,
+    local methods={IsProtected=function()return false end,SetSize=function(self,w,h)self.width=w;self.height=h end,SetHeight=function(self,h)self.height=h end,SetWidth=function(self,w)self.width=w end,
     SetText=function(self,t)self.text=t end,GetText=function(self)return self.text end,SetTextColor=function(self,r,g,b)self.color={r,g,b}end,
     SetPoint=function(self,...)self.point={...}end,SetScript=function(self,k,v)self.scripts[k]=v end,
     Hide=function(self)self.shown=false end,Show=function(self)self.shown=true end,SetShown=function(self,v)self.shown=v end,IsShown=function(self)return self.shown end,IsVisible=function(self)return self.shown and (not rawget(self,"parent") or self.parent:IsVisible())end,HookScript=function(self,k,fn)local old=self.scripts[k];self.scripts[k]=function(...)if old then old(...)end;fn(...)end end,
@@ -395,6 +396,25 @@ grouped=false;progress[1].finished=true;q:AnnounceQuestProgress();assert(#sent==
 grouped=true;q:AnnounceQuestProgress();assert(#sent==2)
 raiding=true;questDone=true;q:AnnounceQuestProgress();assert(#sent==2)
 print('PASS: party objective/quest completion announces once; reload, solo completion, later group joins and raids remain silent')
+do
+ local oldTime=GetTime;local clock=100;GetTime=function()return clock end
+ raiding=false;grouped=true
+ q.partyQuestState=nil;questDone=true;for _,p in ipairs(progress)do p.finished=true end
+ q:AnnounceQuestProgress();local prior=#sent
+ questDone=false;for _,p in ipairs(progress)do p.finished=false end;q:AnnounceQuestProgress()
+ questDone=true;for _,p in ipairs(progress)do p.finished=true end;q:AnnounceQuestProgress();assert(#sent==prior,'temporary false completion must not replay')
+ progress[#progress+1]={text='Restored objective',objectID=999,type='item',finished=false};q:AnnounceQuestProgress()
+ progress[#progress].finished=true;q:AnnounceQuestProgress();assert(#sent==prior,'restored objective metadata cannot replay an already-complete quest');table.remove(progress)
+ q:ResetPartyQuestBaseline();questDone=false;for _,p in ipairs(progress)do p.finished=false end;q:AnnounceQuestProgress()
+ clock=101;questDone=true;for _,p in ipairs(progress)do p.finished=true end;q:AnnounceQuestProgress();assert(#sent==prior,'instance entry must stay quiet while quest log reloads')
+ clock=105;q:AnnounceQuestProgress();assert(#sent==prior)
+ local oldCount=C_QuestLog.GetNumQuestLogEntries;C_QuestLog.GetNumQuestLogEntries=function()return 0 end;q:AnnounceQuestProgress();C_QuestLog.GetNumQuestLogEntries=oldCount
+ questDone=false;q:AnnounceQuestProgress();questDone=true;q:AnnounceQuestProgress();assert(#sent==prior,'empty/partial log must retain completed quest latches')
+ q.partyQuestState=nil;q:ResetPartyQuestBaseline();clock=110;questDone=false;for _,p in ipairs(progress)do p.finished=false end;q:AnnounceQuestProgress()
+ questDone=true;progress[1].finished=true;q:AnnounceQuestProgress();assert(#sent==prior+1,'genuine new progress resumes after baseline settles')
+ GetTime=oldTime;q.partyQuestQuietUntil=nil
+ print('PASS: instance-entry baseline settling and monotonic completion prevent replay; genuine new progress still announces')
+end
 
 local s=ProjectRuthlessDB.questWorkspace
 s.prepWestfall=true;UnitLevel=function()return 14 end;UnitFactionGroup=function()return 'Alliance'end
@@ -414,6 +434,35 @@ q:AutoHandIn('QUEST_COMPLETE');assert(rewards[1]==0)
 choices=1;q:AutoHandIn('QUEST_COMPLETE');assert(rewards[2]==1)
 choices=2;q:AutoHandIn('QUEST_COMPLETE');assert(#rewards==2)
 combat=true;q:AutoHandIn('QUEST_PROGRESS');assert(progressCalls==1);combat=false
+do
+local previousShift,previousGossip=IsShiftKeyDown,C_GossipInfo
+local accepted,selected,shift,pvp=0,0,false,false
+IsShiftKeyDown=function()return shift end
+QuestFlagsPVP=function()return pvp end
+AcceptQuest=function()accepted=accepted+1 end
+q:AutoAccept();assert(accepted==0)
+s.autoAccept=true;q:AutoAccept();assert(accepted==1)
+shift=true;q:AutoAccept();q:AutoHandIn('QUEST_PROGRESS');assert(accepted==1 and progressCalls==1)
+shift=false;pvp=true;q:AutoAccept();assert(accepted==1);pvp=false
+combat=true;q:AutoAccept();assert(accepted==1);combat=false
+local offers={{questID=10}}
+C_GossipInfo={GetAvailableQuests=function()return offers end,GetActiveQuests=function()return {}end,GetOptions=function()return {}end,SelectAvailableQuest=function(id)selected=id end}
+q:AutoGossip();assert(selected==10)
+selected=0;offers[2]={questID=20};q:AutoGossip();assert(selected==0)
+s.autoAccept=false;IsShiftKeyDown=previousShift;C_GossipInfo=previousGossip
+local oldLocalWaypoint,oldPins=C_QuestLog.GetNextWaypointForMap,C_QuestLog.GetQuestsOnMap
+local reads=0
+C_QuestLog.GetNextWaypointForMap=function()end
+C_QuestLog.GetQuestsOnMap=function()
+    reads=reads+1
+    return {{questID=10,x=.2,y=.3,isQuestStart=true},{questID=10,x=.4,y=.6,isQuestStart=false}}
+end
+local x,y=q:NativeLocalQuestPoint(10,37)
+assert(x==.4 and y==.6 and q:NativeLocalQuestPoint(10,37)==.4 and reads==1)
+C_QuestLog.GetNextWaypointForMap,C_QuestLog.GetQuestsOnMap=oldLocalWaypoint,oldPins
+q.nativeLocalQuestPoint=nil
+print('PASS: independent auto-accept, Shift override, PvP and combat guards, single-offer gossip')
+end
 print('PASS: upcoming Westfall supplies use remaining counts/completion/level gates; auto hand-in is opt-in, combat-safe and leaves multiple reward choices manual')
 
 local supplyQuests={[1000]={zoneOrSort=10,objectives={[3]={{5000,nil,3}}}},[1001]={zoneOrSort=10,objectives={[3]={{5001,nil,2}}}},[1002]={zoneOrSort=10,objectives={[3]={{5002,nil,4}}}}}
@@ -519,10 +568,44 @@ do
  assert(WorldMapFrame:GetWidth()==1200 and WorldMapFrame:GetHeight()==650 and WorldMapFrame:GetScale()==.85 and #timers==0)
  for _,page in ipairs({'Quests','Settings','Dungeons'})do q:SelectMapPage(page);WorldMapFrame:Show();WorldMapFrame:HandleUserActionToggleSelf();assert(not WorldMapFrame:IsShown())end
  WorldMapFrame:HandleUserActionToggleSelf();assert(WorldMapFrame:IsShown()and nativeToggles==4)
- combat=true;WorldMapFrame:HandleUserActionToggleSelf();WorldMapFrame:HandleUserActionToggleSelf();assert(WorldMapFrame:IsShown()and WorldMapFrame.HandleUserActionToggleSelf==nativeToggle);combat=false
+ combat=true;WorldMapFrame:HandleUserActionToggleSelf();WorldMapFrame:HandleUserActionToggleSelf();assert(WorldMapFrame:IsShown()and WorldMapFrame.HandleUserActionToggleSelf==nativeToggle)
+ -- Native compact dimensions can be applied after OnShow, also in combat.
+ local savedAfter=AUI.AfterCombat;local deferredGeometry
+ AUI.AfterCombat=function(_,key,fn)if key=="mapGeometry"then deferredGeometry=fn end end
+ local nativeLayout=WorldMapFrame.OnFrameSizeChanged
+ WorldMapFrame.OnFrameSizeChanged=function()error("native data/layout refresh from combat geometry restore")end
+ if NATIVE_MAP_MINIMIZE_SOURCE then
+  local oldEvents,oldAttribute,oldPositions=EventRegistry,SetUIPanelAttribute,UpdateUIPanelPositions
+  EventRegistry={TriggerEvent=function()end};SetUIPanelAttribute=function()end;UpdateUIPanelPositions=function()end
+  WorldMapMixin={};assert(load(NATIVE_MAP_MINIMIZE_SOURCE))()
+  local native={minimizedWidth=702,minimizedHeight=534,BorderFrame=node(),NavBar=node(),
+   SetSize=function(_,w,h)WorldMapFrame:SetSize(w,h)end,SetTutorialButtonShown=function()end,
+   SynchronizeDisplayState=function()WorldMapFrame:SetScale(1)end,OnFrameSizeChanged=function()end}
+  WorldMapMixin.Minimize(native)
+  EventRegistry,SetUIPanelAttribute,UpdateUIPanelPositions=oldEvents,oldAttribute,oldPositions
+ else WorldMapFrame:SetSize(702,534);WorldMapFrame:SetScale(1)end
+ pending=timers;timers={};for _,fn in ipairs(pending)do fn()end
+ assert(WorldMapFrame:GetWidth()==1200 and WorldMapFrame:GetHeight()==650 and WorldMapFrame:GetScale()==.85)
+ assert(#timers==0 and deferredGeometry and math.abs(q.mapTabBar.width-408)<.001)
+ -- Protected root or descendants are deferred independently, without writes.
+ WorldMapFrame.IsProtected=function()return true end
+ WorldMapFrame:SetSize(702,534);pending=timers;timers={};for _,fn in ipairs(pending)do fn()end
+ assert(WorldMapFrame:GetWidth()==702 and #timers==0)
+ WorldMapFrame.IsProtected=function()return false end
+ local scroll=WorldMapFrame.ScrollContainer
+ if scroll and type(scroll)~="function"then
+  scroll.IsProtected=function()return true end
+  local oldPoint=scroll.point;scroll.ClearAllPoints=function()error("protected viewport write")end
+  q:ApplyMapScale();assert(scroll.point==oldPoint)
+  scroll.IsProtected=function()return false end;scroll.ClearAllPoints=function()end
+ end
+ combat=false;WorldMapFrame.OnFrameSizeChanged=nativeLayout
+ deferredGeometry();pending=timers;timers={};for _,fn in ipairs(pending)do fn()end
+ assert(WorldMapFrame:GetWidth()==1200 and WorldMapFrame:GetHeight()==650 and #timers==0)
+ AUI.AfterCombat=savedAfter
  q:SelectMapPage('Quests');C_Timer.After=oldTimer;AUI.isForever=oldForever;HideUIPanel=oldHide
  q.mapRestoreQueued=nil
- print('PASS: late native size/scale reset restores saved dimensions once without recursion; native M toggle identity remains intact for combat opening/closing')
+ print('PASS: late native combat/noncombat size reset restores saved dimensions and viewport once; protected frames defer; native M identity and native data lifecycle remain untouched')
 end
 
 
@@ -570,8 +653,9 @@ local refreshSaved=q.Refresh;local syncSaved=q.SyncMapPage
 q.Refresh=function()end;q.SyncMapPage=function()end
 ObjectiveTrackerFrame={alpha=.8,GetAlpha=function(self)return self.alpha end,SetAlpha=function(self,a)self.alpha=a end,Hide=function()error('Native tracker Hide must not be called')end,Show=function()error('Native tracker Show must not be called')end}
 ProjectRuthlessDB.questWorkspace.enabled=true;q:ApplySettings();assert(ObjectiveTrackerFrame.alpha==0)
-ObjectiveTrackerFrame:SetAlpha(1);assert(ObjectiveTrackerFrame.alpha==0)
-combat=true;ObjectiveTrackerFrame:SetAlpha(.4);assert(ObjectiveTrackerFrame.alpha==0);combat=false
+ObjectiveTrackerFrame:SetAlpha(1);assert(ObjectiveTrackerFrame.alpha==1)
+q:SuppressNativeTracker();assert(ObjectiveTrackerFrame.alpha==0)
+combat=true;ObjectiveTrackerFrame:SetAlpha(.4);q:SuppressNativeTracker();assert(ObjectiveTrackerFrame.alpha==.4);combat=false
 ProjectRuthlessDB.questWorkspace.enabled=false;q:ApplySettings();assert(ObjectiveTrackerFrame.alpha==.8)
 ObjectiveTrackerFrame:SetAlpha(.6);assert(ObjectiveTrackerFrame.alpha==.6)
 q.Refresh=refreshSaved;q.SyncMapPage=syncSaved;ObjectiveTrackerFrame=nil
@@ -609,10 +693,11 @@ q.RenderMapPage=saveRender;q.Refresh=saveRefresh
 print('PASS: grey quest abandonment reviews first, rechecks native eligibility and blocks combat')
 
 assert(load(AUTHORED_DATA_SOURCE))('ProjectRuthless',AUI)
+assert(load(ZEPHRAS_SOURCE))('ProjectRuthless',AUI)
 assert(load(AUTHORED_SOURCE))('ProjectRuthless',AUI)
 local authored=AUI.modules.AuthoredGuides
 ProjectRuthlessCharDB.authoredGuide=nil;assert(authored:Read(q)==nil and authored.routes==nil)
-local routes=authored:Catalog();assert(#routes==36)
+local routes=authored:Catalog();assert(#routes==38)
 local zones={};local ids={}
 for _,route in ipairs(routes)do
     assert(route.min>=1 and route.max<=30 and #route.hubs>=1)
@@ -621,8 +706,8 @@ for _,route in ipairs(routes)do
     zones[route.area]=true
     for _,hub in ipairs(route.hubs)do assert(#hub.note>80 and #hub.quests>0);for _,id in ipairs(hub.quests)do assert(authored.facts[tostring(id)]and authored.facts[tostring(id)].min<=30);ids[id]=true end end
 end
-local zoneCount=0;for _ in pairs(zones)do zoneCount=zoneCount+1 end;assert(zoneCount==20)
-local questCount=0;for _ in pairs(ids)do questCount=questCount+1 end;assert(questCount==673)
+local zoneCount=0;for _ in pairs(zones)do zoneCount=zoneCount+1 end;assert(zoneCount==21)
+local questCount=0;for _ in pairs(ids)do questCount=questCount+1 end;assert(questCount>=673)
 for faction,areas in pairs({Alliance={44,38,148,10,11,331,406,400},Horde={17,130,331,406,267,400}})do
     for _,area in ipairs(areas)do
         local found=false
@@ -666,7 +751,10 @@ guide=authored:Read(q);assert(guide.phase=='REQUIREMENTS'and guide.instruction:f
 locations.PlayerEligibility=function()return false,'Skill data unavailable',true end
 locations.offers={};guide=authored:Read(q);assert(guide.availability=='unknown'and guide.phase=='CHECK QUEST GIVER')
 q:LayoutMap();authored:RenderBrowser(q,'Chapters')
+assert(not q.mapCopy.text:find(guide.routeNote,1,true),'Detailed route notes must be opt-in')
+ProjectRuthlessDB.questWorkspace.guideDetail=true;authored:RenderBrowser(q,'Chapters')
 assert(q.mapCopy.text:find(guide.routeNote,1,true)and authored.rows[1].point[3]<=-120)
+ProjectRuthlessDB.questWorkspace.guideDetail=nil
 local state=ProjectRuthlessCharDB.authoredGuide;local chapter=state.chapter
 authored:Start('westfall',chapter);assert(ProjectRuthlessCharDB.authoredGuide==state)
 authored:Action('stop');q.SyncMapPage=savedSync;q.SelectMapPage=savedSelect
@@ -690,6 +778,16 @@ authored:Action('stop')
 q.Refresh=savedRefresh;locations.Database=savedDatabase;locations.PlayerEligibility=savedEligibility
 print('PASS: authored route notes scroll above controls; level/profession blocks and absent/uncertain data never claim pickup availability')
 print('PASS: 36 original routes/detours cover 20 zones and 673 verified quests; level 20–30 coverage, progression, completion, requirements, faction, skip/pause/combat and unchanged-read caching')
+do
+ local oldLevel,oldFaction,oldRace,oldInfo=UnitLevel,UnitFactionGroup,UnitRace,C_Map.GetMapInfo
+ UnitLevel=function()return 12 end;UnitFactionGroup=function()return 'Alliance'end;UnitRace=function()return 'Human','Human'end
+ C_Map.GetMapInfo=function()return {name='Westfall'}end
+ local near=authored:BrowseRoutes(false);local all=authored:BrowseRoutes(true)
+ assert(#near>0 and near[1].name=='Westfall'and #all>#near)
+ for _,route in ipairs(near)do assert(route.min<=15 and route.max>=9 and route.faction=='Alliance'and not route.race)end
+ UnitLevel,UnitFactionGroup,UnitRace,C_Map.GetMapInfo=oldLevel,oldFaction,oldRace,oldInfo
+ print('PASS: guide library filters faction/race/nearby levels and sorts current zone first; all levels remain available')
+end
 
 -- Shared status is cached until relevant input changes; pickup relevance is separate from acceptance.
 local statusReads=0;local statusFields={requiredLevel=1,questLevel=1}
@@ -792,14 +890,12 @@ C_QuestLog.SetSelectedQuest=function(id)nativeSelected=id;selectionWrites=select
 C_SuperTrack.GetSuperTrackedQuestID=function()return nativeTracked end
 C_SuperTrack.SetSuperTrackedQuestID=function(id)nativeTracked=id;trackingWrites=trackingWrites+1 end
 q.currentQuestID=20;IsInGroup=function()return false end
-q:SyncMapObjective();assert(nativeSelected==20 and nativeTracked==20)
-q:SyncMapObjective();assert(selectionWrites==1 and trackingWrites==1)
-combat=true;q.currentQuestID=30;q:SyncMapObjective();assert(nativeSelected==20 and q.pendingMapObjective)
-combat=false;q:SyncMapObjective();assert(nativeSelected==30 and nativeTracked==30 and not q.pendingMapObjective)
-q.currentQuestID=999;q:SyncMapObjective();assert(nativeSelected==30)
-q.currentQuestID=secret;q:SyncMapObjective();assert(nativeSelected==30)
-q.currentQuestID=20;nativeSelected=30;nativeTracked=30;q:SyncMapObjective();assert(nativeSelected==20 and nativeTracked==20)
-print('PASS: current tracker objective synchronizes native selected/supertracked map quest, avoids redundant writes, omits pickups/restricted IDs and defers combat')
+q:SyncMapObjective();assert(nativeSelected==0 and nativeTracked==0 and locations.selectedQuest==20)
+combat=true;q.currentQuestID=30;q:SyncMapObjective();assert(locations.selectedQuest==30);combat=false
+q.currentQuestID=999;q:SyncMapObjective();assert(locations.selectedQuest==30)
+q.currentQuestID=secret;q:SyncMapObjective();assert(locations.selectedQuest==30)
+assert(selectionWrites==0 and trackingWrites==0)
+print('PASS: passive quest refresh updates the RUI objective without native selection or super-tracking writes')
 
 local savedSource=ProjectRuthlessDB.questWorkspace.guideSource
 ProjectRuthlessDB.questWorkspace.guideSource='RUI';q.manualFocus=nil
@@ -863,6 +959,60 @@ assert(labelled,'Library must distinguish short detours from leveling routes')
 C_QuestLog.IsQuestFlaggedCompleted=savedCompleted
 q.entries=savedEntries;UnitLevel=savedLevel;UnitFactionGroup=savedFaction;locations.PlayerEligibility=savedEligibility;locations.mapping=savedMapping
 C_Map.GetBestMapForUnit=savedMap;C_Map.GetMapInfo=savedInfo;ProjectRuthlessCharDB.authoredGuide=savedState;ProjectRuthlessDB.questWorkspace.guideSource=sourceBefore;q.manualFocus=nil
+;(function()
+    local oldRace,oldFaction,oldLevel=UnitRace,UnitFactionGroup,UnitLevel
+    local oldState,oldDone=ProjectRuthlessCharDB.authoredGuide,C_QuestLog.IsQuestFlaggedCompleted
+    local oldEntries,oldSignature=q.entries,q.entriesSignature
+    local oldDatabase,oldEligibility=locations.Database,locations.PlayerEligibility
+    local oldRefresh,oldSync=q.Refresh,q.SyncMapPage
+    q.Refresh=function()end;q.SyncMapPage=function()end
+    UnitRace=function()return "Skyborne","Skyborne"end
+    UnitLevel=function()return 5 end
+    locations.Database=function()return {}end
+    locations.PlayerEligibility=function()return true end
+    for faction,arrival in pairs({Alliance=94946,Horde=95349})do
+        UnitLevel=function()return 5 end
+        UnitFactionGroup=function()return faction end
+        local key="zephras-"..faction:lower()
+        local route=authored.byID[key]
+        local finished={}
+        C_QuestLog.IsQuestFlaggedCompleted=function(id)return finished[id]or false end
+        ProjectRuthlessCharDB.authoredGuide=nil
+        q.entries={{id=92465,title="Agitators"}}
+        q.entriesSignature=key
+        assert(authored:Start(key))
+        assert(authored:Read(q).id==92460)
+        finished[92460]=true;q.entriesSignature=key.."pickups"
+        assert(authored:Read(q).id==92461)
+        q.entries[#q.entries+1]={id=92461,title="Harmony in Balance"}
+        q.entriesSignature=key.."second pickup"
+        assert(authored:Read(q).id==92462)
+        q.entries[#q.entries+1]={id=92462,title="Infestation Investigation"}
+        q.entriesSignature=key.."objectives"
+        assert(authored:Read(q).phase=="CURRENT OBJECTIVE"and authored:Read(q).id==92461)
+        for _,hub in ipairs(route.hubs)do
+            local seen={}
+            for _,loop in ipairs(hub.loops)do
+                for _,id in ipairs(loop.quests)do assert(not seen[id]);seen[id]=true;finished[id]=id~=arrival end
+            end
+            for _,id in ipairs(hub.optional)do assert(not seen[id]and authored.facts[tostring(id)])end
+        end
+        UnitLevel=function()return 13 end
+        q.entries={};q.entriesSignature=key.."departure"
+        assert(authored:Read(q).id==arrival and authored:Read(q).chapter==4)
+        finished[arrival]=true;q.entriesSignature=key.."complete"
+        assert(authored:Read(q).phase=="ROUTE COMPLETE")
+    end
+    UnitRace=function()return "Human","Human"end
+    assert(not authored:Start("zephras-horde")and not authored:Start("zephras-alliance"))
+    UnitRace,UnitFactionGroup,UnitLevel=oldRace,oldFaction,oldLevel
+    ProjectRuthlessCharDB.authoredGuide,C_QuestLog.IsQuestFlaggedCompleted=oldState,oldDone
+    q.entries,q.entriesSignature=oldEntries,oldSignature
+    locations.Database,locations.PlayerEligibility=oldDatabase,oldEligibility
+    q.Refresh,q.SyncMapPage=oldRefresh,oldSync
+    print("PASS: Zephras ordered groups, mid-route quest log, optional quests, both faction handoffs and race guard")
+end)()
+
 print('PASS: RUI supported-zone auto start, ordered pickups and objectives independent of selection, pickup preview isolation, explicit pause/stop and unsupported-zone route prompt')
 
 -- A previously disabled native master switch must recover from the visible RUI option.
@@ -878,3 +1028,24 @@ combat=false;mapSettings:ApplySettings();assert(cv.questPOI=='0'and not mapSetti
 ProjectRuthlessDB.mapQuests.enabled=true;mapSettings:ApplySettings();assert(cv.questPOI=='1')
 SetCVar=savedCVar
 print('PASS: native quest marker master switch recovers from saved Off, follows the RUI option, and defers combat writes')
+
+;(function()
+    local originalMap,originalFlights,originalOffers,originalForever=WorldMapFrame,FlightPointDataProviderMixin,QuestOfferDataProviderMixin,AUI.isForever
+    AUI.isForever=true
+    FlightPointDataProviderMixin={RefreshAllData=function(self)self.visible=true end}
+    QuestOfferDataProviderMixin={RefreshAllData=function(self)self.visible=true end}
+    local flight={RefreshAllData=FlightPointDataProviderMixin.RefreshAllData,RemoveAllData=function(self)self.visible=false end}
+    local quests={RefreshAllData=QuestOfferDataProviderMixin.RefreshAllData,RemoveAllData=function(self)self.visible=false end}
+    WorldMapFrame={dataProviders={[flight]=true,[quests]=true}}
+    mapSettings:InstallIconFilters()
+    local settings=ProjectRuthlessDB.mapQuests
+    settings.showFlights=false;settings.enabled=true
+    flight:RefreshAllData();quests:RefreshAllData()
+    assert(not flight.visible and quests.visible)
+    settings.showFlights=true;settings.enabled=false
+    flight:RefreshAllData();quests:RefreshAllData()
+    assert(flight.visible and not quests.visible)
+    settings.showFlights=nil;settings.enabled=true
+    WorldMapFrame,FlightPointDataProviderMixin,QuestOfferDataProviderMixin,AUI.isForever=originalMap,originalFlights,originalOffers,originalForever
+    print("PASS: flight and quest icon filters act independently and native refresh restores each")
+end)()

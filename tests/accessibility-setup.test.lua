@@ -32,7 +32,11 @@ GetCurrentKeyBoardFocus=function()return nil end
 accessibleMenu.frame:Fire('OnKeyDown','TAB');assert(access.keyboardRow and accessibleMenu.searchHighlight)
 local before=ProjectRuthlessDB.accessibility.reducedMotion
 accessibleMenu.frame:Fire('OnKeyDown','ENTER');assert(ProjectRuthlessDB.accessibility.reducedMotion~=before)
-accessibleMenu.frame:Fire('OnKeyDown','PAGEDOWN');assert(accessibleMenu.selectedTab=='setup')
+accessibleMenu.frame:Fire('OnKeyDown','PAGEDOWN');assert(accessibleMenu.selectedTab=='errors')
+accessibleMenu:SelectTab('profiles')
+function Frame:SetFocus()self.focused=true end
+local nameRow=AUI.modules.SettingsRegistry:Search('Profile name')[1]
+access.keyboardRow=nameRow;accessibleMenu.frame:Fire('OnKeyDown','ENTER');assert(nameRow.control.focused)
 local poseBefore=ProjectRuthlessCharDB.layoutEditor and ProjectRuthlessCharDB.layoutEditor.elements
 local busyBefore=InCombatLockdown;InCombatLockdown=function()return true end
 assert(not setup:Finish({largeText=true}));InCombatLockdown=busyBefore

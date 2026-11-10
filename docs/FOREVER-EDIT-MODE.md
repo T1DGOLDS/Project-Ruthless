@@ -36,3 +36,7 @@ A passive 18-unit icon sits five units left of the native health bar: bag for an
 RUI Apply now releases initialized native systems from managed containers and calls the native UpdateSystemAnchorInfo recorder after applying public coordinates outside combat. SetPoint alone leaves native default-position flags and anchor data stale, allowing native default action-bar layout passes to rearrange bars later. No server-layout save or combat anchor correction is attempted. Native settings and position metadata remain in-memory; RUI saved profiles own reload restoration. In-game combat/vehicle/visibility and taint acceptance are still required.
 
 The combined Backpack is an editor element and also drags freely from its title area (excluding Bags/close controls). Drag end stores the character layout position; Save captures it in account profiles. Native container anchor updates restore that position outside combat/grace; no bag placement is rewritten in combat. Native search, sorting, item clicks and bag assignment remain unchanged.
+
+## Beta87: RUI-owned action bars
+
+The native-bar anchoring approach above is superseded for bar1-bar8. RUI now owns secure replacement bars, their grid settings and visibility. Existing slots, bindings and saved placement migrate. See [owned action bars](OWNED-ACTION-BARS.md) for the implementation and live acceptance boundary. Native controls outside these eight bars retain their existing behavior.

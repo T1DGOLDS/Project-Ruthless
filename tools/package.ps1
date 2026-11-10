@@ -29,6 +29,7 @@ Copy-Item -LiteralPath (Join-Path $RepositoryRoot "README.md") -Destination $pac
 Copy-Item -LiteralPath (Join-Path $RepositoryRoot "CHANGELOG.md") -Destination $packageRoot
 Copy-Item -LiteralPath (Join-Path $RepositoryRoot "LICENSE") -Destination $packageRoot
 Copy-Item -LiteralPath (Join-Path $RepositoryRoot "Modules") -Destination $packageRoot -Recurse
+Copy-Item -LiteralPath (Join-Path $RepositoryRoot "Libs") -Destination $packageRoot -Recurse
 
 Copy-Item -LiteralPath (Join-Path $RepositoryRoot "Assets") -Destination $packageRoot -Recurse
 

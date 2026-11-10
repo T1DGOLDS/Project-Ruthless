@@ -70,15 +70,22 @@ function P:Catalog()
      local fact=authored.facts[tostring(id)]or {};seen[id]=true
      nodes[#nodes+1]={id=id,title=fact.title,minLevel=fact.min,area=route.name.." · "..hub.name,requires={}}
     end end end
-    self.routeChains[#self.routeChains+1]={key="route:"..route.id,name=route.name.." · route",faction=route.faction,kind="route",nodes=nodes,source="RUI authored route · route order does not prove prerequisites"}
+    self.routeChains[#self.routeChains+1]={key="route:"..route.id,name=route.name.." · route",faction=route.faction,race=route.race,min=route.min,max=route.max,kind="route",nodes=nodes,source="RUI authored route · route order does not prove prerequisites"}
    end
   end
-  for _,chain in ipairs(self.routeChains)do if chain.faction==faction then list[#list+1]=chain;byKey[chain.key]=chain end end
+  local race=read(function()local _,token=UnitRace("player");return token end)
+  for _,chain in ipairs(self.routeChains)do if chain.faction==faction and (not chain.race or chain.race==race)then list[#list+1]=chain;byKey[chain.key]=chain end end
  end
  for key,chain in pairs(self:Store().known)do list[#list+1]=chain;byKey[key]=chain end
  local held={key="log",name="Your quest log",kind="log",nodes=entries,source="Live Blizzard quest log · independent quests"}
  list[#list+1]=held;byKey.log=held
- table.sort(list,function(a,b)if a.kind=="dungeon"and b.kind~="dungeon"then return true elseif b.kind=="dungeon"and a.kind~="dungeon"then return false end;return a.name<b.name end)
+ local order={log=1,dungeon=2,native=3,route=4}
+ table.sort(list,function(a,b)
+  local rankA,rankB=order[a.kind]or 9,order[b.kind]or 9
+  if rankA~=rankB then return rankA<rankB end
+  if a.min~=b.min then return (a.min or 999)<(b.min or 999)end
+  return a.name==b.name and a.key<b.key or a.name<b.name
+ end)
  self.catalog=list;self.byKey=byKey;return list
 end
 function P:Chain(key)self:Catalog();return self.byKey[key]end
@@ -175,16 +182,46 @@ end
 function P:Open(key)
  self.selected=key;local q=AUI.modules.QuestWorkspace;q:SelectMapPage("Dungeons")
 end
+function P:GraphViewport()
+ local width=read(self.scroll.GetWidth,self.scroll)
+ local height=read(self.scroll.GetHeight,self.scroll)
+ if not number(width)then width=(read(self.frame.GetWidth,self.frame)or 800)-16 end
+ if not number(height)then height=(read(self.frame.GetHeight,self.frame)or 600)-78 end
+ return math.max(1,width),math.max(1,height)
+end
+function P:ChangeGraphZoom(direction)
+ self.zoom=math.max(.001,math.min(2,(self.renderZoom or 1)*(1.2^direction)))
+ self:Render(AUI.modules.QuestWorkspace)
+end
+function P:FitGraph()
+ self.zoom=nil
+ self.scroll:SetHorizontalScroll(0);self.scroll:SetVerticalScroll(0)
+ self:Render(AUI.modules.QuestWorkspace)
+end
 function P:CreateGraph()
  if self.frame then return end
  local parent=WorldMapFrame;local f=CreateFrame("Frame",nil,parent,"BackdropTemplate");self.frame=f
  f:SetPoint("TOPLEFT",parent.ScrollContainer,"TOPLEFT");f:SetPoint("BOTTOMRIGHT",parent.ScrollContainer,"BOTTOMRIGHT")
  f:SetFrameStrata(parent:GetFrameStrata());f:SetFrameLevel(parent:GetFrameLevel()+220);f:EnableMouse(true)
  f:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1});AUI:StyleSurface(f,"window",1,"Map")
- local label=f:CreateFontString(nil,"OVERLAY","GameFontNormalSmall");label:SetPoint("TOPLEFT",12,-12);label:SetText("Quest progression · wheel to scroll · Shift + wheel sideways · drag empty space to pan")
+ local label=f:CreateFontString(nil,"OVERLAY","GameFontNormalSmall");label:SetPoint("TOPLEFT",12,-12);label:SetPoint("TOPRIGHT",f,"TOPRIGHT",-12,-12);label:SetText("Quest tree · drag to pan · wheel to scroll · Shift + wheel sideways")
  if AUI.modules.Accessibility then AUI.modules.Accessibility:RegisterText(label)end
  local scroll=CreateFrame("ScrollFrame",nil,f);self.scroll=scroll;scroll:SetPoint("TOPLEFT",8,-36);scroll:SetPoint("BOTTOMRIGHT",-8,42);scroll:EnableMouseWheel(true)
  local canvas=CreateFrame("Frame",nil,scroll);self.canvas=canvas;canvas:SetSize(800,600);scroll:SetScrollChild(canvas);canvas:EnableMouse(true)
+ -- A scaled inner frame shrinks text, buttons and connectors together. The
+ -- outer scroll child stays in viewport units so scroll ranges remain correct.
+ local graph=CreateFrame("Frame",nil,canvas);self.graph=graph
+ graph:SetPoint("TOPLEFT",canvas,"TOPLEFT",0,0)
+ scroll:SetScript("OnSizeChanged",function()
+  if self.zoom or self.fitQueued or not self.lastViewportWidth then return end
+  local width,height=self:GraphViewport()
+  if math.abs(width-self.lastViewportWidth)<1 and math.abs(height-self.lastViewportHeight)<1 then return end
+  self.fitQueued=true
+  C_Timer.After(0,function()
+   self.fitQueued=nil
+   if not self.zoom and read(self.frame.IsVisible,self.frame)==true then self:Render(AUI.modules.QuestWorkspace)end
+  end)
+ end)
  local function move(dx,dy)
   scroll:SetHorizontalScroll(math.max(0,math.min(scroll:GetHorizontalScroll()+dx,scroll:GetHorizontalScrollRange())))
   scroll:SetVerticalScroll(math.max(0,math.min(scroll:GetVerticalScroll()+dy,scroll:GetVerticalScrollRange())))
@@ -201,9 +238,9 @@ function P:CreateGraph()
  local function action(text,x,fn)
   local b=AUI:CreateButton(f);b:SetPoint("BOTTOMLEFT",x,9);b:SetSize(104,24);b:SetText(text);b:SetScript("OnClick",fn)
  end
- action("Zoom −",12,function()self.zoom=math.max(.65,(self.zoom or 1)-.1);self:Render(AUI.modules.QuestWorkspace)end)
- action("Zoom +",124,function()self.zoom=math.min(1.3,(self.zoom or 1)+.1);self:Render(AUI.modules.QuestWorkspace)end)
- action("Reset view",236,function()self.zoom=1;scroll:SetHorizontalScroll(0);scroll:SetVerticalScroll(0);self:Render(AUI.modules.QuestWorkspace)end)
+ action("Zoom −",12,function()self:ChangeGraphZoom(-1)end)
+ action("Zoom +",124,function()self:ChangeGraphZoom(1)end)
+ action("Fit tree",236,function()self:FitGraph()end)
  f:EnableKeyboard(true);f:SetPropagateKeyboardInput(true)
  f:SetScript("OnKeyDown",function(_,key)
   f:SetPropagateKeyboardInput(true)
@@ -229,13 +266,15 @@ function P:Render(q,focus)
   b:ClearAllPoints();b:SetPoint("TOPLEFT",0,-offset);b:SetSize(q.mapContent:GetWidth(),42);b:SetText(text);b:SetScript("OnClick",fn);b:Show();offset=offset+48;return b
  end
  if not chain then
+  if q.SetMapBack then q:SetMapBack("‹ Quest log",function()q:ReturnMapPage("Quests")end)end
   self:Hide();q.mapHeading:SetText("Quest progression")
   local notice=self.discoveryNotice or (AUI.modules.QuestData and "Native quest offers and RUI routes. Unrecorded spawn locations and pickup requirements remain unknown.")or ""
   q.mapCopy:SetText(notice);if notice~=""then offset=math.max(80,(q.mapCopy:GetStringHeight()or 64)+16)end
   row("Browse dungeon maps, bosses & loot",function()q:SelectMapPage("Dungeon atlas")end)
-  for _,entry in ipairs(self:Catalog())do local c=entry;row(c.name.."\n"..#c.nodes.." quests · "..(c.kind=="dungeon"and "Dungeon preparation"or "Quest group"),function()self.selectedQuest=nil;self:Open(c.key)end)end
+  for _,entry in ipairs(self:Catalog())do local c=entry;row(c.name.."\n"..(c.min and ("Levels "..c.min.."–"..c.max.." · ")or "")..#c.nodes.." quests · "..(c.kind=="dungeon"and "Dungeon preparation"or "Quest group"),function()self.selectedQuest=nil;self:Open(c.key)end)end
   q.mapContent:SetHeight(math.max(400,offset));return
  end
+ if q.SetMapBack then q:SetMapBack("‹ Groups",function()self.selected=nil;self.selectedQuest=nil;self:Render(q)end)end
  local positions,err=self:Layout(chain)
  if not positions then
   self:Hide();q.mapHeading:SetText("Chain unavailable");q.mapCopy:SetText(err);offset=100
@@ -259,16 +298,27 @@ function P:Render(q,focus)
  if self:Store().active then row("Return to leveling guide",function()self:Action("stop");self:Render(q)end)end
  q.mapContent:SetHeight(math.max(600,offset))
  for _,b in ipairs(self.buttons)do b:Hide()end;for _,e in ipairs(self.edges)do e:Hide()end
- local zoom=self.zoom or 1;local width,height=0,0;local edgeIndex=0
+ local width,height=0,0
+ for _,pos in pairs(positions)do width=math.max(width,pos.x+244);height=math.max(height,pos.y+110)end
+ local viewportWidth,viewportHeight=self:GraphViewport()
+ if self.renderedChain~=chain.key then self.zoom=nil;self.renderedChain=chain.key end
+ local fit=math.max(.001,math.min(1,(viewportWidth-16)/math.max(1,width),(viewportHeight-16)/math.max(1,height)))
+ local zoom=self.zoom or fit;self.renderZoom=zoom;self.fitZoom=fit
+ self.lastViewportWidth,self.lastViewportHeight=viewportWidth,viewportHeight
+ local offsetX=math.max(0,(viewportWidth-width*zoom)/2)
+ local offsetY=math.max(0,(viewportHeight-height*zoom)/2)
+ self.graph:SetSize(width,height);self.graph:SetScale(zoom)
+ self.graph:ClearAllPoints();self.graph:SetPoint("TOPLEFT",self.canvas,"TOPLEFT",offsetX,-offsetY)
+ local edgeIndex=0
  local function segment(x,y,w,h)
   edgeIndex=edgeIndex+1;local t=self.edges[edgeIndex]
-  if not t then t=self.canvas:CreateTexture(nil,"BACKGROUND");t:SetColorTexture(.45,.48,.55,.65);self.edges[edgeIndex]=t end
-  t:ClearAllPoints();t:SetPoint("TOPLEFT",x*zoom,-y*zoom);t:SetSize(math.max(1,w*zoom),math.max(1,h*zoom));t:Show()
+  if not t then t=self.graph:CreateTexture(nil,"BACKGROUND");t:SetColorTexture(.45,.48,.55,.65);self.edges[edgeIndex]=t end
+  t:ClearAllPoints();t:SetPoint("TOPLEFT",x,-y);t:SetSize(math.max(1,w),math.max(1,h));t:Show()
  end
  for i,n in ipairs(chain.nodes)do
   local pos=positions[n.id];local b=self.buttons[i]
-  if not b then b=AUI:CreateButton(self.canvas);self.buttons[i]=b end
-  b:ClearAllPoints();b:SetPoint("TOPLEFT",pos.x*zoom,-pos.y*zoom);b:SetSize(218*zoom,86*zoom)
+  if not b then b=AUI:CreateButton(self.graph);self.buttons[i]=b end
+  b:ClearAllPoints();b:SetPoint("TOPLEFT",pos.x,-pos.y);b:SetSize(218,86)
   local state=self:Status(chain,n);b:SetText((n.id==node.id and "> "or "")..self:QuestTitle(n.id,n.title).."\n#"..n.id.." · "..state..(n.dungeon and " · dungeon"or ""))
   b:SetScript("OnClick",function()self.selectedQuest=n.id;self:Render(q)end);b:Show()
   local r,g,blue=.35,.38,.43;if state=="Completed"then r,g,blue=.25,.75,.5 elseif state=="In progress"or state=="Turn in"then r,g,blue=AUI:AccentColor()end
@@ -279,8 +329,17 @@ function P:Render(q,focus)
    segment(x1,y1,mid-x1,1);segment(mid,math.min(y1,y2),1,math.abs(y2-y1)+1);segment(mid,y2,x2-mid,1)
   end
  end
- self.canvas:SetSize(math.max(400,width*zoom),math.max(320,height*zoom))
- if focus then local pos=positions[node.id];self.scroll:SetHorizontalScroll(math.min(pos.x*zoom,self.scroll:GetHorizontalScrollRange()));self.scroll:SetVerticalScroll(math.min(pos.y*zoom,self.scroll:GetVerticalScrollRange()))end
+ self.canvas:SetSize(math.max(viewportWidth,width*zoom),math.max(viewportHeight,height*zoom))
+ local maxX,maxY=math.max(0,width*zoom-viewportWidth),math.max(0,height*zoom-viewportHeight)
+ if not self.zoom then self.scroll:SetHorizontalScroll(0);self.scroll:SetVerticalScroll(0)
+ elseif focus then
+  local pos=positions[node.id]
+  self.scroll:SetHorizontalScroll(math.max(0,math.min(offsetX+(pos.x+109)*zoom-viewportWidth/2,maxX)))
+  self.scroll:SetVerticalScroll(math.max(0,math.min(offsetY+(pos.y+43)*zoom-viewportHeight/2,maxY)))
+ else
+  self.scroll:SetHorizontalScroll(math.min(self.scroll:GetHorizontalScroll(),maxX))
+  self.scroll:SetVerticalScroll(math.min(self.scroll:GetVerticalScroll(),maxY))
+ end
 end
 function P:OnPlayerLogin()
  self:Store() -- The quest workspace owns the shared batched event subscription.

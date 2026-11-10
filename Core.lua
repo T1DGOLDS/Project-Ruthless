@@ -28,6 +28,10 @@ local defaults = {
     enabled = true,
     general = {
         windowScale = 1.00,
+        repairIndicator = true,
+        repairReminder = true,
+        repairSound = false,
+        repairThreshold = 30,
         windowOpacity = 1.00,
         partyGrouped = false,
     },
@@ -67,8 +71,15 @@ local defaults = {
         showLocalStories = true,
         showTrivial = true,
         showAccountCompleted = false,
+        showSkyborne = true,
+        showFlights = true,
+        showInstances = true,
+        showSpiritHealers = true,
+        showSpiritCoverage = false,
+        flightTimer = true,
+        squareMinimap = true,
     },
-    questWorkspace = { guideSource = "RUI", autoHandIn = false, prepWestfall = false, enabled = false, showArrow = true, opacity = .52, locked = false },
+    questWorkspace = { guideDetail = false, guideUpcoming = true, guideOtherQuests = false, guideSource = "RUI", autoAccept = false, autoHandIn = false, prepWestfall = false, enabled = false, showArrow = true, opacity = .52, locked = false },
     errorLog = {
         enabled = true,
         entries = {},
@@ -167,7 +178,7 @@ function AUI:AccentColor()
 end
 -- Background-only opacity. Owned backdrops are registered once, never whole frames.
 AUI.backgrounds=setmetatable({},{__mode="k"})
-AUI.backgroundGroups={{"Quest","Quest tracker"},{"Player","Player frame"},{"Target","Target frame"},{"Party","Party frame"},{"Chat","Chat"},{"ActionBars","Action bars"},{"XP","XP / reputation bars"},{"Micro","Micro menu"},{"BagButtons","Bag buttons"},{"Backpack","Open bags"},{"Meters","Damage meters"},{"Map","Map and quest log"},{"Spellbook","Spellbook"},{"Cast","Cast / attack timers"},{"Options","Settings and edit mode"},{"Professions","Professions"},{"Auras","Auras & cooldowns"}}
+AUI.backgroundGroups={{"Quest","Quest tracker"},{"Player","Player frame"},{"Target","Target frame"},{"Party","Party frame"},{"Chat","Chat"},{"ActionBars","Action bars"},{"XP","XP / reputation bars"},{"Micro","Micro menu"},{"BagButtons","Bag buttons"},{"Backpack","Open bags"},{"Meters","Damage meters"},{"Auction","Auction house"},{"Map","Map and quest log"},{"Spellbook","Spellbook"},{"Cast","Cast / attack timers"},{"Options","Settings and edit mode"},{"Professions","Professions"},{"Auras","Auras & cooldowns"}}
 function AUI:BackgroundOpacity(key)
     local db=ProjectRuthlessDB or {};local settings=db.general or {}
     local value=key and settings["background"..key]
@@ -441,6 +452,13 @@ local function HandleSlashCommand(input)
     end
 
     if command=="edit"or command=="layout"then AUI.modules.LayoutEditor:Show();return end
+    if command=="meter"and AUI.modules.ForeverMeters then AUI.modules.ForeverMeters:Show();return end
+    if (command=="auction"or command=="supplies")and AUI.modules.AuctionHouseUI then AUI.modules.AuctionHouseUI:Show("supplies");return end
+    if command=="savebars"and AUI.isForever then
+        local ok,message=AUI.modules.LayoutEditor:SaveNativeBarLayout()
+        if not ok then AUI:Print(message)end
+        return
+    end
 
     if (command=="leveling"or command=="levels")and AUI.modules.LevelHistory then AUI.modules.LevelHistory:Show();return end
 

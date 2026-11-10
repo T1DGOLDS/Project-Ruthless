@@ -64,3 +64,7 @@ Review: reload on your main, save a profile, explicitly choose it as default, cr
 
 ## Auto-attack display — beta62
 Main-hand melee and ranged PLAYER_SWING events use the player cast-bar anchor, dimensions and scale. A separate status fill avoids competing with a native secret cast timer. Casts/channels have priority and resume an unfinished swing countdown on ending. Off-hand swings do not reset the primary timer. There is no simulated repeating cycle: expiry, stop-auto-attack, target change and death clear it; the next actual swing re-arms it. Swing seconds replace the cast latency label; red network latency remains a cast/channel feature. Live event ordering, visual layering, melee/ranged cancellation and combat taint need acceptance.
+
+
+## Combat map size — beta91
+Saved map width, height and scale now restore after native compact resets during combat on unprotected map frames. Viewport/tab geometry restores without calling native quest-detail/data layout methods. Protected roots or descendants are deferred individually; full native detail layout resumes after combat. M remains Blizzard's original toggle, and drag resizing remains outside combat. Test opening and closing the saved large map during combat, including a quest-page switch, then leave combat and confirm that dimensions and viewport remain consistent. Automated source/mocked checks are not live combat acceptance.

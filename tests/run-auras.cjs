@@ -1,7 +1,7 @@
 const fs=require('fs'),path=require('path'),parser=require('luaparse');
 const {lua,lauxlib,lualib,to_luastring,to_jsstring}=require('fengari');
 const root=path.resolve(__dirname,'..'),L=lauxlib.luaL_newstate();lualib.luaL_openlibs(L);
-for(const [name,file]of [['MANAGER','Modules/AuraManager.lua'],['AURA_OPTIONS','ProjectRuthless_Options/AuraOptions.lua']]){
+for(const [name,file]of [['SETTINGS_PAGES','ProjectRuthless_Options/SettingsPages.lua'],['MANAGER','Modules/AuraManager.lua'],['AURA_OPTIONS','ProjectRuthless_Options/AuraOptions.lua']]){
  const source=fs.readFileSync(path.join(root,file),'utf8');parser.parse(source,{luaVersion:'5.1'});
  if(name==='MANAGER'&&/GetAuraData|GetSpellCooldown|SetCooldown\(|RefreshLayout\(|secretunwrap|COMBAT_LOG_EVENT_UNFILTERED/.test(source))throw Error('Aura manager must not read or calculate restricted runtime data');
  lua.lua_pushstring(L,to_luastring(source));lua.lua_setglobal(L,to_luastring(name+'_SOURCE'));

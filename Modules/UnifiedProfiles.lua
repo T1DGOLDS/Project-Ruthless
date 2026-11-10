@@ -46,8 +46,21 @@ end
 function P:Names()
  local names={};for name in pairs(self:Store().entries)do names[#names+1]=name end;table.sort(names);return names
 end
+ local function position(v)
+  if type(v)~="table"or not finite(v.x)or not finite(v.y)or not finite(v.scale)or v.scale<.1 or v.scale>3 or not finite(v.width)or v.width<=0 or not finite(v.height)or v.height<=0 then return false end
+  for k in pairs(v)do if not ({x=true,y=true,scale=true,width=true,height=true,nativeSettings=true})[k]then return false end end
+  if v.nativeSettings then
+   if type(v.nativeSettings)~="table"then return false end
+   for k,n in pairs(v.nativeSettings)do if not finite(k)or k<0 or k%1~=0 or not(type(n)=="boolean"or finite(n))then return false end end
+  end
+  return true
+ end
 function P:Capture()
- return {version=2,full=true,settings=settings:Export(),layout=editor:Snapshot(),editorPrefs={gridSize=editor:Store().gridSize or 8,panelPosition=copy(editor:Store().panelPosition)},native=self:CaptureNative(),cooldowns=AUI.modules.AuraManager and AUI.modules.AuraManager:CaptureCooldowns(),pins=copy(ProjectRuthlessDB.spellbook and ProjectRuthlessDB.spellbook.pinnedSpells or {}),bags={
+ local layout=editor:Snapshot()
+ for id,value in pairs(layout)do
+  if id~="__art" and id~="__chat" and not position(value)then layout[id]=nil end
+ end
+ return {version=2,full=true,settings=settings:Export(),layout=layout,editorPrefs={gridSize=editor:Store().gridSize or 8,panelPosition=copy(editor:Store().panelPosition)},native=self:CaptureNative(),cooldowns=AUI.modules.AuraManager and AUI.modules.AuraManager:CaptureCooldowns(),pins=copy(ProjectRuthlessDB.spellbook and ProjectRuthlessDB.spellbook.pinnedSpells or {}),bags={
   autoSort=(ProjectRuthlessCharDB.ruiBags or {}).autoSort==true,
   columns=(ProjectRuthlessCharDB.ruiBags or {}).columns or 10}}
 end
@@ -79,15 +92,6 @@ function P:Validate(profile)
  if profile.pins then
   if type(profile.pins)~="table"then return false,"Invalid spell pins."end
   for key,value in pairs(profile.pins)do if type(key)~="string"or not key:match("^%d+$")or #key>10 or type(value)~="boolean"then return false,"Invalid spell pin."end end
- end
- local function position(v)
-  if type(v)~="table"or not finite(v.x)or not finite(v.y)or not finite(v.scale)or v.scale<.1 or v.scale>3 or not finite(v.width)or v.width<=0 or not finite(v.height)or v.height<=0 then return false end
-  for k in pairs(v)do if not ({x=true,y=true,scale=true,width=true,height=true,nativeSettings=true})[k]then return false end end
-  if v.nativeSettings then
-   if type(v.nativeSettings)~="table"then return false end
-   for k,n in pairs(v.nativeSettings)do if not finite(k)or k<0 or k%1~=0 or not(type(n)=="boolean"or finite(n))then return false end end
-  end
-  return true
  end
  if profile.layout then
   if type(profile.layout)~="table"then return false,"Invalid layout."end
@@ -233,7 +237,7 @@ function P:Apply(profile,name)
  ProjectRuthlessCharDB.activeProfile=name;editor:Store().active=name
  ProjectRuthlessCharDB.profileWorkingSettings=settings:Export()
  AUI:ApplyWindowSettings("profile");AUI:RefreshBackgrounds()
- for _,id in ipairs({"ForeverHUD","ForeverStyle","Spellbook","MapQuests","QuestWorkspace","LowHealthGlow","Accessibility","AuraManager","ForeverMeters"})do
+ for _,id in ipairs({"ForeverHUD","ForeverStyle","Spellbook","MapQuests","QuestWorkspace","LowHealthGlow","Accessibility","AuraManager","ForeverMeters","AuctionHouse","RepairReminder"})do
   local module=AUI.modules[id]
   if module and type(module.ApplySettings)=="function"and not (id=="ForeverStyle"and profile.layout)then module:ApplySettings()end
  end

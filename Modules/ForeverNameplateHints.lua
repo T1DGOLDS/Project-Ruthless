@@ -1,11 +1,90 @@
 local _,AUI=...
-local N={active={},icons=setmetatable({},{__mode="k"}),kinds={}}
+local N={active={},icons=setmetatable({},{__mode="k"}),kinds={},styled=setmetatable({},{__mode="k"})}
 AUI:RegisterModule("ForeverNameplateHints",N)
 local function read(fn,...)
     if type(fn)~="function"then return end
     local ok,value=pcall(fn,...)
     if ok and not(issecretvalue and issecretvalue(value))then return value end
 end
+local white="Interface\\Buttons\\WHITE8X8"
+local function usable(frame)
+    return frame and type(frame)~="function" and type(frame.GetObjectType)=="function" and not(frame.IsForbidden and frame:IsForbidden())
+end
+
+local function styleDebuffs(list)
+    if not usable(list) then return end
+    for _,item in ipairs({list:GetChildren()})do
+        local cooldown=usable(item) and item.Cooldown
+        if usable(cooldown)then
+            cooldown:SetHideCountdownNumbers(false)
+            cooldown:SetCountdownFont("GameFontHighlightSmallOutline")
+            cooldown:SetMinimumCountdownDuration(0)
+        end
+    end
+end
+
+function N:StylePlate(plate)
+    if not usable(plate)then return end
+    local unitFrame=plate.UnitFrame
+    if not usable(unitFrame)or self.styled[unitFrame]then return end
+    local bars=unitFrame.HealthBarsContainer
+    local bar=usable(bars) and bars.healthBar or unitFrame.healthBar
+    if not usable(bar)or not usable(bar.barTexture)then return end
+    self.styled[unitFrame]=true
+
+    local surface=CreateFrame("Frame",nil,bar,"BackdropTemplate")
+    surface:SetPoint("TOPLEFT",bar,"TOPLEFT",-1,1)
+    surface:SetPoint("BOTTOMRIGHT",bar,"BOTTOMRIGHT",1,-1)
+    surface:SetBackdrop({edgeFile=white,edgeSize=1})
+    surface:EnableMouse(false)
+    local background=bar:CreateTexture(nil,"BACKGROUND")
+    background:SetAllPoints(bar)
+    background:SetColorTexture(.055,.06,.075,.9)
+    local function selection()
+        if not usable(bar)then return end
+        if read(bar.IsTarget,bar)==true or read(bar.IsFocus,bar)==true then
+            local r,g,b=AUI:AccentColor()
+            surface:SetBackdropBorderColor(r,g,b,1)
+        else
+            surface:SetBackdropBorderColor(.20,.21,.25,1)
+        end
+    end
+    local function skin()
+        if not usable(bar)then return end
+        bar.barTexture:SetTexture(white)
+        if usable(bar.bgTexture)then bar.bgTexture:SetAlpha(0)end
+        if usable(bar.selectedBorder)then bar.selectedBorder:SetAlpha(0)end
+        selection()
+    end
+    if type(unitFrame.UpdateAnchors)=="function"then hooksecurefunc(unitFrame,"UpdateAnchors",skin)end
+    if type(bar.UpdateSelectionBorder)=="function"then hooksecurefunc(bar,"UpdateSelectionBorder",selection)end
+    skin()
+
+    local auras=unitFrame.AurasFrame
+    if usable(auras)and type(auras.RefreshList)=="function"then
+        hooksecurefunc(auras,"RefreshList",function(_,list)
+            -- The client owns aura data, source filtering and timing. Style only
+            -- the cooldown widgets in its personal debuff row.
+            if usable(auras)and list==auras.DebuffListFrame then styleDebuffs(list)end
+        end)
+        styleDebuffs(auras.DebuffListFrame)
+    end
+end
+
+function N:InitializeDebuffs()
+    local char=ProjectRuthlessCharDB
+    if not char or char.ruiNameplateDebuffsInitialized or InCombatLockdown()or not C_CVar or not Enum then return end
+    local npc,player=Enum.NamePlateEnemyNpcAuraDisplay,Enum.NamePlateEnemyPlayerAuraDisplay
+    if not npc or not player then return end
+    local showPersonal=read(C_CVar.GetCVarBool,"nameplateShowAllPersonalAuras")
+    local npcEnabled=read(C_CVar.GetCVarBitfield,"nameplateEnemyNpcAuraDisplay",npc.Debuffs)
+    local playerEnabled=read(C_CVar.GetCVarBitfield,"nameplateEnemyPlayerAuraDisplay",player.Debuffs)
+    if showPersonal==false then showPersonal=read(C_CVar.SetCVar,"nameplateShowAllPersonalAuras","1")end
+    if npcEnabled==false then npcEnabled=read(C_CVar.SetCVarBitfield,"nameplateEnemyNpcAuraDisplay",npc.Debuffs,true)end
+    if playerEnabled==false then playerEnabled=read(C_CVar.SetCVarBitfield,"nameplateEnemyPlayerAuraDisplay",player.Debuffs,true)end
+    if showPersonal and npcEnabled and playerEnabled then char.ruiNameplateDebuffsInitialized=true end
+end
+
 local textures={loot="Interface\\Icons\\INV_Misc_Bag_10",kill="Interface\\Icons\\INV_Sword_04",elite="Interface\\TargetingFrame\\UI-TargetingFrame-Skull"}
 function N:Build()
     if InCombatLockdown()or self.resting then self.pending=true;return end
@@ -56,6 +135,7 @@ function N:Draw(unit,plate)
 end
 function N:OnPlayerLogin()
     if not AUI.isForever then return end
+    self:InitializeDebuffs()
     local locations=AUI.modules.QuestLocations
     if locations then
         hooksecurefunc(locations,"UpdateTooltipIndex",function()self:Build()end)
@@ -66,16 +146,16 @@ function N:OnPlayerLogin()
     events:SetScript("OnEvent",function(_,event,unit)
         if event=="NAME_PLATE_UNIT_ADDED"then
             local plate=read(C_NamePlate and C_NamePlate.GetNamePlateForUnit,unit)
-            if plate then self.active[unit]=plate;self:Draw(unit,plate)end
+            if plate then self.active[unit]=plate;self:StylePlate(plate);self:Draw(unit,plate)end
         elseif event=="NAME_PLATE_UNIT_REMOVED"then
             local plate=self.active[unit];local icon=plate and self.icons[plate];if icon then icon:Hide()end;self.active[unit]=nil
         elseif event=="UNIT_CLASSIFICATION_CHANGED"then if self.active[unit]then self:Draw(unit,self.active[unit])end
         elseif event=="PLAYER_REGEN_DISABLED"then self.resting=true;self.revision=(self.revision or 0)+1
-        elseif event=="PLAYER_REGEN_ENABLED"then local revision=self.revision;C_Timer.After(3,function()if revision~=self.revision or InCombatLockdown()then return end;self.resting=nil;if self.pending then self:Build()end end)end
+        elseif event=="PLAYER_REGEN_ENABLED"then self:InitializeDebuffs();local revision=self.revision;C_Timer.After(3,function()if revision~=self.revision or InCombatLockdown()then return end;self.resting=nil;if self.pending then self:Build()end end)end
     end)
     self:Build()
     for _,plate in ipairs(read(C_NamePlate and C_NamePlate.GetNamePlates)or {})do
         local unit=read(plate.GetUnit,plate)
-        if type(unit)=="string"then self.active[unit]=plate;self:Draw(unit,plate)end
+        if type(unit)=="string"then self.active[unit]=plate;self:StylePlate(plate);self:Draw(unit,plate)end
     end
 end

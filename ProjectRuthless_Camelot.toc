@@ -3,42 +3,69 @@
 ## Title: Project Ruthless
 ## Notes: Ruthless UI for WoW Forever.
 ## Author: Andrew
-## Version: 0.14.0-beta.79
+## Version: 0.14.0-beta.102
 ## OptionalDeps: Blizzard_AuraContainer, Blizzard_CooldownViewer, Blizzard_DamageMeter, ForeverWisp
 ## SavedVariables: ProjectRuthlessDB
 ## SavedVariablesPerCharacter: ProjectRuthlessCharDB
 
 Core.lua
+Libs\LibActionButton\LibStub.lua
+Libs\LibActionButton\CallbackHandler-1.0.lua
+Libs\LibActionButton\LibActionButton-1.0.lua
 Modules\Profiles.lua
 Modules\LayoutEditor.lua
 Modules\UnifiedProfiles.lua
 Modules\SettingsRegistry.lua
 Modules\Accessibility.lua
 Modules\FirstRun.lua
+Modules\FeatureGuide.lua
 Modules\AuraManager.lua
+Modules\ForeverActionBars.lua
 Modules\ForeverHUD.lua
 Modules\LevelHistory.lua
+Modules\ForeverInventory.lua
 Modules\ForeverStyle.lua
 Modules\ForeverMeters.lua
+Modules\QuestSupplyData.lua
+Modules\QuestSupplies.lua
+Modules\AuctionHouse.lua
+Modules\AuctionMarket.lua
+Modules\AuctionHouseUI.lua
+Modules\ProfessionData.lua
+Modules\Professions.lua
+Modules\ProfessionUI.lua
 Modules\ForeverExpiringBuffs.lua
 Modules\ErrorLog.lua
 Modules\Diagnostics.lua
 Modules\LiveChecks.lua
+Modules\MacroTemplates.lua
 Modules\Spellbook.lua
 Modules\MacroRanks.lua
 Modules\MapQuests.lua
+Modules\TerrainMapTiles.lua
+Modules\TerrainMap.lua
 Modules\SkyborneMapData.lua
 Modules\SkyborneMap.lua
 Modules\SkyborneMap.xml
+Modules\TravelData.lua
+Modules\SpiritHealers.lua
+Modules\SpiritHealers.xml
+Modules\FlightTimer.lua
+Modules\ForeverMinimap.lua
+Modules\RepairReminder.lua
 Modules\AuthoredGuideData.lua
+Modules\ZephrasGuide.lua
 Modules\AuthoredGuides.lua
 Modules\QuestProgressionData.lua
 Modules\QuestProgression.lua
 Modules\QuestWorkspace.lua
+Modules\QuestPickupData.lua
+Modules\QuestAvailability.lua
 Modules\QuestData.lua
 Modules\MapPins.lua
 Modules\QuestLocations.lua
 Modules\ForeverNameplateHints.lua
 Modules\DungeonAtlas.lua
+Modules\DungeonJournal.lua
 Modules\MenuLoader.lua
 Modules\LowHealthGlow.lua

@@ -1,3 +1,4 @@
+function geterrorhandler()return function(message)error(message)end end
 
 unpack=table.unpack
 C_Timer={After=function(_,fn)fn()end}
@@ -130,6 +131,29 @@ unitParts(TargetFrame,false);hud:StyleUnit('target',TargetFrame)
 local model=TargetFrame.ruiPortrait;local count=model.modelUpdates
 hud.events.scripts.OnEvent(hud.events,'PLAYER_TARGET_CHANGED');assert(model.modelUpdates==count+1 and model.modelUnit=='target')
 busy=true;local old=PlayerFrame:GetWidth();PlayerFrame:SetSize(280,82);hud:StyleUnit('player',PlayerFrame);assert(PlayerFrame:GetWidth()==280);busy=false
+;(function()
+    PetFrameHealthBar,PetFrameManaBar,PetFrameHealthBarText=frame(),frame(),frame()
+    PetFrameHealthBar.texture=frame();PetFrameManaBar.texture=frame()
+    PetFrame.Portrait=frame();PetFrame.ruiPortrait=false;PetFrame.ruiPainting=false
+    PetFrameTexture,PetName,PetAttackModeTexture=frame(),frame(),frame()
+    local originalClick=function()end
+    PetFrame:SetScript("OnClick",originalClick)
+    PetFrame.unit="pet"
+    hud:StylePartyMember("pet",PetFrame)
+    assert(PetFrame:GetHeight()==56 and PetFrame.ruiPortrait.modelUnit=="pet")
+    assert(PetFrame.ruiHealth==PetFrameHealthBar and PetFrame.ruiPower==PetFrameManaBar)
+    assert(PetFrameHealthBarText.alpha==0 and PetFrame.scripts.OnClick==originalClick)
+    assert(PetFrameHealthBar.barTexture=='Interface\\Buttons\\WHITE8X8')
+    local labels=hud.nativeHealthLabels.pet
+    PetFrame.unit="player"
+    local oldHealth=UnitHealth
+    UnitHealth=function(unit)assert(unit=="player");return 91 end
+    busy=true;labels.scripts.OnEvent(labels,"UNIT_PET","player")
+    hud.events.scripts.OnEvent(hud.events,"UNIT_PET","player")
+    assert(labels.RightText.text==91 and PetFrame.ruiPortrait.modelUnit=="player")
+    busy=false;UnitHealth=oldHealth;PetFrame.unit="pet"
+    print("PASS: compact native pet skin preserves click handling and follows the vehicle unit")
+end)()
 print('PASS: original 3D player/target portraits, flat native resource/health textures, target-change model refresh and no protected style changes in combat')
 assert(health.color[1]==.22 and power.color[3]==.85)
 UnitPowerType=function()return 1,'RAGE'end
@@ -168,7 +192,24 @@ for _,art in ipairs({playerFlash,targetFlash,status,reputation})do
 end
 local targetHealth=targetMain.HealthBarsContainer.HealthBar;local writes=targetHealth.flatWrites
 targetHealth.texture:SetAtlas('native-slanted-fill');assert(targetHealth.flatWrites==writes+1)
-assert(targetMain.HealthBarsContainer.RightText.anchor[2]==targetHealth)
+assert(targetMain.HealthBarsContainer.RightText.alpha==0)
+do
+    local labels=hud.nativeHealthLabels.target
+    local oldHealth,oldPercent,oldCurves=UnitHealth,UnitHealthPercent,CurveConstants
+    local opaqueHealth,opaquePercent={},{}
+    CurveConstants={ScaleTo100={}}
+    UnitHealth=function(unit)assert(unit=='target');return opaqueHealth end
+    UnitHealthPercent=function(unit,predicted,curve)
+        assert(unit=='target' and predicted==false and curve==CurveConstants.ScaleTo100)
+        return opaquePercent
+    end
+    labels.LeftText.SetFormattedText=function(self,format,value)
+        assert(format=='%.0f%%');self.text=value
+    end
+    labels.scripts.OnEvent(labels,'UNIT_HEALTH','target')
+    assert(rawequal(labels.RightText.text,opaqueHealth)and rawequal(labels.LeftText.text,opaquePercent))
+    UnitHealth,UnitHealthPercent,CurveConstants=oldHealth,oldPercent,oldCurves
+end
 assert(targetMain.ManaBar.RightText.anchor[2]==targetMain.ManaBar)
 busy=false
 targetMain.HealthBarsContainer:SetSize(126,20)
@@ -219,6 +260,16 @@ targetCast.scripts.OnEvent(targetCast,'UNIT_SPELLCAST_START')
 assert(targetCast:IsShown()and targetCast.label.text=='Restricted cast'and targetCast.fill.fillValue==0)
 casts.player=nil;playerCast.scripts.OnEvent(playerCast,'UNIT_SPELLCAST_STOP');assert(not playerCast:IsShown())
 assert(not playerCast.scripts.OnUpdate and not targetCast.scripts.OnUpdate)
+do
+    local totCast=hud.castFrames.casttargettarget
+    assert(e.targets.casttargettarget.preview and not totCast:IsShown())
+    casts.targettarget={name='Heal',icon=7}
+    totCast.scripts.OnEvent(totCast,'UNIT_TARGET','target')
+    assert(totCast:IsShown()and totCast.label.text=='Heal'and totCast.fill.timer[1]==restrictedDuration)
+    casts.targettarget=nil
+    totCast.scripts.OnEvent(totCast,'UNIT_TARGET','target')
+    assert(not totCast:IsShown()and not totCast.scripts.OnUpdate)
+end
 busy=false;issecretvalue=nil
 print('PASS: independent owned player/target cast bars; native timer rendering of uninspected durations, channels/stop/target changes, separate persistent dimensions and no polling')
 GetNetStats=function()return 0,0,40,120 end
@@ -343,20 +394,41 @@ e:UpdateGrid();local lineCount=#e.gridLines;e:UpdateGrid();assert(#e.gridLines==
 e:Close();assert(not e.gridFrame:IsShown());e.targets=all
 assert(e.targets.chat1 and not e.targets.chat2 and not e.targets.chat5)
 FocusFrame:Hide();e:Show();assert(not e.movers.focus:IsShown())
+do
 HUD_EDIT_MODE_MENU='Edit Mode';GameMenuFrame=frame()
-local nativeClick=function()error('Native editor must not open')end
-function GameMenuFrame:InitButtons()local b=frame();b:SetText(HUD_EDIT_MODE_MENU);b:SetScript('OnClick',nativeClick);self.buttons={b}end
-local hideCount=0;function HideUIPanel(f)hideCount=hideCount+1;f:Hide()end
-e:InstallGameMenuEntry();GameMenuFrame:InitButtons();assert(GameMenuFrame.buttons[1]:GetText()=='RUI Edit Mode')
-GameMenuFrame.buttons[1].scripts.OnClick();assert(hideCount==1 and e.frame:IsShown())
-busy=true;GameMenuFrame.buttons[1].scripts.OnClick();assert(hideCount==1);busy=false
+local nativeCalls,settingsCalls,hideCount=0,0,0
+local priorMenu=AUI.modules.Menu
+AUI.modules.Menu={Show=function()settingsCalls=settingsCalls+1 end}
+local function nativeClick()nativeCalls=nativeCalls+1 end
+function GameMenuFrame:AddButton(label,callback)
+    local b=frame();b.ruiMenuFill=false;b.Left=frame();b.Right=frame();b.Center=frame()
+    b:SetText(label);b:SetScript('OnClick',callback);self.buttons[#self.buttons+1]=b;return b
+end
+GameMenuFrame.ruiSurface=false
+GameMenuFrame.Header=frame();GameMenuFrame.Border=frame()
+function GameMenuFrame:InitButtons()
+    self.buttons={};self:AddButton(HUD_EDIT_MODE_MENU,nativeClick);self:AddButton('Options',nativeClick)
+end
+function HideUIPanel(f)hideCount=hideCount+1;f:Hide()end
+e:InstallGameMenuEntry()
+for _=1,2 do
+    GameMenuFrame:InitButtons()
+    assert(#GameMenuFrame.buttons==3 and GameMenuFrame.buttons[1]:GetText()=='RUI Settings')
+    assert(GameMenuFrame.buttons[1].layoutIndex==1 and GameMenuFrame.buttons[2]:GetText()=='RUI Edit Mode')
+end
+GameMenuFrame.buttons[1].scripts.OnClick();assert(hideCount==1 and settingsCalls==1)
+GameMenuFrame.buttons[3].scripts.OnClick();assert(nativeCalls==1)
+GameMenuFrame.buttons[2].scripts.OnClick();assert(hideCount==2 and e.frame:IsShown())
+busy=true;GameMenuFrame.buttons[2].scripts.OnClick();assert(hideCount==2);busy=false
+AUI.modules.Menu=priorMenu
+end
 function prototype:SetTexture(value)self.texture=value end
 -- Static art cannot reappear when native state code reapplies an atlas.
 ActionButton4=frame();ActionButton4.SlotArt=frame();ActionButton4.NormalTexture=frame()
 ChatFrame1EditBox=frame();ChatFrame1EditBoxLeft=frame();ChatFrame1EditBoxFocusMid=frame()
 MainStatusTrackingBarContainer.BarFrameTexture=frame()
 style:Apply();ActionButton4.SlotArt:SetAtlas('blizzard-art');ChatFrame1EditBoxLeft:SetTexture('blizzard-art')
-assert(rawget(ActionButton4.SlotArt,'texture')==nil and rawget(ChatFrame1EditBoxLeft,'texture')==nil)
+assert(ActionButton4.SlotArt.alpha==0 and ActionButton4.SlotArt.texturePath=='blizzard-art' and rawget(ChatFrame1EditBoxLeft,'texture')==nil)
 assert(style.surfaces[ChatFrame1EditBox]and rawget(MainStatusTrackingBarContainer.BarFrameTexture,'texture')==nil)
 print('PASS: exact decimal coordinates, adjustable cached grid, one chat dock, inactive preview filtering, RUI menu entry/combat guard and persistent static-art removal')
 
@@ -420,7 +492,7 @@ AUI.Theme={text={.8,.8,.8},muted={.6,.6,.6},border={.2,.2,.2}}
 function AUI:CreateSmoothScrollFrame()return frame()end
 assert(load(MENU_SOURCE))('RUI',AUI);local menu=AUI.modules.Menu;menu.optionControls={};menu.panels={}
 function menu:CreateOptionsPanel()return frame()end
-local checks={};function menu:CreateCheckbox(parent,label,description,y,getter,setter)checks[#checks+1]={getter=getter,setter=setter}end
+local checks={};function menu:CreateCheckbox(parent,label,description,y,getter,setter)checks[#checks+1]={getter=getter,setter=setter};return frame()end
 function menu:CreateAction()return frame()end
 local settingValues={PROXY_SHOW_ACTIONBAR_2=false};local setCount=0
 Settings={GetSetting=function(name)return {GetValue=function()return settingValues[name]end,SetValue=function(_,value)settingValues[name]=value;setCount=setCount+1 end}end}
@@ -439,6 +511,15 @@ e.targets=priorTargets
 local oldWidth=own.GetWidth;own.GetWidth=function()return secretWidth end
 local previousSecret=issecretvalue;issecretvalue=function(v)return rawequal(v,secretWidth)or previousSecret(v)end
 assert(e:Capture(own)==nil);own.GetWidth=oldWidth;issecretvalue=previousSecret
+do
+local raid=frame();raid:SetSize(0,0)
+local savedRaid=e:Store().elements.raid
+e.targets.raid={frame=raid}
+assert(e:Capture(raid)==nil and e:Snapshot().raid==savedRaid)
+e:Store().elements.raid={x=9,y=5,scale=1,width=200,height=150}
+assert(e:Snapshot().raid.width==200)
+e:Store().elements.raid=savedRaid;e.targets.raid=nil
+end
 print('PASS: nearest edge alignment and equal-gap placement; restricted geometry is omitted safely')
 
 AUI.modules.QuestLocations={tooltipIndex={[100]={{id=10,item=300}},[101]={{id=11}}},UpdateTooltipIndex=function()end,SetEnabled=function()end}
@@ -455,6 +536,47 @@ objectives[10][1].finished=true;hints:Build();classification='normal';assert(hin
 local priorSecret=issecretvalue;UnitGUID=function()return secretWidth end;issecretvalue=function(v)return rawequal(v,secretWidth)or priorSecret(v)end
 assert(hints:Kind('nameplate1')==nil);issecretvalue=priorSecret
 print('PASS: cached nameplate hints distinguish needed loot/kill, elite skull, completed objectives and restricted identities without per-plate quest scanning')
+
+;(function()
+    local plate,unitFrame,bar,auras,debuffs,buffs=frame(),frame(),frame(),frame(),frame(),frame()
+    local item,buff=frame(),frame()
+    plate.UnitFrame=unitFrame;unitFrame.healthBar=bar;unitFrame.AurasFrame=auras
+    bar.barTexture=frame();bar.bgTexture=frame();bar.selectedBorder=frame()
+    bar.IsTarget=function()return true end;bar.UpdateSelectionBorder=function()end
+    unitFrame.UpdateAnchors=function()bar.barTexture:SetTexture("native art")end
+    auras.DebuffListFrame=debuffs
+    debuffs.GetChildren=function()return item end;buffs.GetChildren=function()return buff end
+    for _,child in ipairs({item,buff})do
+        child.Cooldown=frame()
+        child.Cooldown.SetHideCountdownNumbers=function(self,hide)self.hide=hide end
+        child.Cooldown.SetCountdownFont=function(self,font)self.font=font end
+        child.Cooldown.SetMinimumCountdownDuration=function(self,value)self.minimum=value end
+    end
+    auras.RefreshList=function(_,list)list:GetChildren().Cooldown.hide=true end
+    hints:StylePlate(plate)
+    assert(bar.barTexture.texture=='Interface\\Buttons\\WHITE8X8' and bar.bgTexture.alpha==0)
+    assert(item.Cooldown.hide==false and item.Cooldown.minimum==0)
+    busy=true
+    local opaqueAura=setmetatable({},{__index=function()error("Aura data must remain native")end})
+    auras:RefreshList(debuffs,opaqueAura)
+    assert(item.Cooldown.hide==false and item.Cooldown.font=='GameFontHighlightSmallOutline')
+    auras:RefreshList(buffs,opaqueAura)
+    assert(buff.Cooldown.hide==true)
+    unitFrame:UpdateAnchors()
+    assert(bar.barTexture.texture=='Interface\\Buttons\\WHITE8X8')
+    busy=false
+    local oldCVar,oldNpc,oldPlayer=C_CVar,Enum.NamePlateEnemyNpcAuraDisplay,Enum.NamePlateEnemyPlayerAuraDisplay
+    Enum.NamePlateEnemyNpcAuraDisplay={Debuffs=2};Enum.NamePlateEnemyPlayerAuraDisplay={Debuffs=2}
+    local writes=0
+    C_CVar={GetCVarBool=function()return false end,GetCVarBitfield=function()return false end,
+        SetCVar=function()writes=writes+1;return true end,
+        SetCVarBitfield=function(_,index,enabled)assert(index==2 and enabled);writes=writes+1;return true end}
+    busy=true;hints:InitializeDebuffs();assert(writes==0);busy=false
+    hints:InitializeDebuffs();hints:InitializeDebuffs();assert(writes==3)
+    ProjectRuthlessCharDB.ruiNameplateDebuffsInitialized=nil
+    C_CVar,Enum.NamePlateEnemyNpcAuraDisplay,Enum.NamePlateEnemyPlayerAuraDisplay=oldCVar,oldNpc,oldPlayer
+    print("PASS: native nameplate art refresh and pooled personal debuff countdowns without reading aura data")
+end)()
 
 -- Native bag skin leaves Blizzard item interactions and indicators intact.
 local bag=frame();bag.CloseButton=frame();bag.SearchBox=frame();bag.SearchBox.Left=frame();bag.Bg=frame();bag.PortraitContainer=frame();bag.PortraitContainer.portrait=frame();bag.PortraitContainer.portrait:SetTexture("bag art");bag.TitleContainer=frame();bag.TitleContainer.TitleText=frame()
@@ -672,11 +794,11 @@ ActionButton6=artButton
 local beforeArtChar=ProjectRuthlessCharDB;local beforeArtProfiles=ProjectRuthlessDB.layoutProfiles
 ProjectRuthlessCharDB={layoutEditor={elements={},layouts={},active='Art'}};ProjectRuthlessDB.layoutProfiles={layouts={Art={}}}
 style.resting=nil;style:Apply()
-assert(not style:BlizzardArtEnabled()and not leftArt:GetAtlas()and not rightArt:GetAtlas()and not artButton.NormalTexture:GetAtlas())
+assert(not style:BlizzardArtEnabled()and not leftArt:GetAtlas()and not rightArt:GetAtlas()and artButton.NormalTexture.alpha==0)
 assert(artButton.icon:GetAtlas()=='ability-icon'and not MicroMenu.BackgroundArt:GetAtlas())
 leftArt:SetAtlas('new-gryphon');artButton:SetNormalAtlas('native-border-refresh')
-assert(not leftArt:GetAtlas()and not artButton.NormalTexture:GetAtlas())
-assert(style:SetBlizzardArt(true));assert(leftArt:GetAtlas()=='new-gryphon'and rightArt:GetAtlas()=='gryphon-right'and artButton.NormalTexture:GetAtlas()=='native-border-refresh')
+assert(not leftArt:GetAtlas()and artButton.NormalTexture.alpha==0)
+assert(style:SetBlizzardArt(true));assert(leftArt:GetAtlas()=='new-gryphon'and rightArt:GetAtlas()=='gryphon-right'and artButton.NormalTexture.alpha==1 and artButton.NormalTexture:GetAtlas()=='native-border-refresh')
 assert(ProjectRuthlessDB.layoutProfiles.layouts.Art.__art.blizzardArt)
 local artState=e:Snapshot();assert(artState.__art.blizzardArt)
 busy=true;assert(not style:SetBlizzardArt(false)and style:BlizzardArtEnabled());busy=false
@@ -707,7 +829,137 @@ local function nativeReanchor()
 end
 busy=true;local writes=calls;nativeReanchor();assert(math.abs(e:Capture(nativeBar).x-112)<.001 and math.abs(e:Capture(nativeBar).y+228)<.001)
 assert(not e:Apply('combat-bar',{x=900,y=100})and calls==writes)
-busy=false;EditModeManagerFrame=oldManager
+busy=false
+assert(e:Apply('combat-bar',{x=300,y=-200,scale=.8},true))
+assert(calls==writes and math.abs(e:Capture(nativeBar).x-300)<.001)
+do
+    local barID='bar1'
+    local oldTarget,oldFrame,oldGeometry=e.targets[barID],hud.registered[barID],e:Store().elements[barID]
+    e.targets[barID]={frame=nativeBar};hud.registered[barID]=nativeBar
+    e:Store().elements[barID]={x=112,y=-228,scale=.8,width=300,height=200}
+    nativeBar:SetPoint('CENTER',UIParent,'CENTER',0,0);nativeBar:SetScale(1)
+    assert(e:Snapshot()[barID].x==112 and e:Snapshot()[barID].scale==.8)
+    function EditModeManagerFrame:UpdateBottomActionBarPositions()
+        nativeBar:SetPoint('CENTER',UIParent,'CENTER',0,0);nativeBar:SetScale(1)
+    end
+    local prior=hud.watchedBarManager
+    hud:WatchNativeBarLayout()
+    EditModeManagerFrame:UpdateBottomActionBarPositions()
+    flush()
+    assert(math.abs(e:Capture(nativeBar).x-112)<.001 and nativeBar:GetScale()==.8 and calls==writes)
+    e.targets[barID],hud.registered[barID],e:Store().elements[barID]=oldTarget,oldFrame,oldGeometry
+    hud.watchedBarManager=prior
+end
+do
+    local oldEnum=Enum.EditModeActionBarSetting
+    Enum.EditModeActionBarSetting={IconSize=3}
+    local nativeSize,writesToSize=100,0
+    local oldTarget,oldSaved=e.targets.bar1,e:Store().elements.bar1
+    local bar=frame();bar.settingDisplayInfoMap={[3]={}};bar.system=1;bar.systemInfo={}
+    bar.GetSettingValue=function()return nativeSize end
+    EditModeManagerFrame.OnSystemSettingChange=function(_,f,k,v)
+        assert(not busy and f==bar and k==3);nativeSize=v;writesToSize=writesToSize+1
+    end
+    e.targets.bar1={frame=bar}
+    local value={x=100,y=200,scale=.9,width=300,height=200,nativeSettings={[3]=100}}
+    e:Store().elements.bar1=value
+    assert(e:Apply('bar1',value)and nativeSize==90 and bar:GetScale()==1)
+    assert(value.scale==1 and value.nativeSettings[3]==90 and writesToSize==1)
+    assert(e:Apply('bar1',value)and writesToSize==1)
+    busy=true;assert(not e:Apply('bar1',value)and writesToSize==1);busy=false
+    assert(e:Apply('bar1',value,true)and writesToSize==1)
+    nativeSize=100
+    assert(e:Snapshot().bar1.nativeSettings[3]==90)
+    local oldFrame=hud.registered.bar1
+    hud.registered.bar1=bar
+    local onEvent=hud.events.scripts.OnEvent
+    onEvent(hud.events,'PLAYER_LEVEL_UP')
+    onEvent(hud.events,'ACTIONBAR_SLOT_CHANGED')
+    flush()
+    assert(nativeSize==90 and writesToSize==2)
+    assert(e:Capture(bar).x==100 and e:Capture(bar).y==200)
+
+    busy=true;onEvent(hud.events,'PLAYER_REGEN_DISABLED')
+    nativeSize=100
+    onEvent(hud.events,'PLAYER_LEVEL_UP')
+    flush()
+    assert(nativeSize==100 and writesToSize==2)
+    busy=false;onEvent(hud.events,'PLAYER_REGEN_ENABLED')
+    flush()
+    assert(nativeSize==90 and writesToSize==3)
+    hud.registered.bar1=oldFrame
+    e.targets.bar1,e:Store().elements.bar1=oldTarget,oldSaved
+    Enum.EditModeActionBarSetting=oldEnum
+end
+;(function()
+    local oldDebugstack,oldDate,oldHandler=debugstack,date,geterrorhandler
+    debugstack=function()return "Native stack"end
+    date=function()return "test time"end
+    local saved=e:Store().elements.bar1
+    e:Store().elements.bar1={x=100,y=-200,scale=1}
+    busy=true
+    hud:TraceBarAnchor("bar1",nativeBar,"CENTER",UIParent,"CENTER",100/nativeBar:GetScale(),-200/nativeBar:GetScale())
+    assert(not ProjectRuthlessCharDB.actionBarResetTrace)
+    hud:TraceBarAnchor("bar1",nativeBar,"TOPLEFT",UIParent,"TOPLEFT",0,0)
+    hud:TraceBarAnchor("bar1",nativeBar,"TOPLEFT",UIParent,"TOPLEFT",0,0)
+    local trace=ProjectRuthlessCharDB.actionBarResetTrace
+    assert(#trace==1 and trace[1].combat and trace[1].stack=="Native stack")
+    busy=false
+    local apply=e.Apply
+    local reported,applied=0,0
+    geterrorhandler=function()return function()reported=reported+1 end end
+    e.Apply=function(_,id)if id=="bar1"then error("mock native error")end;applied=applied+1 end
+    local prior=e:Store().elements.bar2
+    e:Store().elements.bar2={x=0,y=0,scale=1}
+    hud.pending={bar1="full",bar2="full"};hud:Drain()
+    assert(reported==1 and applied==1 and not hud.applying)
+    e:Store().elements.bar1,e:Store().elements.bar2=saved,prior;e.Apply=apply
+    ProjectRuthlessCharDB.actionBarResetTrace=nil
+    debugstack,date,geterrorhandler=oldDebugstack,oldDate,oldHandler
+    print("PASS: bounded native anchor trace and isolated action bar recovery after a native error")
+end)()
+;(function()
+    local priorTarget,priorSaved=e.targets.bar1,e:Store().elements.bar1
+    local layout={systems={{anchorInfo={offsetX=0}}}}
+    local opened
+    EditModeManagerFrame.GetActiveLayoutInfo=function()return layout end
+    EditModeManagerFrame.highestLayoutIndexByType=nil
+    EditModeManagerFrame.ShowNewLayoutDialog=function(manager,copy)
+        assert(manager.highestLayoutIndexByType)
+        opened=copy
+    end
+    e.targets.bar1={frame=nativeBar,label="Main action bar"}
+    e:Store().elements.bar1={x=112,y=-228,scale=1}
+    busy=true;assert(not e:SaveNativeBarLayout()and not opened);busy=false
+    assert(not e:SaveNativeBarLayout()and not opened)
+    EditModeManagerFrame.CreateLayoutTbls=function(manager)manager.highestLayoutIndexByType={}end
+    assert(e:SaveNativeBarLayout()and opened and opened~=layout)
+    opened.systems[1].anchorInfo.offsetX=9
+    assert(layout.systems[1].anchorInfo.offsetX==0 and e:Capture(nativeBar).x==112)
+    e.targets.bar1,e:Store().elements.bar1=priorTarget,priorSaved
+    print("PASS: native action bar layout save uses an independent copy and requires out-of-combat confirmation")
+end)()
+do
+    local prior=e.targets.bar1
+    local owned=frame();owned.ruiActionBar=true
+    owned.settingDisplayInfoMap={[3]=true,[1000]=true}
+    owned.values={[3]=90,[1000]=false}
+    function owned:GetSettingValue(key)return self.values[key]end
+    function owned:ApplyLayoutSettings(values)self.values=values;self.applied=true end
+    local nativeCalls=0
+    local previous=EditModeManagerFrame.OnSystemSettingChange
+    EditModeManagerFrame.OnSystemSettingChange=function()nativeCalls=nativeCalls+1 end
+    e.targets.bar1={frame=owned}
+    assert(e:Apply('bar1',{x=123,y=-222,scale=1,nativeSettings={[3]=80,[1000]=false}}))
+    assert(owned.applied and owned.x==123 and owned.y==-222 and nativeCalls==0)
+    local captured=e:Capture(owned)
+    assert(captured.nativeSettings[3]==80 and captured.nativeSettings[1000]==false)
+    busy=true;owned.applied=false
+    assert(not e:Apply('bar1',{x=0,y=0,scale=1,nativeSettings={[3]=100}})and not owned.applied)
+    busy=false;e.targets.bar1=prior;EditModeManagerFrame.OnSystemSettingChange=previous
+    print('PASS: owned action bar profile settings/disabled state round-trip without native manager writes; combat applies blocked')
+end
+EditModeManagerFrame=oldManager
 print('PASS: native anchor metadata leaves default stack management, survives native combat reanchor and performs no addon combat writes')
 
 -- Backpack header drag uses the same persistent/profile layout store as movers.

@@ -54,7 +54,12 @@ function P:DrawMini()
  local mw,mh=read(Minimap.GetWidth,Minimap),read(Minimap.GetHeight,Minimap)
  local rotating=read(C_CVar and C_CVar.GetCVarBool,"rotateMinimap")
  local facing=rotating and read(GetPlayerFacing)or 0
- local square=read(GetMinimapShape)=="SQUARE"
+ local minimap=AUI.modules.ForeverMinimap
+ local square=minimap and minimap:IsSquare()or read(GetMinimapShape)=="SQUARE"
+ local pickups
+ local function place(icon,x,y)
+  icon:ClearAllPoints();icon:SetPoint("CENTER",Minimap,"CENTER",x,y);icon:Show()
+ end
  for icon,record in pairs(self.mini)do
   count=count+1
   local x,y=self:Project(record,map)
@@ -64,9 +69,29 @@ function P:DrawMini()
    local distance=square and math.max(math.abs(dx),math.abs(dy))or math.sqrt(dx*dx+dy*dy)
    if distance<=.9 or record.edge then
     if distance>.9 then dx,dy=dx*.9/distance,dy*.9/distance end
-    icon:ClearAllPoints();icon:SetPoint("CENTER",Minimap,"CENTER",dx*mw/2,dy*mh/2);icon:Show()
+    local x,y=dx*mw/2,dy*mh/2
+    if record.pickup then
+     pickups=pickups or {}
+     pickups[#pickups+1]={icon=icon,x=x,y=y,distance=dx*dx+dy*dy}
+    else place(icon,x,y)end
    else icon:Hide()end
   else icon:Hide()end
+ end
+ if pickups then
+  table.sort(pickups,function(a,b)
+   if a.distance~=b.distance then return a.distance<b.distance end
+   if a.x~=b.x then return a.x<b.x end
+   return a.y<b.y
+  end)
+  local visible={}
+  for _,point in ipairs(pickups)do
+   local clear=#visible<3
+   for _,other in ipairs(visible)do
+    if math.abs(point.x-other.x)<15 and math.abs(point.y-other.y)<15 then clear=false;break end
+   end
+   if clear then visible[#visible+1]=point;place(point.icon,point.x,point.y)
+   else point.icon:Hide()end
+  end
  end
  if started then diagnostics:EndWork("Minimap markers",started,count)end
 end
@@ -93,8 +118,8 @@ function P:AddWorldMapIconMap(owner,icon,map,x,y)
  self:Install();self.world[icon]={owner=owner,map=map,x=x,y=y}
  if not self.worldQueued then self.worldQueued=true;C_Timer.After(0,function()self.worldQueued=nil;self:DrawWorld()end)end
 end
-function P:AddMinimapIconMap(owner,icon,map,x,y,_,edge)
- self:Install();self.mini[icon]={owner=owner,map=map,x=x,y=y,edge=edge};self:SyncTicker()
+function P:AddMinimapIconMap(owner,icon,map,x,y,_,edge,pickup)
+ self:Install();self.mini[icon]={owner=owner,map=map,x=x,y=y,edge=edge,pickup=pickup};self:SyncTicker()
 end
 function P:RemoveWorldMapIcon(_,icon)self.world[icon]=nil;icon:Hide()end
 function P:RemoveMinimapIcon(_,icon)self.mini[icon]=nil;icon:Hide();self:SyncTicker()end

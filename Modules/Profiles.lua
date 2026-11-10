@@ -7,21 +7,26 @@ local spec={
  character={replaceBlizzard=true,showItemLevels=true,showProgress=true},
  spellbook={replaceProfessions=true,separateFromTalents=true,showOffSpec=true,highlightMissing=true,macroAutocomplete=true,autoUpdateRanks=true},
  talents={enabled=true},achievements={enabled=true},
- mapQuests={enabled=true,showLocalStories=true,showTrivial=true,showAccountCompleted=true},
- questWorkspace={enabled=true,showArrow=true,locked=true,autoHandIn=true,prepWestfall=true,useWisp=true,opacity={.25,1}},
+ mapQuests={enabled=true,showLocalStories=true,showTrivial=true,showAccountCompleted=true,showSkyborne=true,showFlights=true,showInstances=true,trackHerbs=true,trackOre=true},
+ questWorkspace={enabled=true,showArrow=true,locked=true,autoAccept=true,autoHandIn=true,prepWestfall=true,useWisp=true,opacity={.25,1}},
  lowHealthGlow={enabled=true,threshold={.05,.95},maxAlpha={0,1}}
 }
+for _,key in ipairs({"showSpiritHealers","showSpiritCoverage","flightTimer","squareMinimap"})do spec.mapQuests[key]=true end
+for _,key in ipairs({"guideDetail","guideUpcoming","guideOtherQuests"})do spec.questWorkspace[key]=true end
 spec.general.backgroundOpacity={0,1}
+spec.general.repairIndicator=true;spec.general.repairReminder=true;spec.general.repairSound=true;spec.general.repairThreshold={5,75}
 spec.errorLog={enabled=true,maxEntries={10,200}}
 spec.accessibility={textScale={1,1.5},reducedMotion=true,highContrast=true,animatedPortraits=true}
 spec.auraManager={playerBuffs=true,playerDebuffs=true,targetDebuffs=true,focus=true,focusSpell={0,10000000,integer=true},iconSize={16,48},spacing={0,12},limit={1,24,integer=true},expirationFirst=true,partyBuffs=true,partyDebuffs=true,partyDispels=true,expiring=true,expirationThreshold={5,60},styleCooldowns=true}
-for _,key in ipairs({"Quest","Player","Target","Party","Chat","ActionBars","XP","Micro","BagButtons","Backpack","Meters","Map","Spellbook","Cast","Options","Professions","Auras"})do spec.general["background"..key]={-1,1}end
+for _,key in ipairs({"Quest","Player","Target","Party","Chat","ActionBars","XP","Micro","BagButtons","Backpack","Meters","Auction","Map","Spellbook","Cast","Options","Professions","Auras"})do spec.general["background"..key]={-1,1}end
 for _,channel in ipairs({"R","G","B"})do
  spec.general["color"..channel]={0,1}
- for _,key in ipairs({"Quest","Player","Target","Party","Chat","ActionBars","XP","Micro","BagButtons","Backpack","Meters","Map","Spellbook","Cast","Options","Professions","Auras"})do
+ for _,key in ipairs({"Quest","Player","Target","Party","Chat","ActionBars","XP","Micro","BagButtons","Backpack","Meters","Auction","Map","Spellbook","Cast","Options","Professions","Auras"})do
   spec.general["color"..channel..key]={0,1};spec.general["customColor"..key]=true
  end
 end
+spec.auctionHouse={autoOpen=true,retainHistory=true,autoSaleDefaults=true,trackPrices=true}
+spec.meterStyle={flatBars=true,textSize={9,18,integer=true}}
 spec.questWorkspace.guideSource={identifier=true}
 local function valid(rule,value)
  if rule==true then return type(value)=="boolean"end

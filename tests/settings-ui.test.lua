@@ -1,5 +1,6 @@
 -- Runs after the established UI/performance harness so real shared widgets are used.
 assert(load(SETTINGSREGISTRY_SOURCE))('ProjectRuthless',AUI)
+ProjectRuthlessDB.errorLog=ProjectRuthlessDB.errorLog or {enabled=true,maxEntries=50,entries={}}
 local registry=AUI.modules.SettingsRegistry
 local priorMenu=AUI.modules.Menu
 assert(load(MENU_SOURCE))('ProjectRuthless',AUI)

@@ -106,6 +106,8 @@ function D:Checks()
     if manager then for _,row in ipairs(manager:Checks())do rows[#rows+1]=row end end
     local meters=AUI.modules.ForeverMeters
     if meters then for _,row in ipairs(meters:Checks())do rows[#rows+1]=row end end
+    local auctions=AUI.modules.AuctionHouse
+    if auctions then for _,row in ipairs(auctions:Checks())do rows[#rows+1]=row end end
     local data=AUI.modules.QuestData
     if data then for _,row in ipairs(data:Checks())do rows[#rows+1]=row end end
     add("INFO",AUI.modules.UnifiedProfiles and "Settings and Edit Mode share account profiles. Legacy partial saves are labelled; save again to capture a complete setup."or "Settings profiles and layout profiles are separate in this client.","Profiles / Edit Mode")

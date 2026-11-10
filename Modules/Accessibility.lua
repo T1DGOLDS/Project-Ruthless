@@ -54,6 +54,9 @@ function A:BindMenu(menu)
   elseif self.keyboardRow and self.keyboardRow.control:IsVisible()then
    local row=self.keyboardRow;local control=row.control
    if key=="ENTER"or key=="SPACE"then
+    if row.kind=="text"and type(control.SetFocus)=="function"then
+     control:SetFocus();frame:SetPropagateKeyboardInput(false);return
+    end
     local script=control:GetScript("OnClick")
     if script and (not control.IsEnabled or control:IsEnabled())then script(control,"LeftButton");frame:SetPropagateKeyboardInput(false)end
    elseif (key=="LEFT"or key=="RIGHT")and control.ruiSlider then
@@ -72,6 +75,7 @@ function A:OpenNativeCategory(label)
 end
 function A:ApplySettings()
  for font in pairs(self.fonts)do self:RegisterText(font)end
+ local menu=AUI.modules.Menu;if menu and menu.ReflowPages then menu:ReflowPages()end
     local checks=AUI.modules.LiveChecks
     if checks and checks.frame and checks.frame:IsShown()then
         checks.frame:SetScale(self:FitWindow(checks.frame,(ProjectRuthlessDB.general or {}).windowScale or 1));checks:Refresh()

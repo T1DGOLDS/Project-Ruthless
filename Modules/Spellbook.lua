@@ -45,6 +45,7 @@ local MACRO_CONDITIONS = {
     { text="@target", detail="Use your current target" }, { text="@focus", detail="Use your focus" },
     { text="@mouseover", detail="Use the unit under the pointer" }, { text="@player", detail="Use yourself" },
     { text="@pet", detail="Use your pet" }, { text="@cursor", detail="Place a reticle spell at the pointer" },
+    { text="@targettarget", detail="Use the unit your target is targeting" },
     { text="@none", detail="Do not choose a unit target" }, { text="help", detail="Target can be helped" },
     { text="harm", detail="Target can be attacked" }, { text="exists", detail="Target exists" },
     { text="dead", detail="Target is dead" }, { text="nodead", detail="Target is alive" },
@@ -414,14 +415,37 @@ function Spellbook:AddProfession(groups, professionIndex)
     groups[#groups + 1] = { name=(skillLineName or name) .. suffix, items=items, profession=true }
 end
 
+function Spellbook:PetSpellCount()
+    local count=C_SpellBook and Read(C_SpellBook.HasPetSpells)
+    return type(count)=="number"and math.max(0,math.min(512,math.floor(count)))or 0
+end
+function Spellbook:AddPetSpells(groups,count)
+    local bank=Enum and Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Pet
+    if bank==nil then return end
+    local items={}
+    for index=1,count do
+        local item=Read(C_SpellBook.GetSpellBookItemInfo,index,bank)
+        if item and type(item.name)=="string"and not(issecretvalue and issecretvalue(item.name))then
+            items[#items+1]={slotIndex=index,spellBank=bank,itemType=item.itemType,spellID=item.spellID,
+                actionID=item.actionID,name=item.name,iconID=item.iconID,passive=not(issecretvalue and issecretvalue(item.isPassive))and item.isPassive==true,
+                bookInfo=item,pet=true}
+        end
+    end
+    if #items>0 then groups[#groups+1]={name=PET or "Pet abilities",items=items}end
+end
+
 function Spellbook:GetGroups()
     local key=(self.mode or "class")..":"..tostring(ProjectRuthlessDB.spellbook.showOffSpec)
+    local petCount=self.mode=="pet"and self:PetSpellCount()
+    if petCount then key=key..":"..petCount end
     self.groupCache=self.groupCache or {}
     local groups=self.groupCache[key]
     if not groups then
     groups={}
     if self.mode == "general" then
         self:AddSkillLine(groups, Enum.SpellBookSkillLineIndex.General, "General")
+    elseif self.mode == "pet" then
+        self:AddPetSpells(groups,petCount)
     elseif self.mode == "class" then
         self:AddSkillLine(groups, Enum.SpellBookSkillLineIndex.Class)
         local count = C_SpellBook.GetNumSpellBookSkillLines and C_SpellBook.GetNumSpellBookSkillLines() or Enum.SpellBookSkillLineIndex.MainSpec
@@ -448,6 +472,7 @@ function Spellbook:GetGroups()
 end
 
 function Spellbook:MatchesSpellFilter(item)
+    if item.pet then return true end
     local filter=self.spellFilter or Settings().state.spellFilter or "all"
     if filter=="future"then return item.future==true end
     if filter=="current" then return not item.offSpec end
@@ -1030,6 +1055,15 @@ end
 
 function Spellbook:Refresh()
     if not self.frame then return end
+    local professions=AUI.isForever and AUI.modules.Professions
+    if professions and self.mode=="professions"then
+        for _,display in ipairs(self.displayFrames)do display:Hide()end
+        self.empty:Hide();professions:ShowInSpellbook(self)
+        for id,tab in pairs(self.tabs)do tab:SetAlpha(id==self.mode and 1 or .7)end
+        return
+    end
+    if professions and professions.panel then professions.panel:Hide()end
+    for _,tab in pairs(self.tabs)do tab:SetAlpha(1)end
     local combatRestricted=AUI.isForever and InCombatLockdown()
     if self.mode == "macros" then
         for _, display in ipairs(self.displayFrames) do display:Hide(); if display.actionBarAnim and display.actionBarAnim:IsPlaying() then display.actionBarAnim:Stop() end end
@@ -1066,7 +1100,7 @@ function Spellbook:Refresh()
                 button:SetAlpha(item.offSpec and 0.42 or item.future and .65 or 1)
                 button.icon:SetDesaturated(item.offSpec == true or item.future==true)
                 local status
-                if not item.future and not combatRestricted and ProjectRuthlessDB.spellbook.highlightMissing and not item.passive and not item.offSpec and item.bookInfo and SpellSearchUtil and SpellSearchUtil.GetActionbarStatusForSpellBookItemInfo then
+                if not item.future and not combatRestricted and not item.pet and ProjectRuthlessDB.spellbook.highlightMissing and not item.passive and not item.offSpec and item.bookInfo and SpellSearchUtil and SpellSearchUtil.GetActionbarStatusForSpellBookItemInfo then
                     local ok, result=pcall(SpellSearchUtil.GetActionbarStatusForSpellBookItemInfo,item.bookInfo); if ok then status=result end
                 end
                 local missingStatus=ActionButtonUtil and ActionButtonUtil.ActionBarActionStatus and ActionButtonUtil.ActionBarActionStatus.MissingFromAllBars
@@ -1074,7 +1108,7 @@ function Spellbook:Refresh()
                 elseif not item.future and not combatRestricted and ProjectRuthlessDB.spellbook.highlightMissing and not item.passive and not item.offSpec and item.spellID and C_ActionBar and C_ActionBar.FindSpellActionButtons then
                     local slots=C_ActionBar.FindSpellActionButtons(item.spellID); button.actionBarMissing=not slots or #slots == 0
                 else button.actionBarMissing=false end
-                local onBars=not item.future and not item.passive and self:GetActionBarState(item.spellID)
+                local onBars=not item.pet and not item.future and not item.passive and self:GetActionBarState(item.spellID)
                 button.barMarker:SetShown(onBars and not AUI.isForever); button.pin:SetShown(item.pinned==true)
                 button.actionBarHighlight:SetShown(button.actionBarMissing)
                 if button.actionBarMissing and not (AUI.modules.Accessibility and AUI.modules.Accessibility:ReducedMotion())then if not button.actionBarAnim:IsPlaying() then button.actionBarAnim:Play() end
@@ -1097,11 +1131,15 @@ function Spellbook:Refresh()
         if display.actionBarAnim and display.actionBarAnim:IsPlaying() then display.actionBarAnim:Stop() end
     end
     self.content:SetHeight(math.max(y, 1)); self.empty:SetShown(#self.activeFrames == 0)
+    self.empty:SetText(self.mode=="pet"and self:PetSpellCount()==0
+        and "Summon a pet with a spellbook to see its abilities here." or "No spells match this search and filter.")
     if self.filterButton then
         local label="All spells"; for _,filter in ipairs(SPELL_FILTERS) do if filter.id==(self.spellFilter or "all") then label=filter.label break end end
         self.filterButton:SetText("Filter: "..label)
     end
-    if self.pinHint then self.pinHint:SetText(combatRestricted and "Combat: browsing only" or "Right-click a spell to pin it") end
+    if self.pinHint then
+        self.pinHint:SetText(combatRestricted and "Combat: browsing only" or "Right-click a spell to pin it")
+    end
     for id, tab in pairs(self.tabs) do
         local active = id == self.mode
         tab:SetBackdropColor(active and 0.10 or COLORS.inset[1], active and 0.075 or COLORS.inset[2], active and 0.10 or COLORS.inset[3], 0.98)
@@ -1114,7 +1152,10 @@ function Spellbook:SelectMode(mode)
     self.mode=mode; Settings().state.mode=mode
     local remembered=Settings().state.scroll[mode] or 0
     self.scroll.targetScroll=remembered; self.scroll:SetVerticalScroll(remembered)
-    self.scroll:SetShown(mode ~= "macros"); self.searchBox:SetShown(mode ~= "macros"); self.filterButton:SetShown(mode ~= "macros"); self.pinHint:SetShown(mode ~= "macros"); if mode=="macros" and not self.macroView then self:CreateMacroView(self.frame)end; if self.macroView then self.macroView:SetShown(mode=="macros")end
+    self.scroll:SetShown(mode ~= "macros"); self.searchBox:SetShown(mode ~= "macros"); self.filterButton:SetShown(mode ~= "macros" and mode ~= "pet"); self.pinHint:SetShown(mode ~= "macros"); if mode=="macros" and not self.macroView then self:CreateMacroView(self.frame)end; if self.macroView then self.macroView:SetShown(mode=="macros")end
+    if AUI.isForever and mode=="professions"and AUI.modules.Professions then
+        self.scroll:Hide();self.searchBox:Hide();self.filterButton:Hide();self.pinHint:Hide()
+    end
     self:Refresh()
 end
 
@@ -1146,30 +1187,142 @@ end
 
 function Spellbook:ShowMacroTemplates()
     if not self.templatePanel then self:CreateMacroTemplatePanel(self.macroView)end
-    if not self.selectedMacro and not self.newMacroDraft then self:CreateNewMacro() end
     if self.templatePanel then self.templatePanel:Show() end
+    if self.RefreshMacroTemplateFactory and self.templateRows then self:RefreshMacroTemplateFactory()end
+end
+
+function Spellbook:MacroFactoryStatus(message)
+    if self.templateStatus then self.templateStatus:SetText(message or "")end
+    return message
+end
+
+function Spellbook:MacroFactoryCanWrite()
+    if InCombatLockdown()then self:MacroFactoryStatus("Create or edit macros after combat.");return false end
+    if self.macroDirty then self:MacroFactoryStatus("Close this panel, then Save or Revert your current draft first.");return false end
+    return true
+end
+
+function Spellbook:CreateUtilityMacro(template)
+    if not template or template.utility~=true or not self:MacroFactoryCanWrite()then return end
+    if AUI.MacroTemplates and not AUI.MacroTemplates:Available(template)then self:MacroFactoryStatus("This native command is unavailable on the current client.");return end
+    local base,count=self:GetMacroBank()
+    -- Repeated clicks select the existing exact utility rather than filling the
+    -- bank with copies. The check never renames or edits the user's macro.
+    for index=base+1,base+count do
+        local name,_,body=GetMacroInfo(index)
+        if name and body==template.body then
+            self:SelectMacro(index);self:MacroFactoryStatus("Already available in this bank: "..name);return index
+        end
+    end
+    local index=self:CreateMacroCopy(self.macroScope,template.macroName or template.name,template.icon or 134400,template.body)
+    if index then self:SelectMacro(index);self:MacroFactoryStatus("Created "..(template.name or "utility")..". Find it in your macro list; drag its icon onto a bar.")
+    else self:MacroFactoryStatus("Could not create a macro. Check available space in this macro bank.")end
+    return index
 end
 
 function Spellbook:ApplyMacroTemplate(template)
-    if not template then return end
+    if not template or not self:MacroFactoryCanWrite()then return end
+    self:CreateNewMacro()
+    if not self.newMacroDraft then self:MacroFactoryStatus("This macro bank is full. Free a slot or choose the other bank.");return end
+    self.loadingMacro=true
+    self.macroName:SetText(template.macroName or template.name or "RUI Spell")
     self.macroEditor:SetText(template.body)
+    self.loadingMacro=false;self:MarkMacroDirty();self:AnalyseMacro()
     self.macroEditor:SetCursorPosition(#template.body)
     self.macroEditor:SetFocus()
     self.templatePanel:Hide()
 end
 
+function Spellbook:MacroTemplateCatalogue()
+    return AUI.MacroTemplates and AUI.MacroTemplates:Catalogue()or MACRO_TEMPLATES
+end
+
+function Spellbook:RefreshMacroTemplateFactory()
+    if not self.templateRows then return end
+    self:LayoutMacroTemplateHeader()
+    self.templateEntries={}
+    for _,entry in ipairs(self:MacroTemplateCatalogue())do
+        if not self.templateCategory or self.templateCategory==entry.category then self.templateEntries[#self.templateEntries+1]=entry end
+    end
+    local found=false;for _,entry in ipairs(self.templateEntries)do if entry==self.templateSelected then found=true;break end end
+    if not found then self.templateSelected=self.templateEntries[1]end
+    self.templateScroll:SetItemCount(#self.templateEntries)
+    local offset=self.templateScroll:GetItemOffset()
+    for index,row in ipairs(self.templateRows)do
+        local entry=self.templateEntries[offset+index];row.entry=entry;row:SetShown(entry~=nil);self.templateScroll:PlaceItem(row,index)
+        if entry then row:SetText(entry.name);local r,g,b=AccentColor();row:SetBackdropBorderColor(entry==self.templateSelected and r or COLORS.border[1],entry==self.templateSelected and g or COLORS.border[2],entry==self.templateSelected and b or COLORS.border[3],1)end
+    end
+    local entry=self.templateSelected
+    local available=entry and (not AUI.MacroTemplates or AUI.MacroTemplates:Available(entry))
+    local class=self.templateExampleClass or select(2,UnitClass("player"))or "WARRIOR";self.templateExampleClass=class
+    self.templateClassButton:SetText("Example class: "..(LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[class]or class))
+    self.templateClassButton:SetShown(entry and not entry.utility)
+    local text="Choose a tool or spell starter from the list."
+    if entry then
+        text=entry.name.."\n\n"..(entry.explanation or "Replace the capitalised spell placeholders before saving.").."\n\nMACRO\n"..entry.body
+        if entry.utility then
+            text=text.."\n\nCreate macro adds a new utility to the macro bank selected behind this panel. It does not execute the action. Drag the created macro onto an action bar to use it."
+        else
+            local example=AUI.MacroTemplates and AUI.MacroTemplates:ClassExample(entry,class)or "Use an appropriate spell you have learned."
+            text=text.."\n\nCLASS EXAMPLE\n"..example.."\n\nReplace every capitalised placeholder with the exact localized spell name. The examples explain uses, not skills your character necessarily knows. Open draft creates an unsaved starter; edit it, review the macro checks, then press Save."
+        end
+    end
+    self.templateExplanation:SetText(text);self:LayoutMacroTemplateDetail()
+    if entry and not available then self.templateExplanation:SetText(text.."\n\nUnavailable: this client does not expose the native ping command API.");self:LayoutMacroTemplateDetail()end
+    self.templateAction:SetText(entry and entry.utility and "Create macro"or "Open draft")
+    SetButtonEnabled(self.templateAction,available and not InCombatLockdown())
+end
+
+function Spellbook:LayoutMacroTemplateHeader()
+    if not self.templateHint then return end
+    local top=math.max(65,36+self.templateHint:GetStringHeight()+10)
+    for index,button in ipairs(self.templateCategoryButtons or {})do button:ClearAllPoints();button:SetPoint("TOPLEFT",14+(index-1)*125,-top)end
+    self.templateScroll:SetPoint("TOPLEFT",14,-top-34)
+    self.templateDetailScroll:SetPoint("TOPLEFT",202,-top-34)
+end
+
+function Spellbook:LayoutMacroTemplateDetail()
+    if not self.templateExplanation then return end
+    local width=self.templateDetailScroll:GetWidth()
+    if width and width>20 then self.templateDetail:SetWidth(width);self.templateExplanation:SetWidth(width-16)end
+    local height=self.templateExplanation:GetStringHeight()
+    self.templateDetail:SetHeight(math.max(1,height+20))
+end
+
 function Spellbook:CreateMacroTemplatePanel(parent)
     local panel=CreateFrame("Frame",nil,parent,"BackdropTemplate"); panel:SetAllPoints(); panel:SetFrameLevel(parent:GetFrameLevel()+30); Surface(panel,COLORS.background); panel:Hide(); self.templatePanel=panel
-    local title=Label(panel,"MACRO STARTERS","GameFontNormal"); title:SetPoint("TOPLEFT",14,-14)
-    local hint=Label(panel,"Choose a safe starting point, then replace the capitalised placeholders.","GameFontNormalSmall"); hint:SetPoint("TOPLEFT",14,-38); hint:SetTextColor(unpack(COLORS.muted))
+    local title=Label(panel,"MACRO TOOLS & STARTERS","GameFontNormal"); title:SetPoint("TOPLEFT",14,-14)
+    local hint=Label(panel,"Tools create one macro. Spell starters open an editable draft. Your current edits are protected.","GameFontNormalSmall"); hint:SetPoint("TOPLEFT",14,-36);hint:SetPoint("TOPRIGHT",-14,-36);hint:SetJustifyH("LEFT");hint:SetTextColor(unpack(COLORS.muted));self.templateHint=hint
     local close=AUI:CreateButton(panel); close:SetSize(62,22); close:SetPoint("TOPRIGHT",-12,-10); close:SetText("Close"); close:SetScript("OnClick",function() panel:Hide() end)
-    for index,template in ipairs(MACRO_TEMPLATES) do
-        local chosenTemplate=template
-        local button=CreateFrame("Button",nil,panel,"BackdropTemplate"); button:SetSize(560,44); button:SetPoint("TOPLEFT",14,-68-(index-1)*48); Surface(button,COLORS.inset)
-        local name=Label(button,template.name,"GameFontHighlight"); name:SetPoint("TOPLEFT",10,-7)
-        local preview=Label(button,template.body:gsub("\n","  •  "),"GameFontNormalSmall"); preview:SetPoint("TOPLEFT",10,-25); preview:SetWidth(536); preview:SetJustifyH("LEFT"); preview:SetTextColor(unpack(COLORS.muted))
-        button:SetScript("OnClick",function() Spellbook:ApplyMacroTemplate(chosenTemplate) end)
+    self.templateCategoryButtons={}
+    for index,category in ipairs({"All","Markers","Pings","Tools","Spell starters"})do
+        local value=category;local tab=AUI:CreateButton(panel);tab:SetSize(120,26);tab:SetPoint("TOPLEFT",14+(index-1)*125,-65);tab:SetText(value)
+        self.templateCategoryButtons[index]=tab
+        tab:SetScript("OnClick",function()self.templateCategory=value~="All"and value or nil;self.templateSelected=nil;self.templateScroll:ScrollTo(0,true);self:RefreshMacroTemplateFactory()end)
     end
+    local list=AUI:CreateListScroll(panel,33,1,function()self:RefreshMacroTemplateFactory()end);list:SetPoint("TOPLEFT",14,-99);list:SetPoint("BOTTOMLEFT",14,96);list:SetWidth(178);self.templateScroll=list;self.templateRows={}
+    for index=1,14 do
+        local row=AUI:CreateButton(list.content);row:SetSize(172,30)
+        row:SetScript("OnClick",function(button)self.templateSelected=button.entry;self.templateDetailScroll:SetVerticalScroll(0);self:MacroFactoryStatus("");self:RefreshMacroTemplateFactory()end);self.templateRows[index]=row
+    end
+    local scroll=AUI:CreateSmoothScrollFrame(panel);scroll:SetPoint("TOPLEFT",202,-99);scroll:SetPoint("BOTTOMRIGHT",-14,96);self.templateDetailScroll=scroll
+    local content=CreateFrame("Frame",nil,scroll);content:SetSize(384,400);scroll:SetScrollChild(content);self.templateDetail=content
+    local explanation=Label(content,"","GameFontHighlightSmall");explanation:SetPoint("TOPLEFT",8,-8);explanation:SetWidth(368);explanation:SetJustifyH("LEFT");self.templateExplanation=explanation
+    scroll:SetScript("OnSizeChanged",function()self:LayoutMacroTemplateDetail()end)
+    local status=Label(panel,"","GameFontNormalSmall");status:SetPoint("BOTTOMLEFT",14,49);status:SetPoint("BOTTOMRIGHT",-14,49);status:SetJustifyH("LEFT");status:SetTextColor(1,.72,.35);self.templateStatus=status
+    local class=AUI:CreateButton(panel);class:SetSize(244,26);class:SetPoint("BOTTOMLEFT",14,14);self.templateClassButton=class
+    class:SetScript("OnClick",function(button)
+        local classes=AUI.MacroTemplates and AUI.MacroTemplates.classes or {select(2,UnitClass("player"))}
+        if MenuUtil and MenuUtil.CreateContextMenu then MenuUtil.CreateContextMenu(button,function(_,root)
+            for _,id in ipairs(classes)do local selected=id;root:CreateRadio(LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[id]or id,function()return self.templateExampleClass==selected end,function()self.templateExampleClass=selected;self:RefreshMacroTemplateFactory()end)end
+        end)else
+            local nextIndex=1;for index,id in ipairs(classes)do if id==self.templateExampleClass then nextIndex=index%#classes+1;break end end;self.templateExampleClass=classes[nextIndex];self:RefreshMacroTemplateFactory()
+        end
+    end)
+    local action=AUI:CreateButton(panel);action:SetSize(132,26);action:SetPoint("BOTTOMRIGHT",-14,14);self.templateAction=action
+    action:SetScript("OnClick",function()local entry=self.templateSelected;if entry and entry.utility then self:CreateUtilityMacro(entry)else self:ApplyMacroTemplate(entry)end end)
+    panel:HookScript("OnShow",function()self:RefreshMacroTemplateFactory()end)
+    panel:HookScript("OnSizeChanged",function()self:LayoutMacroTemplateHeader();self:LayoutMacroTemplateDetail()end)
 end
 
 function Spellbook:RefreshMacroBackups()
@@ -1335,7 +1488,14 @@ function Spellbook:Create()
     local title=Label(header,"SPELLBOOK","GameFontNormalLarge"); title:SetPoint("LEFT",mark,"RIGHT",16,0)
     local close=CreateFrame("Button",nil,header); close:SetSize(38,38); close:SetPoint("RIGHT",-4,0); close.label=Label(close,"×","GameFontNormalHuge"); close.label:SetPoint("CENTER",0,1); close:SetScript("OnClick",function() frame:Hide() end)
     local className=UnitClass("player")
-    self:CreateTab(frame,"general","General",18,90); self:CreateTab(frame,"class",className or "Class",112,110); self:CreateTab(frame,"professions","Professions",226,110); self:CreateTab(frame,"macros","Macros",340,90)
+    if AUI.isForever then
+        self:CreateTab(frame,"general","General",18,74);self:CreateTab(frame,"class",className or "Class",96,96)
+        self:CreateTab(frame,"pet",PET or "Pet",196,54);self:CreateTab(frame,"professions","Professions",254,96)
+        self:CreateTab(frame,"macros","Macros",354,74)
+    else
+        self:CreateTab(frame,"general","General",18,90);self:CreateTab(frame,"class",className or "Class",112,110)
+        self:CreateTab(frame,"professions","Professions",226,110);self:CreateTab(frame,"macros","Macros",340,90)
+    end
     local search=CreateFrame("EditBox",nil,frame,"SearchBoxTemplate"); search:SetSize(250,26); search:SetPoint("TOPRIGHT",-18,-73); search:SetText(Settings().state.searchText or ""); self.searchBox=search; self.searchText=search:GetText()
     search:SetScript("OnTextChanged",function(box) SearchBoxTemplate_OnTextChanged(box); Spellbook.searchText=box:GetText(); Settings().state.searchText=box:GetText(); Spellbook.scroll.targetScroll=0; Spellbook.scroll:SetVerticalScroll(0); Spellbook:Refresh() end)
     local filter=AUI:CreateButton(frame); filter:SetSize(150,24); filter:SetPoint("TOPLEFT",18,-108); filter:RegisterForClicks("LeftButtonUp","RightButtonUp"); filter:SetScript("OnClick",function(_,mouseButton) Spellbook:CycleSpellFilter(mouseButton=="RightButton" and -1 or 1) end); self.filterButton=filter; self.spellFilter=Settings().state.spellFilter or "all"
@@ -1431,6 +1591,7 @@ end
 
 function Spellbook:ApplySettings()
     if self.frame and self.frame:IsShown() then self:Refresh()end
+    if self.templatePanel and self.templatePanel:IsShown()and self.templateRows then self:RefreshMacroTemplateFactory()end
     if PlayerSpellsFrame and PlayerSpellsFrame.UpdateTabs then PlayerSpellsFrame:UpdateTabs() end
     if not AUI.isForever and ProfessionMicroButton and LoadMicroButtonTextures then LoadMicroButtonTextures(ProfessionMicroButton,ProjectRuthlessDB.spellbook.replaceProfessions and "Spellbook" or "Professions") end
 end
@@ -1441,8 +1602,14 @@ function Spellbook:OnPlayerLogin()
     self.visibleEvents={"ACTIONBAR_SLOT_CHANGED","UPDATE_BONUS_ACTIONBAR","PLAYER_REGEN_ENABLED","PLAYER_REGEN_DISABLED"}
     for _,event in ipairs({"SPELLS_CHANGED","SKILL_LINES_CHANGED","PLAYER_SPECIALIZATION_CHANGED","UPDATE_MACROS","PLAYER_EQUIPMENT_CHANGED"})do events:RegisterEvent(event)end
     events:RegisterEvent("ADDON_LOADED")
+    if AUI.isForever then events:RegisterUnitEvent("UNIT_PET","player")end
     if AUI.isForever then for _,event in ipairs({"TRAINER_SHOW","TRAINER_UPDATE","TRAINER_CLOSED","TRAINER_SERVICE_INFO_NAME_UPDATE","SPELL_TEXT_UPDATE","PLAYER_LEVEL_UP"})do events:RegisterEvent(event)end end
     events:SetScript("OnEvent",function(_,event,addon)
+        if event=="UNIT_PET"then
+            for key in pairs(Spellbook.groupCache or {})do if key:match("^pet:")then Spellbook.groupCache[key]=nil end end
+            if Spellbook.mode=="pet"and Spellbook.frame and Spellbook.frame:IsShown()then AUI:QueueRefresh(Spellbook)end
+            return
+        end
         if event=="TRAINER_SHOW"or event=="TRAINER_UPDATE"or event=="TRAINER_SERVICE_INFO_NAME_UPDATE"then Spellbook:CaptureTrainingPrices();return end
         if event=="TRAINER_CLOSED"then Spellbook.trainingRevision=(Spellbook.trainingRevision or 0)+1;return end
         if event=="SPELL_TEXT_UPDATE"or event=="PLAYER_LEVEL_UP"then Spellbook.groupCache=nil end

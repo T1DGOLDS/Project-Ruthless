@@ -3,7 +3,7 @@ const {lua,lauxlib,lualib,to_luastring,to_jsstring}=require(path.join(root,'node
 const parser=require(path.join(root,'node_modules/luaparse'));
 const L=lauxlib.luaL_newstate();lualib.luaL_openlibs(L);
 const files=['Core.lua','Modules/MenuLoader.lua','Modules/Profiles.lua','Modules/Spellbook.lua','Modules/CharacterV2.lua','Modules/QuestWorkspace.lua','Modules/QuestLocations.lua','Modules/LowHealthGlow.lua','ProjectRuthless_Options/Menu.lua','Modules/Titles.lua'];
-for(const file of files){const source=fs.readFileSync(path.join(root,file),'utf8');parser.parse(source,{luaVersion:'5.1'});lua.lua_pushstring(L,to_luastring(source));lua.lua_setglobal(L,to_luastring(path.basename(file,'.lua').toUpperCase()+'_SOURCE'));}
+for(const file of files){const source=fs.readFileSync(path.join(root,file),'utf8')+(file==='ProjectRuthless_Options/Menu.lua'?'\n'+fs.readFileSync(path.join(root,'ProjectRuthless_Options/SettingsPages.lua'),'utf8'):'');parser.parse(source,{luaVersion:'5.1'});lua.lua_pushstring(L,to_luastring(source));lua.lua_setglobal(L,to_luastring(path.basename(file,'.lua').toUpperCase()+'_SOURCE'));}
 const baselineIndex=process.argv.indexOf('--baseline');
 if(baselineIndex>=0){
  const baseline=process.argv[baselineIndex+1];

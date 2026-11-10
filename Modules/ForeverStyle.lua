@@ -79,6 +79,44 @@ function S:Surface(frame,accent,opacity,key)
     bg.accent:SetColorTexture(r,g,b,accent and .9 or 0)
     return bg
 end
+-- Action-button hover can refresh protected cooldowns. Style the backplate
+-- without hooking the button's native texture setters or changing state art.
+local actionArt=setmetatable({},{__mode="k"})
+function S:ActionButtonSkin(button)
+    if not usable(button)then return end
+    self.buttons[button]=true
+    local showArt=self:BlizzardArtEnabled()
+    local function shade(texture)
+        if not usable(texture)or type(texture.SetAlpha)~="function"then return end
+        local alpha=actionArt[texture]
+        if showArt then
+            if alpha~=nil then texture:SetAlpha(alpha);actionArt[texture]=nil end
+        else
+            if alpha==nil then
+                alpha=type(texture.GetAlpha)=="function"and texture:GetAlpha()
+                if (issecretvalue and issecretvalue(alpha))or type(alpha)~="number"then alpha=1 end
+                actionArt[texture]=alpha
+            end
+            texture:SetAlpha(0)
+        end
+    end
+    self:Surface(button,false,.9,"ActionBars")
+    for _,key in ipairs({"FloatingBG","SlotBackground","SlotArt","Background","NormalTexture","NormalTexture2"})do shade(button[key])end
+    if type(button.GetNormalTexture)=="function"then shade(button:GetNormalTexture())end
+    local name=type(button.GetName)=="function"and button:GetName()
+    if type(name)=="string"then
+        for _,suffix in ipairs({"NormalTexture","NormalTexture2","FloatingBG"})do shade(_G[name..suffix])end
+    end
+    if type(button.GetRegions)=="function"then
+        for _,region in ipairs({button:GetRegions()})do
+            local atlas=usable(region)and type(region.GetAtlas)=="function"and region:GetAtlas()
+            if type(atlas)=="string"then
+                atlas=atlas:lower()
+                if atlas=="ui-hud-actionbar-iconframe"or atlas=="ui-hud-actionbar-iconframe-slot"or atlas=="ui-hud-actionbar-iconframe-background"then shade(region)end
+            end
+        end
+    end
+end
 function S:Button(button,micro,inventory)
     if not usable(button)then return end
     self.buttons[button]=true
@@ -100,7 +138,15 @@ function S:Button(button,micro,inventory)
     if usable(icon)and icon.SetTexCoord then icon:SetTexCoord(.07,.93,.07,.93)end
     for _,key in ipairs({"HotKey","Count","Name"})do
         local text=button[key]
-        if usable(text)and text.SetFontObject then text:SetFontObject(GameFontHighlightSmall);text:SetShadowColor(0,0,0,1);text:SetShadowOffset(1,-1)end
+        if usable(text)and text.SetFontObject then
+            local macro=key=="Name"and button.config and button.config.text and button.config.text.macro
+            if macro and macro.font and type(text.SetFont)=="function"then
+                local font=GameFontHighlightSmall:GetFont()
+                text:SetFont(font,macro.font.size or 8,macro.font.flags or "OUTLINE")
+                if type(text.SetTextColor)=="function"then text:SetTextColor(unpack(macro.color or {.72,.74,.78}))end
+            else text:SetFontObject(GameFontHighlightSmall)end
+            text:SetShadowColor(0,0,0,1);text:SetShadowOffset(1,-1)
+        end
     end
     if not micro then
         for _,method in ipairs({"GetPushedTexture","GetHighlightTexture","GetCheckedTexture"})do
@@ -307,7 +353,9 @@ function S:InventoryLayout(frame)
     frame.ruiSlotCount:ClearAllPoints();frame.ruiSlotCount:SetPoint("BOTTOMLEFT",frame,"BOTTOMLEFT",10,10+extra)
     local free=0
     if C_Container and type(C_Container.GetContainerNumFreeSlots)=="function"then
-        for bag=0,4 do local n=C_Container.GetContainerNumFreeSlots(bag);if type(n)=="number"and not(issecretvalue and issecretvalue(n))then free=free+n end end
+        local inventory=AUI.modules.ForeverInventory
+        local last=inventory and inventory.installed and inventory.enabled~=false and (NUM_TOTAL_BAG_FRAMES or 5)or 4
+        for bag=0,last do local n=C_Container.GetContainerNumFreeSlots(bag);if type(n)=="number"and not(issecretvalue and issecretvalue(n))then free=free+n end end
     end
     frame.ruiSlotCount:SetText(free.." free / "..count)
     if type(frame.LayoutAddSlots)=="function"then frame:LayoutAddSlots()end
@@ -458,8 +506,10 @@ function S:Apply()
     if InCombatLockdown()or self.resting then self.pending=true;return end
     self.pending=nil;self.pendingArt=nil
     self:RestoreArt()
+    local owned=AUI.modules.ForeverActionBars
+    if owned then for _,button in ipairs(owned.buttons)do self:ActionButtonSkin(button)end end
     for _,prefix in ipairs({"ActionButton","MultiBarBottomLeftButton","MultiBarBottomRightButton","MultiBarRightButton","MultiBarLeftButton","MultiBar5Button","MultiBar6Button","MultiBar7Button","PetActionButton","StanceButton"})do
-        for i=1,12 do self:Button(_G[prefix..i])end
+        for i=1,12 do self:ActionButtonSkin(_G[prefix..i])end
     end
     for _,name in ipairs({"MainActionBar","MainMenuBar","MultiBarBottomLeft","MultiBarBottomRight","MultiBarRight","MultiBarLeft","MultiBar5","MultiBar6","MultiBar7","PetActionBar","StanceBar","MicroMenu","BagsBar"})do
         local frame=_G[name]
@@ -483,6 +533,7 @@ function S:Apply()
     end
     self:Inventory()
     self:Professions()
+    local minimap=AUI.modules.ForeverMinimap;if minimap then minimap:ApplySettings()end
 end
 function S:Queue()
     if self.queued then return end

@@ -11,14 +11,16 @@ const release=fs.readFileSync(path.join(root,'.github/workflows/release.yml'),'u
 const pack=fs.readFileSync(path.join(root,'tools/package.ps1'),'utf8');assert(!pack.includes('Remove-Item -LiteralPath $releaseRoot'));assert(pack.includes('Refusing to overwrite'));
 const os=require('os'),{spawnSync}=require('child_process'),fixture=fs.mkdtempSync(path.join(os.tmpdir(),'rui-package-'));
 try{
-  for(const dir of ['Modules','Assets','docs','ProjectRuthless_Options','ProjectRuthless_DungeonData','release'])fs.mkdirSync(path.join(fixture,dir),{recursive:true});
-  for(const file of ['Core.lua','README.md','CHANGELOG.md','LICENSE','Modules/fixture.lua','Assets/fixture.txt','docs/fixture.md'])fs.writeFileSync(path.join(fixture,file),'fixture');
+  for(const dir of ['Modules','Libs','Assets','docs','ProjectRuthless_Options','ProjectRuthless_DungeonData','release'])fs.mkdirSync(path.join(fixture,dir),{recursive:true});
+  for(const file of ['Core.lua','README.md','CHANGELOG.md','LICENSE','Modules/fixture.lua','Libs/fixture.lua','Libs/LICENSE.txt','Assets/fixture.txt','docs/fixture.md'])fs.writeFileSync(path.join(fixture,file),'fixture');
   for(const file of ['ProjectRuthless.toc','ProjectRuthless_Camelot.toc','ProjectRuthless_Options/ProjectRuthless_Options.toc','ProjectRuthless_DungeonData/ProjectRuthless_DungeonData.toc'])fs.writeFileSync(path.join(fixture,file),'## Version: '+version+'\n');
   fs.writeFileSync(path.join(fixture,'package.json'),JSON.stringify({version}));fs.writeFileSync(path.join(fixture,'release/old.zip'),'preserved old release');
   const shell=process.platform==='win32'?path.join(process.env.SystemRoot,'System32/WindowsPowerShell/v1.0/powershell.exe'):'pwsh';
   const args=['-NoProfile','-NonInteractive','-File',path.join(root,'tools/package.ps1'),'-RepositoryRoot',fixture];
   const build=spawnSync(shell,args,{encoding:'utf8'});assert.equal(build.status,0,build.stderr||build.error);
   const archive=path.join(fixture,'release','ProjectRuthless-'+version+'.zip'),before=fs.readFileSync(archive);
+  const listing=spawnSync(shell,['-NoProfile','-NonInteractive','-Command',`Add-Type -AssemblyName System.IO.Compression.FileSystem; $z=[IO.Compression.ZipFile]::OpenRead('${archive.replaceAll("'","''")}'); $z.Entries.FullName; $z.Dispose()`],{encoding:'utf8'});
+  assert.equal(listing.status,0,listing.stderr);assert.match(listing.stdout,/Libs[\\/]fixture.lua/);assert.match(listing.stdout,/Libs[\\/]LICENSE.txt/);
   assert.equal(fs.readFileSync(path.join(fixture,'release/old.zip'),'utf8'),'preserved old release');
   assert.equal(fs.readdirSync(path.join(fixture,'release')).filter(name=>name.startsWith('.staging-')).length,0);
   assert.notEqual(spawnSync(shell,args,{encoding:'utf8'}).status,0);assert(before.equals(fs.readFileSync(archive)));

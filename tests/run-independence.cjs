@@ -6,6 +6,11 @@ const toc=fs.readFileSync(path.join(root,'ProjectRuthless_Camelot.toc'),'utf8');
 assert(!/^## OptionalDeps:.*(?:Questie|TomTom|AtlasLoot|Details|ElvUI)/m.test(toc));
 for(const file of toc.split(/\r?\n/).filter(x=>x.endsWith('.lua'))){
  const source=fs.readFileSync(path.join(root,file.replaceAll('\\','/')),'utf8');
+ if(file.startsWith('Libs\\LibActionButton\\')){
+  if(!file.endsWith('\\LibStub.lua'))assert(source.includes('local LibStub = RUIActionBarLibStub'),'Bundled library must use the private registry');
+  else assert(source.includes('LIBSTUB_MAJOR, LIBSTUB_MINOR = "RUIActionBarLibStub"'));
+  continue;
+ }
  assert(!/\bLibQuestieDB\b|\bLibStub\s*\(|\bDetails\s+or\s+_detalhes|ElvUI_Bar|_G\.RaiderIO|_G\.Epithet/.test(source),'External runtime coupling in '+file);
 }
 for(const [key,file]of Object.entries({DATA:'Modules/QuestData.lua',PINS:'Modules/MapPins.lua',METERS:'Modules/ForeverMeters.lua',DIAGNOSTICS:'Modules/Diagnostics.lua',LOCATIONS:'Modules/QuestLocations.lua'})){

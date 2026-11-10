@@ -1,25 +1,36 @@
 local _,AUI=...
-local R={controls={},byID={}}
+local R={controls={},byID={},byControl=setmetatable({},{__mode="k"})}
 AUI:RegisterModule("SettingsRegistry",R)
 R.sections={
- {id="general",label="Appearance"},{id="unitframes",label="Unit frames"},
- {id="actionbars",label="Action bars"},{id="spellbook",label="Spellbook & macros"},
+ {id="general",label="Appearance",group="INTERFACE"},
+ {id="unitframes",label="Unit frames"},{id="actionbars",label="Action bars"},
+ {id="auras",label="Auras & cooldowns"},{id="spellbook",label="Spellbook & macros"},
  {id="chat",label="Chat"},{id="bags",label="Bags & inventory"},
- {id="mapquests",label="Map & quests"},{id="health",label="Utilities"},
- {id="profiles",label="Profiles"},{id="errors",label="Help & diagnostics"},
- {id="compatibility",label="Compatibility"},{id="status",label="About"},
- {id="backgrounds",label="Backgrounds"}}
-table.insert(R.sections,10,{id="accessibility",label="Accessibility"})
-table.insert(R.sections,11,{id="setup",label="Quick setup"})
-table.insert(R.sections,4,{id="auras",label="Auras & cooldowns"})
-local synonyms={opacity="transparency transparent alpha fade charcoal shadow",background="colour color panel backdrop",party="group grouped member teammate",scale="size zoom",cooldown="cd timer countdown",profile="layout setup default character account",chat="tabs channels messages",bag="inventory backpack sort",health="hp life warning",spell="ability skill macro",quest="guide route journey waypoint",art="blizzard gryphon decoration trim",record="cpu performance lag spikes report bug"}
-function R:Register(page,control,label,description,y,kind)
+ {id="mapquests",label="Map & quests",group="ACTIVITIES"},
+ {id="auctionhouse",label="Auction house"},{id="health",label="Combat & utilities"},
+ {id="profiles",label="Profiles",group="SETUP & SUPPORT"},
+ {id="accessibility",label="Accessibility"},{id="errors",label="Help & diagnostics"}}
+R.childPages={backgrounds="general",setup="profiles",compatibility="errors",status="errors",errorlog="errors",features="errors"}
+R.searchPages={"general","backgrounds","unitframes","actionbars","auras","spellbook","chat","bags","mapquests","auctionhouse","health","profiles","accessibility","errors","compatibility","status","features"}
+R.auctionControls={
+ {"autoOpen","Start on RUI Tools","Open Tools when visiting an auctioneer. Turn off to start on Buy; all bottom tabs remain available."},
+ {"retainHistory","Keep recent searches","Keep the last 30 character searches, including level and filter preferences."},
+ {"autoSaleDefaults","Restore selling preferences","Restore saved item quantity and duration. Prices are never posted automatically."},
+ {"trackPrices","Record observed unit prices","Keep bounded price observations from returned item searches. Full-market scans remain manual."},
+}
+function R:NavigationPage(id)return self.childPages[id]or id end
+local synonyms={opacity="transparency transparent alpha fade charcoal shadow",background="colour color panel backdrop",party="group grouped member teammate",scale="size zoom",cooldown="cd timer countdown",profile="layout setup default character account",chat="tabs channels messages",bag="inventory backpack sort",health="hp life warning",spell="ability skill macro",quest="guide route journey waypoint",art="blizzard gryphon decoration trim",record="cpu performance lag spikes report bug",debuff="dot dots harmful cleanse dispel",buff="aura helpful duration expiration",portrait="3d animated animation model",nameplate="enemy mob npc overhead plates",auction="ah auctionhouse market trading buy sell shopping"}
+function R:Register(page,control,label,description,y,kind,section,key)
  if not page or not control then return end
  local id=page..":"..label:lower():gsub("[^%w]+","_")
  local row=self.byID[id]
  if not row then row={id=id};self.controls[#self.controls+1]=row;self.byID[id]=row end
+ row.section=section;row.key=key
  row.page=page;row.control=control;row.label=label;row.description=description or "";row.y=y or 0;row.kind=kind
- local terms=(page.." "..label.." "..row.description):lower()
+ self.byControl[control]=row
+ local parent=self:NavigationPage(page);local category=""
+ for _,section in ipairs(self.sections)do if section.id==parent then category=section.label;break end end
+ local terms=(page.." "..category.." "..label.." "..row.description):lower()
  for word,aliases in pairs(synonyms)do if terms:find(word,1,true)then terms=terms.." "..aliases end end
  row.terms=terms
  return row
@@ -29,7 +40,7 @@ function R:Search(query)
  if #words==0 then return {}end
  local results={}
  for _,row in ipairs(self.controls)do
-  local matches=true;for _,word in ipairs(words)do if not row.terms:find(word,1,true)then matches=false;break end end
+  local matches=row.page~="setup";for _,word in ipairs(words)do if not row.terms:find(word,1,true)then matches=false;break end end
   if matches then results[#results+1]=row end
  end
  table.sort(results,function(a,b)

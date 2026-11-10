@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/Gethe/wow-ui-source.git",
+  "branch": "forever",
+  "revision": "9dc84f0d3bbae1768ac3405b3716000bd93eda06",
+  "checkedAt": "2026-11-09",
+  "interface": 16001,
+  "installedBuildObserved": "1.60.1.70862",
+  "evidence": "Current Initialize(containerFrame, bag, slot) and SetID line correspond to the reported live stack. Source mirror is a compatibility reference, not proof of all live protected behavior."
+}

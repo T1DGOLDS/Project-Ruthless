@@ -136,19 +136,42 @@ function E:Capture(frame)
     local ok,x,y=pcall(frame.GetCenter,frame)
     local width,height=safe(frame.GetWidth,frame),safe(frame.GetHeight,frame)
     if not ok or (issecretvalue and (issecretvalue(x)or issecretvalue(y)))or not finite(x)or not finite(y)or not finite(scale)or not finite(frameScale)or not finite(parentScale)or parentScale==0 or not finite(width)or not finite(height)then return end
+    if width<=0 or height<=0 or scale<.1 or scale>3 then return end
     local effective=frameScale/parentScale
     local value={x=x*effective-UIParent:GetWidth()/2,y=y*effective-UIParent:GetHeight()/2,scale=scale,width=width,height=height}
-    if AUI.isForever and type(frame.system)=="number"and type(frame.settingDisplayInfoMap)=="table"and type(frame.GetSettingValue)=="function"then
+    if AUI.isForever and (frame.ruiActionBar==true or type(frame.system)=="number")and type(frame.settingDisplayInfoMap)=="table"and type(frame.GetSettingValue)=="function"then
         value.nativeSettings={}
-        for setting in pairs(frame.settingDisplayInfoMap)do local v=safe(frame.GetSettingValue,frame,setting);if type(v)=="number"or type(v)=="boolean"then value.nativeSettings[setting]=v end end
+        for setting in pairs(frame.settingDisplayInfoMap)do local v=safe(frame.GetSettingValue,frame,setting);if finite(setting)and setting>=0 and setting%1==0 and (finite(v)or type(v)=="boolean")then value.nativeSettings[setting]=v end end
     end
     return value
 end
-function E:Apply(id,value)
+local function BarIconSetting(id,frame)
+    local setting=Enum and Enum.EditModeActionBarSetting and Enum.EditModeActionBarSetting.IconSize
+    if not AUI.isForever or not id:match("^bar%d$") or not finite(setting)
+        or not EditModeManagerFrame or type(EditModeManagerFrame.OnSystemSettingChange)~="function" then return end
+    local size=safe(frame.GetSettingValue,frame,setting)
+    if finite(size)and size>=50 and size<=200 then return setting,size end
+end
+local function NormalizeBarSize(id,frame,value)
+    local setting,current=BarIconSetting(id,frame)
+    if not setting then return end
+    local original=value.nativeSettings and value.nativeSettings[setting]
+    local size=finite(original)and original or current
+    local scale=value.scale or 1
+    if math.abs(scale-1)>.001 then size=math.floor(size*scale/10+.5)*10 end
+    value.nativeSettings=value.nativeSettings or {}
+    value.nativeSettings[setting]=math.max(50,math.min(200,size))
+    value.scale=1
+end
+function E:Apply(id,value,positionOnly)
     local target=self.targets[id];local frame=target and target.frame
     if not frame or InCombatLockdown()or not value or not finite(value.x)or not finite(value.y)or not finite(value.scale or 1)or target.resize and (not finite(value.width)or not finite(value.height))then return false end
     local hud=AUI.modules.ForeverHUD;local applying=hud and hud.applying;if hud then hud.applying=true end
-    if not target.skipNativeSettings and AUI.isForever and type(value.nativeSettings)=="table"and EditModeManagerFrame and type(EditModeManagerFrame.OnSystemSettingChange)=="function"and type(frame.GetSettingValue)=="function"then
+    if not positionOnly then NormalizeBarSize(id,frame,value)end
+    if not positionOnly and frame.ruiActionBar==true and type(value.nativeSettings)=="table"then
+        frame:ApplyLayoutSettings(value.nativeSettings)
+    end
+    if not positionOnly and frame.ruiActionBar~=true and not target.skipNativeSettings and AUI.isForever and type(value.nativeSettings)=="table"and EditModeManagerFrame and type(EditModeManagerFrame.OnSystemSettingChange)=="function"and type(frame.GetSettingValue)=="function"then
         for setting,v in pairs(value.nativeSettings)do
             local current=safe(frame.GetSettingValue,frame,setting)
             if current~=nil and current~=v then EditModeManagerFrame:OnSystemSettingChange(frame,setting,v)end
@@ -156,10 +179,18 @@ function E:Apply(id,value)
     end
     -- Release custom positions from native managed containers before combat.
     local native=AUI.isForever and type(frame.system)=="number"and type(frame.systemInfo)=="table"
-    if native and type(frame.BreakFromFrameManager)=="function"then frame:BreakFromFrameManager()end
-    frame:SetScale(math.max(.55,math.min(1.5,value.scale or 1)))
+    if not positionOnly and native and type(frame.BreakFromFrameManager)=="function"then frame:BreakFromFrameManager()end
+    local scale=math.max(.55,math.min(1.5,value.scale or 1))
+    if safe(frame.GetScale,frame)~=scale then frame:SetScale(scale)end
     local ratio=UIParent:GetEffectiveScale()/frame:GetEffectiveScale()
-    frame:ClearAllPoints();frame:SetPoint("CENTER",UIParent,"CENTER",value.x*ratio,value.y*ratio)
+    local x,y=value.x*ratio,value.y*ratio
+    local point,parent,relative,oldX,oldY
+    if positionOnly then point,parent,relative,oldX,oldY=frame:GetPoint(1)end
+    if not positionOnly or point~="CENTER"or parent~=UIParent or relative~="CENTER"
+        or not finite(oldX)or not finite(oldY)or math.abs(oldX-x)>.01 or math.abs(oldY-y)>.01
+        or frame:GetPoint(2)then
+        frame:ClearAllPoints();frame:SetPoint("CENTER",UIParent,"CENTER",x,y)
+    end
     if target.resize then
         local bounds=type(target.resize)=="table"and target.resize or {minWidth=780,maxWidth=2400,minHeight=460,maxHeight=1600}
         frame:SetSize(math.max(bounds.minWidth,math.min(bounds.maxWidth,value.width)),math.max(bounds.minHeight,math.min(bounds.maxHeight,value.height)))
@@ -171,12 +202,44 @@ function E:Apply(id,value)
     end
     -- SetPoint alone leaves Blizzard's default-position flag/anchor unchanged.
     -- Its own recorder keeps later native layout passes at the RUI position.
-    if native and EditModeManagerFrame and type(EditModeManagerFrame.UpdateSystemAnchorInfo)=="function"then
+    if not positionOnly and native and EditModeManagerFrame and type(EditModeManagerFrame.UpdateSystemAnchorInfo)=="function"then
         EditModeManagerFrame:UpdateSystemAnchorInfo(frame)
     end
     if hud then hud.applying=applying end
     return true
 end
+-- Save through Blizzard's dialog so the client can reload the anchors itself.
+-- The RUI profile and other Blizzard layouts are left intact.
+function E:SaveNativeBarLayout()
+    if InCombatLockdown()then return false,"Save the native bar layout after combat."end
+    local owned=AUI.modules.ForeverActionBars
+    if owned and owned.initialized then return false,"RUI now owns your action bars. Save the setup in RUI Profiles."end
+    local manager=EditModeManagerFrame
+    if not AUI.isForever or not manager or type(manager.GetActiveLayoutInfo)~="function"
+        or type(manager.ShowNewLayoutDialog)~="function" or not manager:GetActiveLayoutInfo()then
+        return false,"Blizzard's layout save dialog is unavailable."
+    end
+    -- The stock dropdown normally builds this index on entering Blizzard Edit Mode.
+    -- RUI opens the save dialog directly, so build it before the user confirms.
+    if type(manager.CreateLayoutTbls)=="function"then manager:CreateLayoutTbls()end
+    if type(manager.highestLayoutIndexByType)~="table"then
+        return false,"Blizzard's layout index is unavailable. Reload and try again."
+    end
+
+    local elements=self:Store().elements
+    local count=0
+    for index=1,8 do
+        local id="bar"..index
+        if elements[id] and self.targets[id]then
+            if not self:Apply(id,elements[id])then return false,"Could not apply "..self.targets[id].label.." before saving."end
+            count=count+1
+        end
+    end
+    if count==0 then return false,"Save your action bar positions in RUI Edit Mode first."end
+    manager:ShowNewLayoutDialog(clone(manager:GetActiveLayoutInfo()))
+    return true
+end
+
 function E:Attach(id,label,frame,resize,options)
     if not frame or self.targets[id]then return end
     self.targets[id]={label=label,frame=frame,resize=resize,default=self:Capture(frame),skipNativeSettings=options and options.skipNativeSettings}
@@ -192,7 +255,21 @@ function E:Discover()
 end
 function E:Snapshot()
     local state=clone(self:Store().elements)
-    for id,target in pairs(self.targets)do state[id]=self:Capture(target.frame)or state[id]end
+    for id,target in pairs(self.targets)do
+        local current=self:Capture(target.frame)
+        if current and AUI.isForever and id:match("^bar%d$")and state[id]then
+            -- Native grid updates can temporarily reset scale and anchors.
+            -- The working layout is authoritative for edits already saved by RUI.
+            local saved=state[id]
+            current.x,current.y,current.scale=saved.x,saved.y,saved.scale
+            local setting=BarIconSetting(id,target.frame)
+            if setting and saved.nativeSettings and finite(saved.nativeSettings[setting])then
+                current.nativeSettings=current.nativeSettings or {}
+                current.nativeSettings[setting]=saved.nativeSettings[setting]
+            end
+        end
+        state[id]=current or state[id]
+    end
     state.__art={blizzardArt=self:Store().blizzardArt==true}
     state.__chat=self:CaptureChat()
     return state
@@ -277,7 +354,14 @@ end
 function E:Change(field,amount)
     if InCombatLockdown()or not self.selected then return end
     local target=self.targets[self.selected];local value=self:Capture(target.frame);if not value then return end
-    self:Checkpoint();value[field]=(value[field]or 0)+amount
+    self:Checkpoint()
+    local icon,size
+    if field=="scale"then icon,size=BarIconSetting(self.selected,target.frame)end
+    if icon then
+        value.nativeSettings=value.nativeSettings or {}
+        value.nativeSettings[icon]=math.max(50,math.min(200,size+(amount>0 and 10 or -10)))
+        value.scale=1
+    else value[field]=(value[field]or 0)+amount end
     if self:Apply(self.selected,value)then self:Store().elements[self.selected]=self:Capture(target.frame)end
     self:Refresh()
 end
@@ -407,7 +491,9 @@ function E:Refresh()
         elseif self.movers[id]then self.movers[id]:Hide()end
     end
     local target=self.selected and self.targets[self.selected];local v=target and self:Capture(target.frame)
-    self.detail:SetText(v and ("%s\nX %.1f · Y %.1f · Scale %.0f%%"):format(target.label,v.x,v.y,v.scale*100)or "Select an open panel")
+    local _,iconSize
+    if v and self.selected then _,iconSize=BarIconSetting(self.selected,target.frame)end
+    self.detail:SetText(v and ("%s\nX %.1f · Y %.1f · Scale %.0f%%"):format(target.label,v.x,v.y,iconSize or v.scale*100)or "Select an open panel")
     for _,button in ipairs({self.widthMinus,self.widthPlus,self.heightMinus,self.heightPlus})do button:SetShown(target and target.resize or false)end
     self.snapButton:SetText(self.snapping and "Snap: On"or "Snap: Off")
     for field,input in pairs(self.coordinates)do if v and not input:HasFocus()then input:SetText(("%.1f"):format(v[field]))end end
@@ -453,6 +539,10 @@ function E:OpenNativeSettings()
     if not AUI.isForever or InCombatLockdown()then return end
     local target=self.selected and self.targets[self.selected];local frame=target and target.frame
     if target and target.skipNativeSettings then AUI:Print("Choose spells and alerts under Auras & cooldowns. This mover changes position and scale only.");return end
+    if frame and frame.ruiActionBar==true then
+        AUI.modules.ForeverActionBars:OpenSettings(self.selected,self.frame)
+        return
+    end
     local dialog=EditModeSystemSettingsDialog
     if not frame or type(frame.system)~="number"or not dialog or type(dialog.AttachToSystemFrame)~="function"then AUI:Print("This element uses RUI's position and size controls.");return end
     self:Checkpoint();dialog:AttachToSystemFrame(frame)
@@ -476,6 +566,8 @@ function E:Show()
 end
 function E:Close(cancel)
     if EditModeSystemSettingsDialog then EditModeSystemSettingsDialog:Hide()end
+    local owned=AUI.modules.ForeverActionBars
+    if owned and owned.settingsPanel then owned.settingsPanel:Hide()end
     if not InCombatLockdown()then
         if cancel then
             if self.beforeProfile and AUI.modules.UnifiedProfiles then AUI.modules.UnifiedProfiles:Apply(self.beforeProfile,self.beforeProfileName)
@@ -485,18 +577,88 @@ function E:Close(cancel)
     self.beforeProfile=nil;self.beforeProfileName=nil
     self.frame:Hide()
 end
+local menuBackdrop={bgFile="Interface\\Buttons\\WHITE8X8",edgeFile="Interface\\Buttons\\WHITE8X8",edgeSize=1}
+local function MenuArtOff(region)
+    if region and region.SetAlpha then region:SetAlpha(0)end
+end
+function E:SkinGameMenu(menu,settingsButton)
+    local r,g,b=AUI:AccentColor()
+    if not menu.ruiSurface then
+        local surface=CreateFrame("Frame",nil,menu,"BackdropTemplate")
+        surface.ignoreInLayout=true;surface:SetAllPoints(menu);surface:SetFrameLevel(menu:GetFrameLevel())
+        surface:SetBackdrop(menuBackdrop);menu.ruiSurface=surface
+        local title=surface:CreateFontString(nil,"OVERLAY","GameFontNormal")
+        title:SetPoint("TOP",0,-14);title:SetText(MAINMENU_BUTTON or "Game Menu")
+        local rule=surface:CreateTexture(nil,"ARTWORK")
+        rule:SetHeight(1);rule:SetPoint("TOPLEFT",12,-37);rule:SetPoint("TOPRIGHT",-12,-37)
+        surface.title=title;surface.rule=rule
+    end
+    local surface=menu.ruiSurface
+    AUI:StyleSurface(surface,"window",.96,"Options")
+    surface:SetBackdropBorderColor(r*.55,g*.55,b*.55,1)
+    surface.title:SetTextColor(r,g,b,1);surface.rule:SetColorTexture(r,g,b,.55)
+    MenuArtOff(menu.Header);MenuArtOff(menu.Border)
+    for _,button in ipairs(menu.buttons)do
+        MenuArtOff(button.Left);MenuArtOff(button.Center);MenuArtOff(button.Right)
+        MenuArtOff(button:GetHighlightTexture())
+        if not button.ruiMenuFill then
+            local fill=button:CreateTexture(nil,"BACKGROUND",nil,1)
+            fill:SetPoint("TOPLEFT",2,-2);fill:SetPoint("BOTTOMRIGHT",-2,2)
+            local edge=button:CreateTexture(nil,"BACKGROUND",nil,0)
+            edge:SetPoint("TOPLEFT",1,-1);edge:SetPoint("BOTTOMRIGHT",-1,1)
+            button.ruiMenuFill=fill;button.ruiMenuEdge=edge
+            button:HookScript("OnEnter",function(self)
+                if self:IsEnabled() then self.ruiMenuFill:SetColorTexture(.11,.12,.17,1)end
+            end)
+            button:HookScript("OnLeave",function(self)
+                if self.ruiMenuPrimary then self.ruiMenuFill:SetColorTexture(.09,.09,.14,1)
+                else self.ruiMenuFill:SetColorTexture(.035,.039,.052,1)end
+            end)
+        end
+        local primary=button==settingsButton
+        button.ruiMenuPrimary=primary
+        if primary then
+            button.ruiMenuFill:SetColorTexture(.09,.09,.14,1)
+            button.ruiMenuEdge:SetColorTexture(r,g,b,.8)
+        else
+            button.ruiMenuFill:SetColorTexture(.035,.039,.052,1)
+            button.ruiMenuEdge:SetColorTexture(.16,.17,.21,1)
+        end
+        local font=button:GetFontString()
+        if font then
+            if not button:IsEnabled()then font:SetTextColor(.5,.51,.55,1)
+            elseif primary then font:SetTextColor(r,g,b,1)
+            else font:SetTextColor(.91,.92,.96,1)end
+        end
+    end
+end
 function E:InstallGameMenuEntry()
     if not AUI.isForever or self.gameMenuHooked or not GameMenuFrame or type(GameMenuFrame.InitButtons)~="function"then return end
     self.gameMenuHooked=true
     hooksecurefunc(GameMenuFrame,"InitButtons",function(menu)
-        if InCombatLockdown()then return end
-        for _,button in ipairs(menu.buttons or {})do
-            if button:GetText()==HUD_EDIT_MODE_MENU then
+        if InCombatLockdown() and menu.IsProtected and menu:IsProtected()then return end
+        if type(menu.AddButton)~="function" or not menu.buttons or not menu.buttons[1]then return end
+        if menu.ResetGamepadButtons then menu:ResetGamepadButtons()end
+        local settingsButton=menu:AddButton("RUI Settings",function()
+            HideUIPanel(menu)
+            local options=AUI.modules.Menu
+            if options then options:Show()end
+        end)
+        table.remove(menu.buttons);table.insert(menu.buttons,1,settingsButton)
+        for index,button in ipairs(menu.buttons)do
+            button.layoutIndex=index
+            local position=index
+            if NarrationUtil and NarrationUtil.MakeIndexInfo then
+                button.NarrationGetIndexInfo=function()return NarrationUtil.MakeIndexInfo(position,#menu.buttons)end
+            end
+            if not InCombatLockdown()and button:GetText()==HUD_EDIT_MODE_MENU then
                 button:SetText("RUI Edit Mode")
-                button:SetScript("OnClick",function()if InCombatLockdown()then return end;HideUIPanel(GameMenuFrame);self:Show()end)
-                break
+                button:SetScript("OnClick",function()if InCombatLockdown()then return end;HideUIPanel(menu);self:Show()end)
             end
         end
+        if menu.SetupGamepadButtons then menu:SetupGamepadButtons()end
+        if menu.MarkDirty then menu:MarkDirty()end
+        self:SkinGameMenu(menu,settingsButton)
     end)
 end
 function E:OnAddonLoaded()

@@ -8,7 +8,18 @@ do (function()
  assert(q.objectiveCopy.text=='2/7 current task'and not q.nearbyHeading.shown and not q.contextHeading.shown and not q.dungeonHeading.shown)
  for _,row in ipairs(q.rows)do assert(not row.shown)end
  assert(q.returnGuide.shown and q.frame.height<350)
+ selected.next={{title='One upcoming task'},{title='Second future task'}};q:RenderContext()
+ assert(q.upcomingCopy.shown and q.upcomingCopy.text:find('One upcoming task',1,true)and not q.upcomingCopy.text:find('Second future task',1,true))
+ ProjectRuthlessDB.questWorkspace.guideUpcoming=false;q:RenderContext();assert(not q.upcomingCopy.shown)
+ ProjectRuthlessDB.questWorkspace.guideUpcoming=nil;selected.next=nil
  assert(q:ReadGuide()==selected)
+ q.entries={{id=10,title='Focused quest',detail='Current'},{id=20,title='Another quest',level=20,detail='2/4 done',watched=true}}
+ q:RenderContext()
+ assert(not q.rows[1].shown,'Focused guide should hide unrelated active quests by default')
+ ProjectRuthlessDB.questWorkspace.guideOtherQuests=true;q:RenderContext()
+ assert(q.rows[1].shown and q.rows[1].entry.id==20 and q.nearbyHeading.shown)
+ ProjectRuthlessDB.questWorkspace.guideOtherQuests=nil
+ q.manualTrackedQuest=20;assert(q:ReadGuide()==nil);q.manualTrackedQuest=nil
  local oldCollect,oldPins,oldNavigate,oldVisibility=q.Collect,q.RefreshPins,q.Navigate,q.mapPanel.IsVisible
  q.Collect=function()return {{id=99,title='Held quest',level=20,distance=1,complete=false,detail='Current'}}end
  q.RefreshPins=function()end;q.Navigate=function()end;q.mapPanel.IsVisible=function()return false end;q.frame.shown=true
@@ -31,5 +42,5 @@ do (function()
  assert(#pending==1);pending[1]();assert(p.revision==1 and refreshes==1 and renders==1)
  C_Timer.After,q.Refresh,q.RenderMapPage,q.AnnounceQuestProgress=oldAfter,oldRefresh,oldRender,oldAnnounce;q.mapPanel.IsVisible=oldVisible
  AUI.modules.QuestLocations=oldLocations;AUI.modules.QuestProgression=nil
- print('PASS: actual workspace prioritizes owned progression, limits tracker to current objectives/items without nearby database scans, and batches 100 events into one shared refresh')
+ print('PASS: actual workspace prioritizes owned progression, shows focused objectives and other active quests without nearby database scans, and batches 100 events into one shared refresh')
 end)()end

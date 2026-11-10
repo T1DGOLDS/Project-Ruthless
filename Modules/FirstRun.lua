@@ -62,6 +62,8 @@ function F:Finish(options)
  return true,"Setup saved. Profiles saves your whole interface; Edit Mode moves it."
 end
 function F:OnPlayerLogin()
+ -- The introduction offers Quick setup without opening two surfaces at once.
+ if AUI.modules.FeatureGuide then return end
  local state=ProjectRuthlessCharDB.firstRun
  if state and state.eligible and not state.complete and not ProjectRuthlessCharDB.activeProfile then
   C_Timer.After(1,function()
